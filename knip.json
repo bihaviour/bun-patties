@@ -1,16 +1,23 @@
 {
 	"$schema": "https://unpkg.com/knip@6/schema.json",
-	"entry": [
-		"src/types.ts",
-		"src/cli/build.ts",
-		"src/cli/dev.ts",
-		"src/cli/log.ts",
-		"src/agents-md/subprocess-entry.ts",
-		"src/build/macros/*.ts",
-		"scripts/*.ts",
-		"tests/adapters/smoke-harness.ts"
-	],
-	"project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
-	"ignore": ["tests/fixtures/**", "packages/create-patties/templates/**"],
-	"ignoreExportsUsedInFile": true
+	"ignore": ["tests/fixtures/**"],
+	"ignoreExportsUsedInFile": true,
+	"workspaces": {
+		".": {
+			"entry": [
+				"src/types.ts",
+				"src/cli/build.ts",
+				"src/cli/dev.ts",
+				"src/cli/log.ts",
+				"src/agents-md/subprocess-entry.ts",
+				"src/build/macros/*.ts",
+				"scripts/*.ts",
+				"tests/adapters/smoke-harness.ts"
+			],
+			"project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
+		},
+		"packages/create-patties": {
+			"ignore": ["templates/**"]
+		}
+	}
 }

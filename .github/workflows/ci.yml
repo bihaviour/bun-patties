@@ -1,0 +1,185 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    types: [opened, synchronize]
+
+concurrency:
+  group: >-
+    ${{ github.event_name == 'pull_request'
+        && format('{0}-pr-{1}', github.workflow, github.ref_name)
+        || format('{0}-sha-{1}', github.workflow, github.sha) }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      docs-only: ${{ steps.detect.outputs.docs-only }}
+      adapters-touched: ${{ steps.detect.outputs.adapters-touched }}
+      plugins-touched: ${{ steps.detect.outputs.plugins-touched }}
+    steps:
+      - uses: ./.github/actions/setup
+      - id: detect
+        run: bun run scripts/ci-changes.ts
+
+  build:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.docs-only != 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: ./.github/actions/setup
+      - run: bun run scripts/generate-agents-md.ts
+      - name: Build
+        run: |
+          mkdir -p dist
+          bun --version > dist/.bun-version
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: build-output
+          path: |
+            dist/
+            AGENTS.md
+          retention-days: 1
+          if-no-files-found: error
+
+  lint:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    steps:
+      - uses: ./.github/actions/setup
+      - run: bun run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    steps:
+      - uses: ./.github/actions/setup
+      - run: bun run typecheck
+
+  test-unit:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    steps:
+      - uses: ./.github/actions/setup
+      - name: Run unit tests
+        run: |
+          bun test \
+            tests/filesystem.test.ts \
+            tests/middleware.test.ts \
+            tests/render.test.tsx \
+            tests/router.test.ts \
+            tests/server.test.ts \
+            tests/agents-md \
+            tests/ai \
+            tests/cli \
+            tests/config \
+            tests/plugin \
+            tests/router
+
+  test-integration:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    steps:
+      - uses: ./.github/actions/setup
+      - run: bun test tests/integration tests/dev
+
+  test-adapters:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        adapter: [workerd, deno, vercel-edge, netlify-edge, bun]
+    steps:
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: build-output
+      - name: Install runtime (workerd)
+        if: matrix.adapter == 'workerd' || matrix.adapter == 'vercel-edge'
+        run: bun run scripts/install-runtime-workerd.ts
+      - name: Install runtime (deno)
+        if: matrix.adapter == 'deno' || matrix.adapter == 'netlify-edge'
+        run: bun run scripts/install-runtime-deno.ts
+      - name: Smoke
+        env:
+          ADAPTER: ${{ matrix.adapter }}
+        run: bun test "tests/adapters/$ADAPTER"
+
+  test-plugins:
+    runs-on: ubuntu-latest
+    needs: build
+    if: needs.changes.outputs.plugins-touched == 'true' || github.event_name == 'push'
+    permissions:
+      contents: read
+    steps:
+      - uses: ./.github/actions/setup
+      - name: Plugin smoke
+        run: bun test tests/plugin
+
+  check-agents-md:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    steps:
+      - uses: ./.github/actions/setup
+      - run: bun run scripts/generate-agents-md.ts
+      - run: git diff --exit-code AGENTS.md
+
+  docs-link-check:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.docs-only == 'true' || github.event_name == 'push'
+    permissions:
+      contents: read
+    steps:
+      - uses: ./.github/actions/setup
+      - run: bun run scripts/check-docs-links.ts
+
+  ci-pass:
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+      - build
+      - lint
+      - typecheck
+      - test-unit
+      - test-integration
+      - test-adapters
+      - test-plugins
+      - check-agents-md
+      - docs-link-check
+    if: always()
+    permissions:
+      contents: read
+    steps:
+      - name: Aggregate
+        env:
+          NEEDS_JSON: ${{ toJson(needs) }}
+        run: |
+          if printf '%s' "$NEEDS_JSON" | grep -E '"result": "(failure|cancelled)"' >/dev/null; then
+            echo "One or more required checks failed or were cancelled."
+            exit 1
+          fi
+          echo "All required checks passed (or were correctly skipped)."
