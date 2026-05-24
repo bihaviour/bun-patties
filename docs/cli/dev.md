@@ -1,0 +1,20 @@
+# Dev
+
+`patties dev` starts the development server.
+
+## Behavior
+
+- Uses `bun --hot` by default
+- Uses `bun --watch` when `--cold` is passed
+- Loads config and dev-time secrets before boot
+- Validates required environment variables
+- Regenerates `AGENTS.md` in the background
+- Starts a stub server if `app/server.ts` is missing
+
+## Flags
+
+- `--cold`
+- `--no-open`
+- `--port <number>`
+- `--host <hostname>`
+- `--app <path>`

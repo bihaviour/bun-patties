@@ -1,14 +1,9 @@
 name: Setup Bun + install
-description: Checkout, install Bun pinned by .bun-version, and run bun install --frozen-lockfile.
+description: Install Bun pinned by .bun-version and run bun install --frozen-lockfile. Caller must run actions/checkout first.
 
 runs:
   using: composite
   steps:
-    - name: Checkout
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      with:
-        fetch-depth: 2
-
     - name: Setup Bun
       uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       with:

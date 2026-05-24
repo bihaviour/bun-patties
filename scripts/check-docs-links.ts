@@ -2,7 +2,7 @@
 import { stat } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 
-const roots = ["docs", "agent_specs"];
+const roots = ["docs", "fern/docs", "agent_specs"];
 const linkRe = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
 
 const broken: string[] = [];
@@ -19,31 +19,33 @@ async function exists(path: string): Promise<boolean> {
 
 for (const root of roots) {
 	if (!(await exists(root))) continue;
-	const glob = new Bun.Glob("**/*.md");
-	for await (const rel of glob.scan({ cwd: root, onlyFiles: true })) {
-		const filePath = `${root}/${rel}`;
-		const contents = await Bun.file(filePath).text();
-		scanned++;
+	for (const pattern of ["**/*.md", "**/*.mdx"]) {
+		const glob = new Bun.Glob(pattern);
+		for await (const rel of glob.scan({ cwd: root, onlyFiles: true })) {
+			const filePath = `${root}/${rel}`;
+			const contents = await Bun.file(filePath).text();
+			scanned++;
 
-		for (const match of contents.matchAll(linkRe)) {
-			const target = match[1];
-			if (!target) continue;
-			if (
-				target.startsWith("http://") ||
-				target.startsWith("https://") ||
-				target.startsWith("mailto:") ||
-				target.startsWith("#") ||
-				target.startsWith("data:")
-			) {
-				continue;
+			for (const match of contents.matchAll(linkRe)) {
+				const target = match[1];
+				if (!target) continue;
+				if (
+					target.startsWith("http://") ||
+					target.startsWith("https://") ||
+					target.startsWith("mailto:") ||
+					target.startsWith("#") ||
+					target.startsWith("data:")
+				) {
+					continue;
+				}
+				const [path] = target.split("#");
+				if (!path) continue;
+				const absRef = isAbsolute(path)
+					? resolve(process.cwd(), path.slice(1))
+					: resolve(dirname(filePath), path);
+				if (await exists(absRef)) continue;
+				broken.push(`${filePath}: -> ${target}`);
 			}
-			const [path] = target.split("#");
-			if (!path) continue;
-			const absRef = isAbsolute(path)
-				? resolve(process.cwd(), path.slice(1))
-				: resolve(dirname(filePath), path);
-			if (await exists(absRef)) continue;
-			broken.push(`${filePath}: -> ${target}`);
 		}
 	}
 }

@@ -1,0 +1,34 @@
+instances:
+  - url: bun-patties.docs.buildwithfern.com
+
+title: Patties
+
+navigation:
+  - section: Framework
+    contents:
+      - page: Overview
+        path: docs/pages/framework/overview.mdx
+      - page: Routing
+        path: docs/pages/framework/routing.mdx
+      - page: AI and Agents
+        path: docs/pages/framework/ai-and-agents.mdx
+  - section: CLI
+    contents:
+      - page: Overview
+        path: docs/pages/cli/overview.mdx
+      - page: Dev
+        path: docs/pages/cli/dev.mdx
+      - page: Build
+        path: docs/pages/cli/build.mdx
+      - page: Deploy and Secrets
+        path: docs/pages/cli/deploy-and-secrets.mdx
+
+navbar-links:
+  - type: minimal
+    text: GitHub
+    url: https://github.com/bihaviour/bun-patties-framework
+
+colors:
+  accent-primary:
+    dark: "#f0c193"
+    light: "#af5f1b"
