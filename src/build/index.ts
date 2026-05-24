@@ -1,4 +1,5 @@
 import { scanRoutes } from "../router/filesystem.ts"
+import { scanAgents, scanTools, scanJobs } from "../ai/scan.ts"
 import { scanIslands, type IslandEntry } from "./scan-islands.ts"
 import { generateClientEntry } from "./client-entry.ts"
 import { generateServerEntry } from "./server-entry.ts"
@@ -49,6 +50,9 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 
   const islands = await scanIslands(appDir)
   const entries = await scanRoutes(appDir)
+  const agentMods = await scanAgents(appDir)
+  const toolMods = await scanTools(appDir)
+  const jobMods = await scanJobs(appDir)
   const hasUserMiddleware = await Bun.file(appDir + "/middleware.ts").exists()
 
   const manifest: ClientManifest = { entry: null, islands: {} }
@@ -88,16 +92,21 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
   const envMacroPath = frameworkRoot + "/build/macros/env.macro.ts"
   const manifestMacroPath = frameworkRoot + "/build/macros/manifest.macro.ts"
   const agentsHashMacroPath = frameworkRoot + "/build/macros/agents-hash.macro.ts"
+  const agentsMacroPath = frameworkRoot + "/build/macros/agents.macro.ts"
 
   const serverEntrySource = generateServerEntry({
     appDir,
     entries,
+    agents: agentMods,
+    tools: toolMods,
+    jobs: jobMods,
     hasUserMiddleware,
     frameworkRoot,
     routesMacroPath,
     envMacroPath,
     manifestMacroPath,
     agentsHashMacroPath,
+    agentsMacroPath,
     manifestPath,
     target,
     port: options.port,

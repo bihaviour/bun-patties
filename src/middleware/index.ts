@@ -1,11 +1,12 @@
 import { jsonResponse, htmlResponse, redirectResponse } from "./response-helpers.ts"
 import { appendCookieHeaders } from "./cookies.ts"
+import type { AiContext } from "../ai/types.ts"
 
 export interface PattiesContext {
   params: Record<string, string>
   cookies: unknown
   env: Record<string, string | undefined>
-  aiContext?: unknown
+  aiContext?: AiContext
   csrf?: { token(): string; verify(t: string | null): boolean }
   vars: Record<string, unknown>
   url: URL

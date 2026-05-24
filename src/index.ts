@@ -27,3 +27,18 @@ export type {
   BuiltAsset,
   ClientManifest as BuildClientManifest,
 } from "./build/index.ts"
+
+export type {
+  AiContext,
+  AgentConfig,
+  ToolConfig,
+  JobConfig,
+  AgentRunResult,
+  RegisteredAgent,
+  RegisteredTool,
+  RegisteredJob,
+  AnthropicLike,
+} from "./ai/types.ts"
+export type { CreateAiContextOptions } from "./ai/context.ts"
+
+export { generateAgentsMd } from "./agents-md/generate.ts"

@@ -5,6 +5,7 @@ import { startServer } from "../server/index.ts"
 import { loadConfig } from "../config/load.ts"
 import { loadSecrets } from "../config/secrets.ts"
 import { validateRequiredEnv, MissingEnv } from "../config/env.ts"
+import { generateAgentsMd } from "../agents-md/generate.ts"
 
 export interface DevArgs {
   cold: boolean
@@ -102,6 +103,14 @@ async function bootstrap(args: DevArgs): Promise<number> {
   }
 
   const devServer = createDevServer({ appDir: resolved.appDir })
+
+  // Initial AGENTS.md generation — fire-and-forget; never crashes dev.
+  generateAgentsMd(resolved.appDir, {
+    appDir: resolved.appDir,
+    env: { required: config.env.required, optional: config.env.public },
+  })
+    .then((md) => Bun.write(process.cwd() + "/AGENTS.md", md))
+    .catch((err) => console.warn(`[patties] AGENTS.md generation failed:`, (err as Error)?.message ?? err))
 
   const entry = findUserEntry(resolved.appDir)
   if (entry) {

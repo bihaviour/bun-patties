@@ -1,6 +1,7 @@
 import { resolve } from "node:path"
 import { build } from "../build/index.ts"
 import { loadConfig } from "../config/load.ts"
+import { generateAgentsMd } from "../agents-md/generate.ts"
 
 export interface BuildArgs {
   target?: "bun" | "edge"
@@ -35,6 +36,17 @@ export async function runBuild(argv: string[]): Promise<number> {
   console.log(`[patties] built ${target} target`)
   console.log(`[patties]   serverEntry: ${result.serverEntry}`)
   console.log(`[patties]   assets: ${result.assets.length}`)
+
+  try {
+    const md = await generateAgentsMd(appDir, {
+      appDir,
+      env: { required: config.env.required, optional: config.env.public },
+    })
+    await Bun.write(process.cwd() + "/AGENTS.md", md)
+    console.log(`[patties]   AGENTS.md: written`)
+  } catch (err) {
+    console.warn(`[patties] AGENTS.md generation failed:`, (err as Error)?.message ?? err)
+  }
   return 0
 }
 
