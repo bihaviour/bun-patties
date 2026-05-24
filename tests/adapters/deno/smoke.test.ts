@@ -23,7 +23,7 @@ beforeAll(async () => {
 	available = (await which("deno")) !== null;
 	if (!available) return;
 
-	outDir = (await Bun.$`mktemp -d -t patties-deno-smoke`.text()).trim();
+	outDir = (await Bun.$`mktemp -d -t patties-deno-smoke.XXXXXX`.text()).trim();
 	await build({
 		appDir: FIXTURE,
 		outDir,

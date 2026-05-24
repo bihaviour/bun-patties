@@ -16,7 +16,7 @@ test("runBuild succeeds even when env.required would be unsatisfied (build is en
 	// Stage a temp project root containing a patties.config.ts that names a
 	// required env var we have not set. The build step must NOT validate env.
 	const projectDir = (
-		await Bun.$`mktemp -d -t patties-build-cli`.text()
+		await Bun.$`mktemp -d -t patties-build-cli.XXXXXX`.text()
 	).trim();
 	created.push(projectDir);
 
@@ -43,7 +43,7 @@ test("runBuild succeeds even when env.required would be unsatisfied (build is en
 
 test("runBuild rejects an explicit unknown --target value", async () => {
 	const projectDir = (
-		await Bun.$`mktemp -d -t patties-build-cli-bad`.text()
+		await Bun.$`mktemp -d -t patties-build-cli-bad.XXXXXX`.text()
 	).trim();
 	created.push(projectDir);
 	await Bun.$`ln -s ${join(FIXTURES, "no-middleware-app/app")} ${projectDir}/app`.quiet();

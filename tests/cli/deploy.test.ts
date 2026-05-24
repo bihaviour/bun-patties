@@ -13,7 +13,7 @@ afterAll(async () => {
 });
 
 async function stageProject(configBody: string): Promise<string> {
-	const dir = (await Bun.$`mktemp -d -t patties-deploy-cli`.text()).trim();
+	const dir = (await Bun.$`mktemp -d -t patties-deploy-cli.XXXXXX`.text()).trim();
 	created.push(dir);
 	await Bun.$`ln -s ${join(FIXTURES, "no-middleware-app/app")} ${dir}/app`.quiet();
 	await Bun.write(`${dir}/patties.config.ts`, configBody);

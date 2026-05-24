@@ -7,7 +7,7 @@ const FIXTURES = join(import.meta.dir, "..", "fixtures");
 // Spec 04 forbids `node:fs/promises` in framework code. Tests follow the same
 // rule; mktemp/rm go through Bun.$ instead.
 async function makeOut(): Promise<string> {
-	const out = (await Bun.$`mktemp -d -t patties-build`.text()).trim();
+	const out = (await Bun.$`mktemp -d -t patties-build.XXXXXX`.text()).trim();
 	return out;
 }
 

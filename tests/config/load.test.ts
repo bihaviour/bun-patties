@@ -7,7 +7,7 @@ afterAll(async () => {
 });
 
 async function makeDir(): Promise<string> {
-	const dir = (await Bun.$`mktemp -d -t patties-config`.text()).trim();
+	const dir = (await Bun.$`mktemp -d -t patties-config.XXXXXX`.text()).trim();
 	created.push(dir);
 	return dir;
 }

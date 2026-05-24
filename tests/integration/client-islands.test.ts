@@ -16,7 +16,7 @@ afterAll(async () => {
 });
 
 async function makeOut(): Promise<string> {
-	const out = (await Bun.$`mktemp -d -t patties-islands`.text()).trim();
+	const out = (await Bun.$`mktemp -d -t patties-islands.XXXXXX`.text()).trim();
 	createdDirs.push(out);
 	return out;
 }

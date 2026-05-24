@@ -8,7 +8,7 @@ afterAll(async () => {
 });
 
 async function mktemp(): Promise<string> {
-	const d = (await Bun.$`mktemp -d -t patties-create`.text()).trim();
+	const d = (await Bun.$`mktemp -d -t patties-create.XXXXXX`.text()).trim();
 	created.push(d);
 	return d;
 }

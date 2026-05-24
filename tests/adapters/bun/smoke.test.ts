@@ -19,7 +19,7 @@ let base = "";
 const port = 30000 + Math.floor(Math.random() * 1000);
 
 beforeAll(async () => {
-	outDir = (await Bun.$`mktemp -d -t patties-bun-smoke`.text()).trim();
+	outDir = (await Bun.$`mktemp -d -t patties-bun-smoke.XXXXXX`.text()).trim();
 	const result = await build({
 		appDir: FIXTURE,
 		outDir,

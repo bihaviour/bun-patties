@@ -13,7 +13,7 @@ afterAll(async () => {
 });
 
 async function makeOut(): Promise<string> {
-	const out = (await Bun.$`mktemp -d -t patties-edge`.text()).trim();
+	const out = (await Bun.$`mktemp -d -t patties-edge.XXXXXX`.text()).trim();
 	created.push(out);
 	return out;
 }
