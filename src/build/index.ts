@@ -16,10 +16,20 @@ export interface ClientManifest {
 	islands: Record<string, string>;
 }
 
+export interface BuildCounts {
+	routes: number;
+	islands: number;
+	agents: number;
+	tools: number;
+	jobs: number;
+}
+
 export interface BuildResult {
 	clientManifest: ClientManifest;
 	serverEntry: string;
 	assets: BuiltAsset[];
+	counts: BuildCounts;
+	artifacts: string[];
 }
 
 export interface BuildOptions {
@@ -192,6 +202,14 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 		clientManifest: manifest,
 		serverEntry: emitted.serverEntry,
 		assets: emitted.assets,
+		counts: {
+			routes: entries.length,
+			islands: islands.length,
+			agents: agentMods.length,
+			tools: toolMods.length,
+			jobs: jobMods.length,
+		},
+		artifacts: emitted.extraFiles ?? [],
 	};
 
 	for (const p of plugins) {

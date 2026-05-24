@@ -48,6 +48,33 @@ export interface Plugin {
 	hooks?: PluginHooks;
 }
 
+export interface DeployArtifacts {
+	outDir: string;
+	serverEntry: string;
+}
+
+export interface DeployContext {
+	env?: string;
+	cwd: string;
+	logger: PluginLogger;
+}
+
+export interface DeployPlugin extends Plugin {
+	deployTarget: "bun" | "edge";
+	deploy(
+		artifacts: DeployArtifacts,
+		ctx: DeployContext,
+	): Promise<string | void>;
+}
+
+export function isDeployPlugin(p: Plugin): p is DeployPlugin {
+	const dp = p as Partial<DeployPlugin>;
+	return (
+		(dp.deployTarget === "bun" || dp.deployTarget === "edge") &&
+		typeof dp.deploy === "function"
+	);
+}
+
 export function definePlugin(p: Plugin): Plugin {
 	if (!p || typeof p.name !== "string" || p.name.length === 0) {
 		throw new Error("definePlugin: `name` is required");

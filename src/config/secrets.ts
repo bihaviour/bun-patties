@@ -31,17 +31,35 @@ async function resolveServiceName(
 	return "patties";
 }
 
-interface BunSecretsLike {
+export interface BunSecretsLike {
 	get: (opts: {
 		service: string;
 		name: string;
 	}) => Promise<string | null | undefined>;
+	set?: (opts: {
+		service: string;
+		name: string;
+		value: string;
+	}) => Promise<void>;
+	delete?: (opts: { service: string; name: string }) => Promise<void>;
+	list?: (opts: { service: string }) => Promise<string[]>;
 }
 
-function getSecretsApi(): BunSecretsLike | null {
+export function getSecretsApi(): BunSecretsLike | null {
 	const b = (globalThis as { Bun?: { secrets?: unknown } }).Bun;
 	if (!b?.secrets) return null;
 	return b.secrets as BunSecretsLike;
+}
+
+export { resolveServiceName };
+
+export function isLibsecretError(err: unknown): boolean {
+	const msg = (err as Error)?.message ?? String(err);
+	return /libsecret|keyring|keychain|backend/i.test(msg);
+}
+
+export function isProductionEnv(): boolean {
+	return isProduction();
 }
 
 export async function loadSecrets(

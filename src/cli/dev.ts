@@ -8,6 +8,8 @@ import { loadSecrets } from "../config/secrets.ts";
 import { createDevServer } from "../dev/watcher.ts";
 import { assertPluginCompat, type Plugin } from "../plugin/index.ts";
 import { startServer } from "../server/index.ts";
+import type { CliContext } from "./index.ts";
+import { EXIT, installSigintHandler, log } from "./log.ts";
 
 const FRAMEWORK_VERSION = (pkg as { version: string }).version;
 
@@ -16,39 +18,43 @@ export interface DevArgs {
 	port: number | null;
 	host: string | null;
 	appDir: string | null;
+	noOpen: boolean;
 }
 
 const REEXEC_FLAG = "PATTIES_DEV_HOT";
 
-export async function runDev(argv: string[]): Promise<number> {
-	const args = parseArgs(argv);
+export async function runDev(
+	argv: string[],
+	ctx: CliContext = { cwd: process.cwd(), verbose: false },
+): Promise<number> {
+	const args = parseArgs(argv, ctx.cwd);
 
 	if (process.env[REEXEC_FLAG] !== "1") {
-		return reexecUnderBun(args);
+		return reexecUnderBun(args, ctx);
 	}
 
-	return bootstrap(args);
+	return bootstrap(args, ctx);
 }
 
-function parseArgs(argv: string[]): DevArgs {
+function parseArgs(argv: string[], cwd: string): DevArgs {
 	const out: DevArgs = {
 		cold: false,
 		port: null,
 		host: null,
 		appDir: null,
+		noOpen: false,
 	};
 	for (let i = 0; i < argv.length; i++) {
 		const a = argv[i];
 		if (a === undefined) continue;
 		if (a === "--cold") out.cold = true;
+		else if (a === "--no-open") out.noOpen = true;
 		else if (a === "--port") out.port = Number(argv[++i]);
 		else if (a === "--host") out.host = String(argv[++i]);
-		else if (a === "--app")
-			out.appDir = resolve(process.cwd(), String(argv[++i]));
+		else if (a === "--app") out.appDir = resolve(cwd, String(argv[++i]));
 		else if (a.startsWith("--port=")) out.port = Number(a.slice(7));
 		else if (a.startsWith("--host=")) out.host = a.slice(7);
-		else if (a.startsWith("--app="))
-			out.appDir = resolve(process.cwd(), a.slice(6));
+		else if (a.startsWith("--app=")) out.appDir = resolve(cwd, a.slice(6));
 	}
 	return out;
 }
@@ -63,8 +69,14 @@ interface ResolvedDev {
 	secrets: string[];
 }
 
-async function resolveDev(args: DevArgs): Promise<ResolvedDev> {
-	const { config } = await loadConfig(process.cwd());
+async function resolveDev(
+	args: DevArgs,
+	ctx: CliContext,
+): Promise<ResolvedDev> {
+	const { config } = await loadConfig({
+		cwd: ctx.cwd,
+		configPath: ctx.configPath,
+	});
 	const envPort = process.env.PORT ? Number(process.env.PORT) : undefined;
 	const envHost = process.env.HOST;
 	return {
@@ -78,11 +90,16 @@ async function resolveDev(args: DevArgs): Promise<ResolvedDev> {
 	};
 }
 
-async function reexecUnderBun(args: DevArgs): Promise<number> {
+async function reexecUnderBun(args: DevArgs, ctx: CliContext): Promise<number> {
 	const entry = process.argv[1] ?? "";
 	const mode = args.cold ? "--watch" : "--hot";
-	const passthrough = ["dev"];
+	const passthrough: string[] = [];
+	if (ctx.cwd !== process.cwd()) passthrough.push("--cwd", ctx.cwd);
+	if (ctx.configPath) passthrough.push("--config", ctx.configPath);
+	if (ctx.verbose) passthrough.push("--verbose");
+	passthrough.push("dev");
 	if (args.cold) passthrough.push("--cold");
+	if (args.noOpen) passthrough.push("--no-open");
 	if (args.port !== null) passthrough.push("--port", String(args.port));
 	if (args.host !== null) passthrough.push("--host", args.host);
 	if (args.appDir !== null) passthrough.push("--app", args.appDir);
@@ -94,17 +111,20 @@ async function reexecUnderBun(args: DevArgs): Promise<number> {
 	return code ?? 0;
 }
 
-async function bootstrap(args: DevArgs): Promise<number> {
-	const { config } = await loadConfig(process.cwd());
-	const resolved = await resolveDev(args);
+async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
+	const { config } = await loadConfig({
+		cwd: ctx.cwd,
+		configPath: ctx.configPath,
+	});
+	const resolved = await resolveDev(args, ctx);
 
-	await loadSecrets(config);
+	await loadSecrets(config, { cwd: ctx.cwd });
 	try {
 		validateRequiredEnv(resolved.requiredEnv);
 	} catch (err) {
 		if (err instanceof MissingEnv) {
-			console.error(`[patties] ${err.message}`);
-			return 1;
+			log.error(err.message);
+			return EXIT.ERROR;
 		}
 		throw err;
 	}
@@ -121,8 +141,8 @@ async function bootstrap(args: DevArgs): Promise<number> {
 			await hook(devServer);
 		} catch (err) {
 			const msg = (err as Error)?.message ?? String(err);
-			console.error(`[patties] [plugin ${p.name}] onDevStart: ${msg}`);
-			return 1;
+			log.error(`[plugin ${p.name}] onDevStart: ${msg}`);
+			return EXIT.ERROR;
 		}
 	}
 
@@ -132,13 +152,14 @@ async function bootstrap(args: DevArgs): Promise<number> {
 		env: { required: config.env.required, optional: config.env.public },
 		plugins,
 	})
-		.then((md) => Bun.write(`${process.cwd()}/AGENTS.md`, md))
+		.then((md) => Bun.write(`${ctx.cwd}/AGENTS.md`, md))
 		.catch((err) =>
-			console.warn(
-				`[patties] AGENTS.md generation failed:`,
-				(err as Error)?.message ?? err,
+			log.warn(
+				`AGENTS.md generation failed: ${(err as Error)?.message ?? String(err)}`,
 			),
 		);
+
+	installSigintHandler();
 
 	const entry = findUserEntry(resolved.appDir);
 	if (entry) {
@@ -158,14 +179,13 @@ async function bootstrap(args: DevArgs): Promise<number> {
 				host: resolved.host,
 				appDir: resolved.appDir,
 			});
-			return 0;
+			printReady(resolved);
+			return EXIT.OK;
 		}
-		console.warn(
-			`[patties] ${entry} has no default export; starting a stub dev server.`,
-		);
+		log.warn(`${entry} has no default export; starting a stub dev server.`);
 	} else {
-		console.warn(
-			`[patties] no app entry found at ${resolved.appDir}/server.ts — starting a stub dev server.`,
+		log.warn(
+			`no app entry found at ${resolved.appDir}/server.ts — starting a stub dev server.`,
 		);
 	}
 
@@ -184,7 +204,15 @@ async function bootstrap(args: DevArgs): Promise<number> {
 		},
 		fallback: () => new Response("not found", { status: 404 }),
 	});
+	printReady(resolved);
 	return await new Promise<number>(() => {});
+}
+
+function printReady(resolved: ResolvedDev): void {
+	log.success(
+		`▲ Patties dev ready at http://${resolved.host}:${resolved.port}`,
+	);
+	log.dim(`  root: ${resolved.appDir}`);
 }
 
 function findUserEntry(appDir: string): string | null {
