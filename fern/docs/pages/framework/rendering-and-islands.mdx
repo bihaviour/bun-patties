@@ -1,0 +1,37 @@
+---
+title: Rendering and Islands
+description: React rendering, page metadata, and client hydration.
+---
+
+Patties renders pages with React server rendering using
+`renderToReadableStream`.
+
+## Page modules
+
+A page module is expected to export:
+
+- a default React component
+- optionally `meta`
+- optionally `head()`
+
+If `meta` is missing and `head()` is also absent, Patties emits a default HTML
+head for the current pathname.
+
+## Shell and response shape
+
+The renderer wraps pages with a document shell and returns a standard HTML
+response with `text/html; charset=utf-8`.
+
+## Islands
+
+Client islands are discovered from `app/islands/` during the build. Patties
+generates a client entry, bundles the island graph for the browser, and writes a
+manifest that maps islands to emitted chunks.
+
+Projects with zero islands are still valid. In that case Patties keeps the
+client manifest empty and skips the browser bundle output.
+
+## Dev HMR injection
+
+In development, Patties injects the HMR client script into the rendered HTML
+stream before `</body>`.

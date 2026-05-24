@@ -4,14 +4,38 @@ instances:
 title: Patties
 
 navigation:
+  - section: Get Started
+    contents:
+      - page: Overview
+        path: docs/pages/get-started/overview.mdx
+      - page: App Structure
+        path: docs/pages/get-started/app-structure.mdx
+      - page: Project Scaffolding
+        path: docs/pages/get-started/project-scaffolding.mdx
   - section: Framework
     contents:
       - page: Overview
         path: docs/pages/framework/overview.mdx
       - page: Routing
         path: docs/pages/framework/routing.mdx
+      - page: Server
+        path: docs/pages/framework/server.mdx
+      - page: Rendering and Islands
+        path: docs/pages/framework/rendering-and-islands.mdx
+      - page: Middleware and Context
+        path: docs/pages/framework/middleware-and-context.mdx
+      - page: Configuration and Environment
+        path: docs/pages/framework/configuration-and-environment.mdx
+      - page: Build Pipeline
+        path: docs/pages/framework/build-pipeline.mdx
+      - page: Adapters and Targets
+        path: docs/pages/framework/adapters-and-targets.mdx
+      - page: Plugins
+        path: docs/pages/framework/plugins.mdx
       - page: AI and Agents
         path: docs/pages/framework/ai-and-agents.mdx
+      - page: AGENTS.md Generation
+        path: docs/pages/framework/agents-md.mdx
   - section: CLI
     contents:
       - page: Overview
@@ -20,8 +44,10 @@ navigation:
         path: docs/pages/cli/dev.mdx
       - page: Build
         path: docs/pages/cli/build.mdx
-      - page: Deploy and Secrets
-        path: docs/pages/cli/deploy-and-secrets.mdx
+      - page: Deploy
+        path: docs/pages/cli/deploy.mdx
+      - page: Secrets
+        path: docs/pages/cli/secrets.mdx
 
 navbar-links:
   - type: minimal

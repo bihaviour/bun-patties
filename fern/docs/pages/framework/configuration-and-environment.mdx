@@ -1,0 +1,64 @@
+---
+title: Configuration and Environment
+description: patties.config discovery, schema defaults, env validation, and secrets.
+---
+
+Patties discovers configuration from one of these files in the project root:
+
+- `patties.config.ts`
+- `patties.config.js`
+- `patties.config.mjs`
+
+You can also provide an explicit path with `--config`.
+
+## Authoring config
+
+Use `defineConfig()` for a typed config object:
+
+```ts
+import { defineConfig } from "patties";
+
+export default defineConfig({
+  target: "bun",
+});
+```
+
+## Current config fields
+
+- `target`: `bun` or `edge`
+- `appDir`
+- `outDir`
+- `plugins`
+- `env.required`
+- `env.public`
+- `secrets`
+- `server.port`
+- `server.hostname`
+- `server.unix`
+- `server.reusePort`
+- `adapter.bun.compile`
+
+## Defaults
+
+Important defaults include:
+
+- `target: "bun"`
+- `appDir: "./app"`
+- `outDir: "./.patties"`
+- `server.port: 3000`
+- `server.hostname: "0.0.0.0"`
+- `adapter.bun.compile: false`
+
+## Validation
+
+Config is parsed through Zod. Invalid values fail with a structured error that
+includes the offending path.
+
+## Environment and secrets
+
+- required environment variables can be listed in `env.required`
+- public environment keys can be listed in `env.public`
+- secret keys can be listed in `secrets`
+
+During `patties dev`, Patties loads configured secrets and validates required
+environment variables before starting the server.

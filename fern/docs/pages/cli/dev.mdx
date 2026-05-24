@@ -21,3 +21,14 @@ description: Development server behavior and flags.
 - `--port <number>`
 - `--host <hostname>`
 - `--app <path>`
+
+## App entry fallback
+
+When present, Patties prefers one of:
+
+- `app/server.ts`
+- `app/server.tsx`
+- `app/index.ts`
+
+If none exist, it starts a stub dev server with a simple message so the project
+still boots during early setup.

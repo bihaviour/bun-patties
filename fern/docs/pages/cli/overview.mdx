@@ -1,5 +1,5 @@
 ---
-title: CLI Overview
+title: Overview
 description: Commands and global flags.
 ---
 
@@ -16,3 +16,7 @@ Global flags supported by the CLI include:
 - `--config <path>` to load a specific config file
 - `--verbose` to include verbose diagnostics
 - `--version` and `--help`
+
+The CLI resolves global flags before dispatching to a subcommand, so the same
+`--cwd`, `--config`, and `--verbose` behavior applies consistently across
+commands.

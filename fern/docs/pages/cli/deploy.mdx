@@ -1,0 +1,27 @@
+---
+title: Deploy
+description: Build-and-dispatch deployment through installable plugins.
+---
+
+`patties deploy` builds the app and hands deployment off to an installed deploy
+plugin.
+
+## Flow
+
+- load config and resolve the active target
+- run `patties build` unless `--skip-build` is set
+- find deploy plugins whose `deployTarget` matches the target
+- select a plugin, optionally using `--env`
+- call the plugin with the built artifacts
+
+## Flags
+
+- `--target <bun|edge>`
+- `--env <name>`
+- `--skip-build`
+
+## Behavior by target
+
+If no plugin is installed for `bun`, Patties prints the built server entry run
+path instead of failing. For non-Bun targets, missing deploy plugins are
+treated as a usage error.

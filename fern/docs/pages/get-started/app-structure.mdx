@@ -1,0 +1,41 @@
+---
+title: App Structure
+description: Recommended project layout and how Patties discovers features.
+---
+
+Patties discovers framework features from conventional app directories.
+
+## Typical layout
+
+```text
+app/
+  routes/
+    index.tsx
+    api/
+  islands/
+  agents/
+  tools/
+  jobs/
+  middleware.ts
+  server.ts
+```
+
+## Directory roles
+
+- `app/routes/` contains pages and API handlers
+- `app/islands/` contains client-hydrated interactive components
+- `app/agents/` contains AI agent definitions
+- `app/tools/` contains tool definitions for agents
+- `app/jobs/` contains scheduled jobs
+- `app/middleware.ts` adds request middleware
+- `app/server.ts` is the optional app entry used by `patties dev`
+
+## Discovery rules
+
+Patties ignores:
+
+- files starting with `_`
+- test files such as `*.test.ts` and `*.test.tsx`
+
+Missing directories are treated as empty rather than as hard failures, which
+keeps the default app shape minimal.

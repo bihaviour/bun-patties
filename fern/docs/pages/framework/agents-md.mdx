@@ -1,0 +1,28 @@
+---
+title: AGENTS.md Generation
+description: Machine-readable docs generated from the app structure.
+---
+
+Patties can generate a root-level `AGENTS.md` file that summarizes the app for
+tooling and AI workflows.
+
+## What it captures
+
+The generated file can include:
+
+- route map
+- island summary
+- agent list
+- tool schemas
+- job schedules
+- middleware summary
+- environment variable summary
+
+## When it runs
+
+- after successful `patties build`
+- during `patties dev` as a background generation step
+
+## Plugin participation
+
+Plugins can modify the generated document with the `onAgentsMdGenerate` hook.

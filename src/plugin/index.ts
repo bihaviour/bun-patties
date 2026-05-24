@@ -64,7 +64,7 @@ export interface DeployPlugin extends Plugin {
 	deploy(
 		artifacts: DeployArtifacts,
 		ctx: DeployContext,
-	): Promise<string | void>;
+	): Promise<string | undefined>;
 }
 
 export function isDeployPlugin(p: Plugin): p is DeployPlugin {

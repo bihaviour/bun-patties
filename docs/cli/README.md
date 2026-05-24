@@ -9,3 +9,6 @@ Commands in this section:
 - [Dev](./dev.md)
 - [Build](./build.md)
 - [Deploy and Secrets](./deploy-and-secrets.md)
+
+The Fern docs split the last topic into dedicated Deploy and Secrets pages and
+also serve as the fuller source of truth for CLI behavior.

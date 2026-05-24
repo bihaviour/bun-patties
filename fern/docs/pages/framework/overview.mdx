@@ -1,5 +1,5 @@
 ---
-title: Framework Overview
+title: Overview
 description: Core runtime pieces and public API surface.
 ---
 
@@ -15,11 +15,13 @@ The public entrypoints exposed from `src/index.ts` include:
 - `defineConfig` for project configuration
 - AI, middleware, plugin, and `AGENTS.md` helpers
 
-At a high level, a Patties app is composed from:
+At a high level, the runtime is split into a few clear layers:
 
-- `app/routes/` for pages and API handlers
-- `app/islands/` for client-hydrated components
-- `app/middleware.ts` for request middleware
-- `app/agents/`, `app/tools/`, and `app/jobs/` for optional AI features
+- route scanning and match compilation
+- React page rendering
+- dev and production server bootstrap
+- client island manifest generation
+- adapter-specific build emission for Bun and edge targets
+- optional plugin and AI feature collection
 
-Continue with [Routing](./routing.mdx) or [AI and Agents](./ai-and-agents.mdx).
+Continue with [Routing](./routing.mdx), [Rendering and Islands](./rendering-and-islands.mdx), or [Configuration and Environment](./configuration-and-environment.mdx).

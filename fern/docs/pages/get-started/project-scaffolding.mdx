@@ -1,0 +1,36 @@
+---
+title: Project Scaffolding
+description: Starting new projects with create-patties.
+---
+
+Patties ships a separate scaffolder: `create-patties`.
+
+## Basic usage
+
+```sh
+bunx create-patties my-app
+```
+
+## Supported options
+
+```sh
+bunx create-patties my-app \
+  --template default|with-islands|ai-starter \
+  --target bun|edge \
+  --deploy cloudflare|vercel|deno|netlify|bun|none \
+  --agent claude-code|none
+```
+
+Additional flags:
+
+- `--no-install`
+- `--no-git`
+
+## Current templates
+
+- `default` for a minimal Patties app
+- `with-islands` for client hydration examples
+- `ai-starter` for an app that includes agent-oriented structure
+
+The scaffolder patches the generated `package.json` name and updates
+`patties.config.ts` to match the selected target.
