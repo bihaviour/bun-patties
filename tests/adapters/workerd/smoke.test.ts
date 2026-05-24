@@ -23,7 +23,9 @@ beforeAll(async () => {
 	available = (await which("workerd")) !== null;
 	if (!available) return;
 
-	outDir = (await Bun.$`mktemp -d -t patties-workerd-smoke.XXXXXX`.text()).trim();
+	outDir = (
+		await Bun.$`mktemp -d -t patties-workerd-smoke.XXXXXX`.text()
+	).trim();
 	await build({
 		appDir: FIXTURE,
 		outDir,

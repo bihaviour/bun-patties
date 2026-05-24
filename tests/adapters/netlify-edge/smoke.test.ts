@@ -27,7 +27,9 @@ beforeAll(async () => {
 	available = (await which("deno")) !== null;
 	if (!available) return;
 
-	outDir = (await Bun.$`mktemp -d -t patties-netlify-smoke.XXXXXX`.text()).trim();
+	outDir = (
+		await Bun.$`mktemp -d -t patties-netlify-smoke.XXXXXX`.text()
+	).trim();
 	await build({
 		appDir: FIXTURE,
 		outDir,
