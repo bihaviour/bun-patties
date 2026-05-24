@@ -40,7 +40,7 @@ describe("dispatch", () => {
 	test("function handler called with params", async () => {
 		const res = await dispatch(routes, new Request("http://x/users/9"));
 		expect(res).not.toBeNull();
-		expect(await res!.text()).toBe("user 9");
+		expect(await res?.text()).toBe("user 9");
 	});
 
 	test("method map dispatches", async () => {
@@ -48,8 +48,8 @@ describe("dispatch", () => {
 			routes,
 			new Request("http://x/api", { method: "POST" }),
 		);
-		expect(res!.status).toBe(201);
-		expect(await res!.text()).toBe("post");
+		expect(res?.status).toBe(201);
+		expect(await res?.text()).toBe("post");
 	});
 
 	test("method miss → 405", async () => {
@@ -57,7 +57,7 @@ describe("dispatch", () => {
 			routes,
 			new Request("http://x/api", { method: "DELETE" }),
 		);
-		expect(res!.status).toBe(405);
+		expect(res?.status).toBe(405);
 	});
 
 	test("no match → null", async () => {

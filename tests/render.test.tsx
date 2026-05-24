@@ -3,7 +3,7 @@ import { makeContext } from "../src/middleware/index.ts";
 import { createRenderer } from "../src/render/index.tsx";
 import type { RouteEntry } from "../src/types.ts";
 
-const FIXTURES = import.meta.dir + "/fixtures";
+const FIXTURES = `${import.meta.dir}/fixtures`;
 
 function entryFor(filePath: string, bunPattern: string): RouteEntry {
 	return {
@@ -18,7 +18,7 @@ describe("renderer", () => {
 	test("returns streamed HTML with DOCTYPE and html content-type", async () => {
 		const renderer = createRenderer({});
 		const entry = entryFor(
-			FIXTURES + "/basic-app/app/routes/about.tsx",
+			`${FIXTURES}/basic-app/app/routes/about.tsx`,
 			"/about",
 		);
 		const req = new Request("http://localhost/about");
@@ -31,7 +31,7 @@ describe("renderer", () => {
 
 	test("meta export produces <title>", async () => {
 		const renderer = createRenderer({});
-		const entry = entryFor(FIXTURES + "/basic-app/app/routes/index.tsx", "/");
+		const entry = entryFor(`${FIXTURES}/basic-app/app/routes/index.tsx`, "/");
 		const req = new Request("http://localhost/");
 		const res = await renderer.renderPage(entry, req, makeContext(req));
 		const body = await res.text();
@@ -41,7 +41,7 @@ describe("renderer", () => {
 	test("dev: true renders an error page for a broken module", async () => {
 		const renderer = createRenderer({ dev: true });
 		const entry = entryFor(
-			FIXTURES + "/basic-app/app/routes/_does_not_exist.tsx",
+			`${FIXTURES}/basic-app/app/routes/_does_not_exist.tsx`,
 			"/nope",
 		);
 		const req = new Request("http://localhost/nope");
@@ -57,7 +57,7 @@ describe("renderer", () => {
 	test("dev: true injects HMR client script", async () => {
 		const renderer = createRenderer({ dev: true });
 		const entry = entryFor(
-			FIXTURES + "/basic-app/app/routes/about.tsx",
+			`${FIXTURES}/basic-app/app/routes/about.tsx`,
 			"/about",
 		);
 		const req = new Request("http://localhost/about");

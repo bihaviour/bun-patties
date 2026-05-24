@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { scanAgents, scanJobs, scanTools } from "../../src/ai/scan.ts";
 
-const FIXTURE = import.meta.dir + "/../fixtures/ai-app/app";
+const FIXTURE = `${import.meta.dir}/../fixtures/ai-app/app`;
 
 describe("scan", () => {
 	test("scanAgents finds both agents", async () => {

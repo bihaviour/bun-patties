@@ -40,7 +40,7 @@ interface BunSecretsLike {
 
 function getSecretsApi(): BunSecretsLike | null {
 	const b = (globalThis as { Bun?: { secrets?: unknown } }).Bun;
-	if (!b || !b.secrets) return null;
+	if (!b?.secrets) return null;
 	return b.secrets as BunSecretsLike;
 }
 

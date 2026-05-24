@@ -20,7 +20,7 @@ export const edgeAdapter: Adapter = {
 		// (`dist/worker.js`). Bun.build wrote it as `<outDir>/server/server-entry.js`;
 		// we re-emit it at `<outDir>/worker.js` so deploy plugins and ad-hoc CLIs
 		// (`wrangler deploy <file>`) can find a predictable path.
-		const workerPath = ctx.outDir + "/worker.js";
+		const workerPath = `${ctx.outDir}/worker.js`;
 		const bytes = await Bun.file(input.serverEntryOut).bytes();
 		await Bun.write(workerPath, bytes);
 		return {

@@ -34,7 +34,7 @@ test("edge adapter emits dist/worker.js with a default fetch export", async () =
 		default?: { fetch?: unknown };
 	};
 	expect(mod.default).toBeDefined();
-	expect(typeof mod.default!.fetch).toBe("function");
+	expect(typeof mod.default?.fetch).toBe("function");
 });
 
 test("edge worker dispatches a real request and exposes :param via dispatch", async () => {

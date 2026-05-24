@@ -35,7 +35,7 @@ export async function runSubprocessBatch(
 	for (let i = 0; i < queries.length; i++) {
 		const id = String(i);
 		const line =
-			JSON.stringify({ id, file: queries[i]!.file, kind: queries[i]!.kind }) +
+			JSON.stringify({ id, file: queries[i]?.file, kind: queries[i]?.kind }) +
 			"\n";
 		sink?.write(line);
 	}
@@ -68,7 +68,8 @@ export async function runSubprocessBatch(
 					data?: unknown;
 					error?: string;
 				};
-				const q = queries[Number(parsed.id)]!;
+				const q = queries[Number(parsed.id)];
+				if (!q) continue;
 				results.set(parsed.id, {
 					query: q,
 					ok: parsed.ok,
@@ -93,10 +94,12 @@ export async function runSubprocessBatch(
 	const out: ModuleResult[] = [];
 	for (let i = 0; i < queries.length; i++) {
 		const r = results.get(String(i));
+		const q = queries[i];
+		if (!q) continue;
 		if (!r) {
 			const stderrText = await new Response(proc.stderr).text().catch(() => "");
 			out.push({
-				query: queries[i]!,
+				query: q,
 				ok: false,
 				error: `no response from subprocess (stderr: ${stderrText.slice(0, 500) || "<empty>"})`,
 			});

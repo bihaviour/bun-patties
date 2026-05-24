@@ -150,16 +150,18 @@ async function consumeStream(
 
 		if (type === "content_block_stop") {
 			if (currentToolIndex >= 0 && currentToolJson) {
-				try {
-					const parsed = JSON.parse(currentToolJson) as unknown;
-					toolUses[currentToolIndex]!.input = parsed;
-					const ac = assistantContent.find(
-						(c) => (c as { id?: string }).id === toolUses[currentToolIndex]!.id,
-					) as { input?: unknown } | undefined;
-					if (ac) ac.input = parsed;
-				} catch {
-					// leave as raw string — model bug, surfaced when Zod parses below
-					toolUses[currentToolIndex]!.input = currentToolJson;
+				const tu = toolUses[currentToolIndex];
+				if (tu) {
+					try {
+						const parsed = JSON.parse(currentToolJson) as unknown;
+						tu.input = parsed;
+						const ac = assistantContent.find(
+							(c) => (c as { id?: string }).id === tu.id,
+						) as { input?: unknown } | undefined;
+						if (ac) ac.input = parsed;
+					} catch {
+						tu.input = currentToolJson;
+					}
 				}
 				currentToolIndex = -1;
 				currentToolJson = "";

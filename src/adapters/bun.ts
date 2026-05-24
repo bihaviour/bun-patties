@@ -14,7 +14,7 @@ export const bunAdapter: Adapter = {
 	): Promise<EmittedArtifacts> {
 		let serverEntry = input.serverEntryOut;
 		if (ctx.compile && ctx.mode === "production") {
-			const exePath = ctx.outDir + "/server-bin";
+			const exePath = `${ctx.outDir}/server-bin`;
 			const proc = Bun.spawn({
 				cmd: [
 					"bun",
@@ -31,7 +31,7 @@ export const bunAdapter: Adapter = {
 			if (code !== 0) {
 				const err = await new Response(proc.stderr).text();
 				throw new Error(
-					"patties build: --compile failed (exit " + code + ")\n" + err,
+					`patties build: --compile failed (exit ${code})\n${err}`,
 				);
 			}
 			serverEntry = exePath;

@@ -53,7 +53,7 @@ describe("createDevServer", () => {
 	test("websocket.open subscribes to hmr topic and sends reload", () => {
 		const dev = createDevServer({ appDir: "/proj/app" });
 		const ws = mkWS();
-		dev.websocket.open!(ws);
+		dev.websocket.open?.(ws);
 		expect(ws.subscribe).toHaveBeenCalledWith("hmr");
 		expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: "reload" }));
 	});

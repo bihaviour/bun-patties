@@ -12,7 +12,7 @@ function parseStack(stack: string): StackFrame[] {
 	const frames: StackFrame[] = [];
 	for (const raw of stack.split("\n")) {
 		const m = raw.match(/\(?([^()\s]+\.tsx?):(\d+)(?::(\d+))?\)?/);
-		if (!m || !m[1] || !m[2]) continue;
+		if (!m?.[1] || !m[2]) continue;
 		frames.push({
 			file: m[1],
 			line: Number(m[2]),

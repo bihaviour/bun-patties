@@ -13,7 +13,7 @@ describe("agent triggers", () => {
 		registerAgentTriggers(routes, entries);
 		const at = routes["/api/x/chat"] as Record<string, unknown> | undefined;
 		expect(at).toBeDefined();
-		expect(typeof at!.POST).toBe("function");
+		expect(typeof at?.POST).toBe("function");
 	});
 
 	test("skips and warns when a FS route claims the path", () => {

@@ -3,12 +3,15 @@ import * as React from "react";
 import { hydrateRoot } from "react-dom/client";
 
 export interface PattiesClient {
-	register(name: string, component: ComponentType<any>): void;
+	register(
+		name: string,
+		component: ComponentType<Record<string, unknown>>,
+	): void;
 	hydrateAll(): void;
 }
 
 export function createClient(): PattiesClient {
-	const components: Record<string, ComponentType<any>> = {};
+	const components: Record<string, ComponentType<Record<string, unknown>>> = {};
 
 	return {
 		register(name, component) {

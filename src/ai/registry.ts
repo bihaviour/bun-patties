@@ -28,9 +28,8 @@ export function registerAgent(config: AgentConfig, filePath?: string): void {
 	});
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function registerTool(
-	config: ToolConfig<any, any>,
+export function registerTool<TInput, TOutput>(
+	config: ToolConfig<TInput, TOutput>,
 	filePath?: string,
 ): void {
 	if (tools.has(config.name)) {
@@ -40,7 +39,10 @@ export function registerTool(
 				`cannot register from ${filePath ?? "(unknown)"}.`,
 		);
 	}
-	tools.set(config.name, { config, filePath });
+	tools.set(config.name, {
+		config: config as ToolConfig,
+		filePath,
+	});
 }
 
 export function registerJob(config: JobConfig, filePath?: string): void {

@@ -19,10 +19,11 @@ describe("PattiesConfigSchema", () => {
 		const res = PattiesConfigSchema.safeParse({ target: "node" });
 		expect(res.success).toBe(false);
 		if (!res.success) {
-			const issue = res.error.issues[0]!;
-			expect(issue.path).toEqual(["target"]);
-			expect(issue.message).toMatch(/bun/);
-			expect(issue.message).toMatch(/edge/);
+			const issue = res.error.issues[0];
+			expect(issue).toBeDefined();
+			expect(issue?.path).toEqual(["target"]);
+			expect(issue?.message).toMatch(/bun/);
+			expect(issue?.message).toMatch(/edge/);
 		}
 	});
 

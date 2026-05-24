@@ -55,7 +55,7 @@ export function parseRouteFile(relPath: string): ParsedFile {
 		if (s.kind === "param") return `:${s.name}`;
 		return "*";
 	});
-	let bunPattern = "/" + pieces.join("/");
+	let bunPattern = `/${pieces.join("/")}`;
 	bunPattern = bunPattern.replace(/\/+/g, "/");
 	if (bunPattern.length > 1 && bunPattern.endsWith("/")) {
 		bunPattern = bunPattern.slice(0, -1);

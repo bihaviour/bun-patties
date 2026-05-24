@@ -103,7 +103,7 @@ describe("spec 07 — middleware via real Bun.serve", () => {
 				err = e as Error;
 			}
 			expect(err).not.toBeNull();
-			expect(err!.message).toContain("middleware.ts");
+			expect(err?.message).toContain("middleware.ts");
 		});
 	});
 });

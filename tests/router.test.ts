@@ -3,12 +3,12 @@ import { createRenderer } from "../src/render/index.tsx";
 import { createRouter } from "../src/router/index.ts";
 import { createServer } from "../src/server/index.ts";
 
-const FIXTURES = import.meta.dir + "/fixtures";
+const FIXTURES = `${import.meta.dir}/fixtures`;
 
 async function buildBasic() {
 	const renderer = createRenderer({});
 	const { routes, fallback } = await createRouter({
-		appDir: FIXTURES + "/basic-app/app",
+		appDir: `${FIXTURES}/basic-app/app`,
 		renderer,
 	});
 	return createServer({ routes, fallback });

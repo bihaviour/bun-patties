@@ -52,10 +52,10 @@ function buildParams(opts: StreamTextOptions): Record<string, unknown> {
 		: undefined;
 	const cachedTools =
 		opts.tools && opts.tools.length > 0
-			? opts.tools.map((t, i) => {
+			? opts.tools.map((t, i, arr) => {
 					// Cache only the last tool to anchor the cache breakpoint at the end
 					// of the tools block (Anthropic caches prefix up to the breakpoint).
-					if (i === opts.tools!.length - 1)
+					if (i === arr.length - 1)
 						return { ...t, cache_control: { type: "ephemeral" } };
 					return t;
 				})

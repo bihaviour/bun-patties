@@ -62,8 +62,8 @@ export function registerAgentTriggers(
 
 function parseTrigger(t: string): { method: HTTPMethod; path: string } | null {
 	const m = t.match(/^(GET|POST|PUT|DELETE|PATCH)\s+(\/[^\s]*)$/);
-	if (!m) return null;
-	return { method: m[1] as HTTPMethod, path: m[2]! };
+	if (!m?.[1] || !m[2]) return null;
+	return { method: m[1] as HTTPMethod, path: m[2] };
 }
 
 function makeTriggerHandler(agentName: string) {

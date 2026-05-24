@@ -43,7 +43,7 @@ export function createRenderer(options: RenderOptions = {}): Renderer {
 	const { manifest, dev = false, modules } = options;
 
 	return {
-		async renderPage(entry, req, ctx) {
+		async renderPage(entry, _req, ctx) {
 			try {
 				const mod = (modules?.[entry.filePath] ??
 					(await import(entry.filePath))) as {

@@ -26,7 +26,7 @@ async function main(): Promise<void> {
 			if (!trimmed) continue;
 			const req = JSON.parse(trimmed) as Request;
 			const res = await handle(req);
-			process.stdout.write(JSON.stringify(res) + "\n");
+			process.stdout.write(`${JSON.stringify(res)}\n`);
 		}
 	}
 }

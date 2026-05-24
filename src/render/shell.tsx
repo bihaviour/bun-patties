@@ -12,7 +12,7 @@ export interface ShellProps {
 // React's escape hatch APIs entirely.
 export function Shell({ headNodes, children, clientScriptUrl }: ShellProps) {
 	return (
-		<html>
+		<html lang="en">
 			<head>{headNodes}</head>
 			<body>
 				<div id="root">{children}</div>

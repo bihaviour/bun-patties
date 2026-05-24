@@ -47,7 +47,7 @@ const RELOAD_MSG = JSON.stringify({ type: "reload" });
 
 export function createDevServer(options: DevOptions): DevServer {
 	let server: AnyServer | null = null;
-	const islandsDir = options.appDir.replace(/\/+$/, "") + "/islands/";
+	const islandsDir = `${options.appDir.replace(/\/+$/, "")}/islands/`;
 
 	const publish = (msg: string): void => {
 		if (!server) return;

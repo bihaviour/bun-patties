@@ -56,16 +56,16 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 
 	// genDir lives under appDir so generated entries can resolve react/react-dom
 	// via the normal upward node_modules walk. outDir holds only built artifacts.
-	const genDir = appDir + "/patties-gen";
-	const clientOutDir = outDir + "/client";
-	const serverOutDir = outDir + "/server";
+	const genDir = `${appDir}/patties-gen`;
+	const clientOutDir = `${outDir}/client`;
+	const serverOutDir = `${outDir}/server`;
 
 	const islands = await scanIslands(appDir);
 	const entries = await scanRoutes(appDir);
 	const agentMods = await scanAgents(appDir);
 	const toolMods = await scanTools(appDir);
 	const jobMods = await scanJobs(appDir);
-	const hasUserMiddleware = await Bun.file(appDir + "/middleware.ts").exists();
+	const hasUserMiddleware = await Bun.file(`${appDir}/middleware.ts`).exists();
 
 	if (plugins.length > 0) {
 		const summary: JobSummary[] = jobMods.map((j) => ({
@@ -86,7 +86,7 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 	const frameworkRoot = resolveFrameworkRoot();
 
 	if (islands.length > 0) {
-		const clientEntryPath = genDir + "/client-entry.ts";
+		const clientEntryPath = `${genDir}/client-entry.ts`;
 		await Bun.write(
 			clientEntryPath,
 			generateClientEntry(islands, { frameworkRoot }),
@@ -105,7 +105,7 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 			const msgs = clientResult.logs
 				.map((l) => l.message ?? String(l))
 				.join("\n");
-			throw new Error("patties build: client bundle failed\n" + msgs);
+			throw new Error(`patties build: client bundle failed\n${msgs}`);
 		}
 
 		populateClientManifest(
@@ -118,7 +118,7 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 	} else {
 		// Zero-island project: write nothing to client/, leave manifest empty.
 		await Bun.write(
-			genDir + "/client-entry.ts",
+			`${genDir}/client-entry.ts`,
 			generateClientEntry([], { frameworkRoot }),
 		);
 	}
@@ -126,15 +126,14 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 	// Manifest must hit disk before the server entry is generated — the server
 	// entry pulls it back in via the MANIFEST macro, which reads from this path
 	// at bundle time.
-	const manifestPath = outDir + "/manifest.json";
+	const manifestPath = `${outDir}/manifest.json`;
 	await Bun.write(manifestPath, JSON.stringify(manifest, null, 2));
 
-	const routesMacroPath = frameworkRoot + "/build/macros/routes.macro.ts";
-	const envMacroPath = frameworkRoot + "/build/macros/env.macro.ts";
-	const manifestMacroPath = frameworkRoot + "/build/macros/manifest.macro.ts";
-	const agentsHashMacroPath =
-		frameworkRoot + "/build/macros/agents-hash.macro.ts";
-	const agentsMacroPath = frameworkRoot + "/build/macros/agents.macro.ts";
+	const routesMacroPath = `${frameworkRoot}/build/macros/routes.macro.ts`;
+	const envMacroPath = `${frameworkRoot}/build/macros/env.macro.ts`;
+	const manifestMacroPath = `${frameworkRoot}/build/macros/manifest.macro.ts`;
+	const agentsHashMacroPath = `${frameworkRoot}/build/macros/agents-hash.macro.ts`;
+	const agentsMacroPath = `${frameworkRoot}/build/macros/agents.macro.ts`;
 
 	const serverEntrySource = generateServerEntry({
 		appDir,
@@ -153,7 +152,7 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 		target,
 		port: options.port,
 	});
-	const serverEntryPath = genDir + "/server-entry.ts";
+	const serverEntryPath = `${genDir}/server-entry.ts`;
 	await Bun.write(serverEntryPath, serverEntrySource);
 
 	const adapter: Adapter = target === "edge" ? edgeAdapter : bunAdapter;
@@ -172,7 +171,7 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 		const msgs = serverResult.logs
 			.map((l) => l.message ?? String(l))
 			.join("\n");
-		throw new Error("patties build: server bundle failed\n" + msgs);
+		throw new Error(`patties build: server bundle failed\n${msgs}`);
 	}
 
 	const serverOutput =
@@ -180,7 +179,7 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 		serverResult.outputs[0];
 	const serverEntryOut = serverOutput
 		? serverOutput.path
-		: serverOutDir + "/server-entry.js";
+		: `${serverOutDir}/server-entry.js`;
 
 	const assets = await copyAssets(appDir, outDir);
 
@@ -233,7 +232,7 @@ function populateClientManifest(
 	const remainingIslands = new Map<string, IslandEntry>();
 	for (const i of islands) {
 		const base = i.relPath.replace(/\.[tj]sx?$/, "");
-		remainingIslands.set(base.split("/").pop()!, i);
+		remainingIslands.set(base.split("/").pop() ?? base, i);
 	}
 
 	for (const out of outputs) {
@@ -263,7 +262,7 @@ function populateClientManifest(
 function toPublicUrl(absPath: string, clientOutDir: string): string {
 	const rel = absPath.startsWith(clientOutDir)
 		? absPath.slice(clientOutDir.length)
-		: "/" + (absPath.split("/").pop() ?? "");
+		: `/${absPath.split("/").pop() ?? ""}`;
 	return PUBLIC_PREFIX + rel.replace(/^\/+/, "");
 }
 

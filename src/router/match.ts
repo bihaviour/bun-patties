@@ -18,7 +18,8 @@ export function makeMatcher(
 		const params: Record<string, string> = {};
 		let i = 0;
 		for (; i < segs.length; i++) {
-			const s = segs[i]!;
+			const s = segs[i];
+			if (s === undefined) return null;
 			if (s === "*") {
 				params["*"] = parts.slice(i).join("/");
 				return params;

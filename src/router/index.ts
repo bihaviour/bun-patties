@@ -1,6 +1,11 @@
 import { appendCookieHeaders } from "../middleware/cookies.ts";
 import { compose, type Middleware, makeContext } from "../middleware/index.ts";
-import { assertPluginCompat, type Plugin, type PluginContext, type PluginServer } from "../plugin/index.ts";
+import {
+	assertPluginCompat,
+	type Plugin,
+	type PluginContext,
+	type PluginServer,
+} from "../plugin/index.ts";
 import type { Renderer } from "../render/index.tsx";
 import type { BunRoutes, Handler, HTTPMethod, RouteEntry } from "../types.ts";
 import { HTTP_METHODS } from "../types.ts";
@@ -149,7 +154,10 @@ export async function createCompiledRouter(
 
 	for (const pr of pendingRoutes) {
 		const wrapped: Partial<Record<HTTPMethod, Handler>> = {};
-		for (const [m, h] of Object.entries(pr.methods) as [HTTPMethod, Handler][]) {
+		for (const [m, h] of Object.entries(pr.methods) as [
+			HTTPMethod,
+			Handler,
+		][]) {
 			wrapped[m] = wrap(h, middlewareChain);
 		}
 		attach(routes, pr.pattern, wrapped);
@@ -221,7 +229,7 @@ function wrapPluginError(name: string, err: unknown): Error {
 async function loadAppMiddleware(
 	appDir: string,
 ): Promise<Middleware | undefined> {
-	const path = appDir.replace(/\/+$/, "") + "/middleware.ts";
+	const path = `${appDir.replace(/\/+$/, "")}/middleware.ts`;
 	const exists = await Bun.file(path).exists();
 	if (!exists) return undefined;
 	const mod = (await import(path)) as { default?: unknown };

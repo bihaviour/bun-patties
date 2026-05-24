@@ -67,7 +67,7 @@ export function generateServerEntry(input: ServerEntryInput): string {
 		.join(",\n");
 
 	const middlewareImport = hasUserMiddleware
-		? `import userMiddleware from ${JSON.stringify(appDir + "/middleware.ts")}`
+		? `import userMiddleware from ${JSON.stringify(`${appDir}/middleware.ts`)}`
 		: `const userMiddleware = undefined`;
 
 	const appDirLiteral = JSON.stringify(appDir);

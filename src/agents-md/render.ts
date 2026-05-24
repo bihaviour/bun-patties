@@ -124,7 +124,7 @@ export function render(data: CollectedData): string {
 
 function relPath(absPath: string): string {
 	const cwd = process.cwd().replace(/\/+$/, "");
-	if (absPath.startsWith(cwd + "/")) return absPath.slice(cwd.length + 1);
+	if (absPath.startsWith(`${cwd}/`)) return absPath.slice(cwd.length + 1);
 	return absPath;
 }
 

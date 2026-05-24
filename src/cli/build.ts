@@ -1,9 +1,9 @@
 import { resolve } from "node:path";
+import pkg from "../../package.json" with { type: "json" };
 import { generateAgentsMd } from "../agents-md/generate.ts";
 import { build } from "../build/index.ts";
 import { loadConfig } from "../config/load.ts";
 import { assertPluginCompat, type Plugin } from "../plugin/index.ts";
-import pkg from "../../package.json" with { type: "json" };
 
 const FRAMEWORK_VERSION = (pkg as { version: string }).version;
 
@@ -51,7 +51,7 @@ export async function runBuild(argv: string[]): Promise<number> {
 			env: { required: config.env.required, optional: config.env.public },
 			plugins,
 		});
-		await Bun.write(process.cwd() + "/AGENTS.md", md);
+		await Bun.write(`${process.cwd()}/AGENTS.md`, md);
 		console.log(`[patties]   AGENTS.md: written`);
 	} catch (err) {
 		console.warn(
@@ -65,7 +65,8 @@ export async function runBuild(argv: string[]): Promise<number> {
 function parseArgs(argv: string[]): BuildArgs {
 	const out: BuildArgs = { mode: "production" };
 	for (let i = 0; i < argv.length; i++) {
-		const a = argv[i]!;
+		const a = argv[i];
+		if (a === undefined) continue;
 		if (a === "--target") out.target = String(argv[++i]) as "bun" | "edge";
 		else if (a.startsWith("--target="))
 			out.target = a.slice(9) as "bun" | "edge";

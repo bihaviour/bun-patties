@@ -18,7 +18,7 @@ export function generateClientEntry(
 		return `export {}\n`;
 	}
 
-	const clientModule = options.frameworkRoot + "/client/index.ts";
+	const clientModule = `${options.frameworkRoot}/client/index.ts`;
 
 	const imports = islands
 		.map((i, idx) => `import I${idx} from ${JSON.stringify(i.filePath)}`)

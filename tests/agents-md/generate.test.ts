@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { generateAgentsMd } from "../../src/agents-md/generate.ts";
 
-const FIXTURE = import.meta.dir + "/../fixtures/ai-app/app";
+const FIXTURE = `${import.meta.dir}/../fixtures/ai-app/app`;
 
 describe("generateAgentsMd", () => {
 	test("emits expected sections for the fixture", async () => {

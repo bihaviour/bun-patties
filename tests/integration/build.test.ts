@@ -62,10 +62,10 @@ test("one-island project emits an entry chunk and registers the island", async (
 	});
 
 	expect(res.clientManifest.entry).toBeString();
-	expect(res.clientManifest.entry!.startsWith("/_patties/client/")).toBeTrue();
+	expect(res.clientManifest.entry?.startsWith("/_patties/client/")).toBeTrue();
 	expect(res.clientManifest.islands.counter).toBeString();
 	expect(
-		res.clientManifest.islands.counter!.startsWith("/_patties/client/"),
+		res.clientManifest.islands.counter?.startsWith("/_patties/client/"),
 	).toBeTrue();
 
 	// Spec acceptance: "exactly one chunk" for a single-island project.
@@ -112,7 +112,8 @@ test("public assets are copied with content preserved", async () => {
 
 	const robots = res.assets.find((a) => a.src.endsWith("/robots.txt"));
 	expect(robots).toBeDefined();
-	const copied = await Bun.file(robots!.dest).text();
+	if (!robots) throw new Error("robots.txt asset missing");
+	const copied = await Bun.file(robots.dest).text();
 	const original = await Bun.file(
 		join(FIXTURES, "build-app/app/public/robots.txt"),
 	).text();

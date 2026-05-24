@@ -16,7 +16,11 @@ function fakeAnthropic(scripts: Array<AsyncIterable<unknown>>) {
 	let i = 0;
 	return {
 		messages: {
-			stream: () => scripts[i++]!,
+			stream: () => {
+				const s = scripts[i++];
+				if (!s) throw new Error("fakeAnthropic: no script available");
+				return s;
+			},
 			create: async () => null,
 		},
 	};

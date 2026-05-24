@@ -34,7 +34,7 @@ export function validateNamedModules(
 
 	if (problems.length > 0) {
 		throw new Error(
-			`patties: ${kind} validation failed\n  ` + problems.join("\n  "),
+			`patties: ${kind} validation failed\n  ${problems.join("\n  ")}`,
 		);
 	}
 }
@@ -78,7 +78,7 @@ export function validateJobs(jobs: NamedModule<JobConfig>[]): void {
 	}
 	if (problems.length > 0) {
 		throw new Error(
-			"patties: job validation failed\n  " + problems.join("\n  "),
+			`patties: job validation failed\n  ${problems.join("\n  ")}`,
 		);
 	}
 }

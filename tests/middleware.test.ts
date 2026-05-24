@@ -9,7 +9,7 @@ import { createRenderer } from "../src/render/index.tsx";
 import { createRouter } from "../src/router/index.ts";
 import { createServer } from "../src/server/index.ts";
 
-const FIXTURES = import.meta.dir + "/fixtures";
+const FIXTURES = `${import.meta.dir}/fixtures`;
 
 describe("compose", () => {
 	test("runs middleware in order then handler", async () => {
@@ -44,7 +44,7 @@ describe("compose", () => {
 
 describe("router middleware loading", () => {
 	test("fires once per request including 404", async () => {
-		const mod = (await import(FIXTURES + "/basic-app/app/middleware.ts")) as {
+		const mod = (await import(`${FIXTURES}/basic-app/app/middleware.ts`)) as {
 			__resetCount: () => void;
 			__getCount: () => number;
 		};
@@ -52,7 +52,7 @@ describe("router middleware loading", () => {
 
 		const renderer = createRenderer({});
 		const { routes, fallback } = await createRouter({
-			appDir: FIXTURES + "/basic-app/app",
+			appDir: `${FIXTURES}/basic-app/app`,
 			renderer,
 		});
 		const server = createServer({ routes, fallback });
@@ -67,7 +67,7 @@ describe("router middleware loading", () => {
 	test("missing middleware.ts boots silently", async () => {
 		const renderer = createRenderer({});
 		const compiled = await createRouter({
-			appDir: FIXTURES + "/no-middleware-app/app",
+			appDir: `${FIXTURES}/no-middleware-app/app`,
 			renderer,
 		});
 		expect(compiled.entries.length).toBeGreaterThan(0);
@@ -78,13 +78,13 @@ describe("router middleware loading", () => {
 		let err: Error | null = null;
 		try {
 			await createRouter({
-				appDir: FIXTURES + "/bad-middleware-app/app",
+				appDir: `${FIXTURES}/bad-middleware-app/app`,
 				renderer,
 			});
 		} catch (e) {
 			err = e as Error;
 		}
 		expect(err).not.toBeNull();
-		expect(err!.message).toContain("middleware.ts");
+		expect(err?.message).toContain("middleware.ts");
 	});
 });

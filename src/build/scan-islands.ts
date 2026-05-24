@@ -7,7 +7,7 @@ export interface IslandEntry {
 const TEST_FILE_RE = /\.test\.tsx$/;
 
 export async function scanIslands(appDir: string): Promise<IslandEntry[]> {
-	const islandsDir = appDir.replace(/\/+$/, "") + "/islands";
+	const islandsDir = `${appDir.replace(/\/+$/, "")}/islands`;
 	// Islands are React components — `.tsx` only. Plain `.ts` helpers next to
 	// islands are not auto-registered. See spec 04 §"Client bundle".
 	const glob = new Bun.Glob("**/*.tsx");
@@ -15,12 +15,12 @@ export async function scanIslands(appDir: string): Promise<IslandEntry[]> {
 
 	try {
 		for await (const rel of glob.scan({ cwd: islandsDir, onlyFiles: true })) {
-			const base = rel.split("/").pop()!;
+			const base = rel.split("/").pop() ?? rel;
 			if (base.startsWith("_")) continue;
 			if (TEST_FILE_RE.test(base)) continue;
 			entries.push({
 				name: islandNameFromRel(rel),
-				filePath: islandsDir + "/" + rel,
+				filePath: `${islandsDir}/${rel}`,
 				relPath: rel,
 			});
 		}

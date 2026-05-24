@@ -31,15 +31,6 @@ export type {
 } from "./middleware/index.ts";
 export { compose, defineMiddleware, makeContext } from "./middleware/index.ts";
 export type {
-	ClientManifest,
-	Renderer,
-	RenderOptions,
-} from "./render/index.tsx";
-export { createRenderer } from "./render/index.tsx";
-export { scanRoutes } from "./router/filesystem.ts";
-export type { CompiledRouter, RouterOptions } from "./router/index.ts";
-export { createRouter } from "./router/index.ts";
-export type {
 	AgentsMdDocument,
 	JobSummary,
 	Plugin,
@@ -49,6 +40,15 @@ export type {
 	PluginServer,
 } from "./plugin/index.ts";
 export { assertPluginCompat, definePlugin } from "./plugin/index.ts";
+export type {
+	ClientManifest,
+	Renderer,
+	RenderOptions,
+} from "./render/index.tsx";
+export { createRenderer } from "./render/index.tsx";
+export { scanRoutes } from "./router/filesystem.ts";
+export type { CompiledRouter, RouterOptions } from "./router/index.ts";
+export { createRouter } from "./router/index.ts";
 export type { ServerHandle, ServerOptions } from "./server/index.ts";
 export { createServer, startServer } from "./server/index.ts";
 export type { BunRoutes, HTTPMethod, RouteEntry, Segment } from "./types.ts";

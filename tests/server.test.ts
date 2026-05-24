@@ -32,7 +32,7 @@ describe("createServer", () => {
 
 	test("does not import node:http or hono", async () => {
 		const src = await Bun.file(
-			import.meta.dir + "/../src/server/index.ts",
+			`${import.meta.dir}/../src/server/index.ts`,
 		).text();
 		expect(src).not.toMatch(/from\s+['"]node:http['"]/);
 		expect(src).not.toMatch(/from\s+['"]hono['"]/);

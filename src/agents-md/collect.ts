@@ -91,21 +91,23 @@ function mapResult(
 async function extractMiddlewareDocComment(
 	appDir: string,
 ): Promise<string | null> {
-	const path = appDir.replace(/\/+$/, "") + "/middleware.ts";
+	const path = `${appDir.replace(/\/+$/, "")}/middleware.ts`;
 	const f = Bun.file(path);
 	if (!(await f.exists())) return null;
 	const text = await f.text();
 	// Look for a leading /** ... */ block comment at the top of the file.
 	const m = text.match(/^\s*\/\*\*([\s\S]*?)\*\//);
 	if (!m) return null;
-	return m[1]!
-		.split("\n")
-		.map((l) => l.replace(/^\s*\*\s?/, "").trim())
-		.filter((l) => l.length > 0)
-		.join(" ");
+	return (
+		m[1]
+			?.split("\n")
+			.map((l) => l.replace(/^\s*\*\s?/, "").trim())
+			.filter((l) => l.length > 0)
+			.join(" ") ?? null
+	);
 }
 
 function resolveSubprocessEntry(): string {
 	// import.meta.dir points at src/agents-md/ when running from source.
-	return import.meta.dir + "/subprocess-entry.ts";
+	return `${import.meta.dir}/subprocess-entry.ts`;
 }

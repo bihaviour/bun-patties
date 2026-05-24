@@ -102,14 +102,14 @@ function matchesSel(
 
 beforeEach(() => {
 	// Reset module + global state for each test.
-	(globalThis as any).document = undefined;
+	(globalThis as { document: unknown }).document = undefined;
 });
 
 test("createClient.register + hydrateAll calls hydrateRoot per marker with parsed props", async () => {
 	const hydrateRoot = mock(() => ({ unmount() {}, render() {} }));
 	mock.module("react-dom/client", () => ({ hydrateRoot }));
 
-	(globalThis as any).document = buildFakeDom([
+	(globalThis as { document: unknown }).document = buildFakeDom([
 		{ name: "counter", props: { start: 7 } },
 	]);
 
@@ -118,20 +118,20 @@ test("createClient.register + hydrateAll calls hydrateRoot per marker with parse
 		`../../src/client/index.ts?t=${Date.now()}`
 	);
 	const client = createClient();
-	const Counter = (props: any) =>
-		React.createElement("button", null, "n=" + props.start);
+	const Counter = (props: { start: number }) =>
+		React.createElement("button", { type: "button" }, `n=${props.start}`);
 	client.register("counter", Counter);
 	client.hydrateAll();
 
 	expect(hydrateRoot).toHaveBeenCalledTimes(1);
 	const call = hydrateRoot.mock.calls[0] as unknown as [
-		any,
+		{ attrs: Record<string, string> },
 		React.ReactElement,
 	];
 	// call = [marker, ReactElement]
 	expect(call[0].attrs["data-island"]).toBe("counter");
 	expect(call[1].type).toBe(Counter);
-	expect((call[1].props as any).start).toBe(7);
+	expect((call[1].props as { start: number }).start).toBe(7);
 });
 
 test("misspelled island logs error, does not throw, other islands still hydrate", async () => {
@@ -143,7 +143,7 @@ test("misspelled island logs error, does not throw, other islands still hydrate"
 	console.error = errSpy;
 
 	try {
-		(globalThis as any).document = buildFakeDom([
+		(globalThis as { document: unknown }).document = buildFakeDom([
 			{ name: "missing-name", props: {} },
 			{ name: "counter", props: { start: 1 } },
 		]);
@@ -152,7 +152,8 @@ test("misspelled island logs error, does not throw, other islands still hydrate"
 			`../../src/client/index.ts?t=${Date.now()}`
 		);
 		const client = createClient();
-		const Counter = () => React.createElement("button", null, "x");
+		const Counter = () =>
+			React.createElement("button", { type: "button" }, "x");
 		client.register("counter", Counter);
 
 		expect(() => client.hydrateAll()).not.toThrow();
@@ -170,21 +171,21 @@ test("misspelled island logs error, does not throw, other islands still hydrate"
 
 test("<Island> emits data-island marker followed by JSON props blob", () => {
 	const Counter = (props: { start: number }) =>
-		React.createElement("button", null, "count: " + props.start);
+		React.createElement("button", { type: "button" }, `count: ${props.start}`);
 
 	const html = renderToStaticMarkup(
-		React.createElement(Island, {
-			name: "counter",
-			props: { start: 3 },
-			children: React.createElement(Counter, { start: 3 }),
-		}),
+		React.createElement(
+			Island,
+			{ name: "counter", props: { start: 3 } },
+			React.createElement(Counter, { start: 3 }),
+		),
 	);
 
 	// React serializes boolean-ish JSX attrs as `data-props="true"`. Browser
 	// CSS selectors with `[data-props]` still match — the runtime checks
 	// attribute presence, not value.
 	expect(html).toBe(
-		`<div data-island="counter"><button>count: 3</button></div>` +
+		`<div data-island="counter"><button type="button">count: 3</button></div>` +
 			`<script type="application/json" data-props="true" data-for="counter">{"start":3}</script>`,
 	);
 });
@@ -230,13 +231,13 @@ test("multi-island build emits a single shared React runtime chunk", async () =>
 	// React must appear exactly once across all emitted chunks.
 	const glob = new Bun.Glob("**/*.js");
 	const chunks: string[] = [];
-	for await (const f of glob.scan({ cwd: outDir + "/client", onlyFiles: true }))
+	for await (const f of glob.scan({ cwd: `${outDir}/client`, onlyFiles: true }))
 		chunks.push(f);
 	expect(chunks.length).toBeGreaterThanOrEqual(1);
 
 	let runtimeChunks = 0;
 	for (const c of chunks) {
-		const src = await Bun.file(outDir + "/client/" + c).text();
+		const src = await Bun.file(`${outDir}/client/${c}`).text();
 		// Marker strings present only in the actual React DOM runtime source.
 		if (src.includes("react.dev") || src.includes("ReactDOMHydrationRoot"))
 			runtimeChunks++;
@@ -257,7 +258,7 @@ test("generated client-entry imports patties/client and registers each island", 
 	await build({ appDir, outDir, target: "bun", mode: "production" });
 
 	const generated = await Bun.file(
-		appDir + "/patties-gen/client-entry.ts",
+		`${appDir}/patties-gen/client-entry.ts`,
 	).text();
 	expect(generated).toContain("createClient");
 	expect(generated).toContain("/client/index.ts");

@@ -38,7 +38,8 @@ function parseArgs(argv: string[]): DevArgs {
 		appDir: null,
 	};
 	for (let i = 0; i < argv.length; i++) {
-		const a = argv[i]!;
+		const a = argv[i];
+		if (a === undefined) continue;
 		if (a === "--cold") out.cold = true;
 		else if (a === "--port") out.port = Number(argv[++i]);
 		else if (a === "--host") out.host = String(argv[++i]);
@@ -131,7 +132,7 @@ async function bootstrap(args: DevArgs): Promise<number> {
 		env: { required: config.env.required, optional: config.env.public },
 		plugins,
 	})
-		.then((md) => Bun.write(process.cwd() + "/AGENTS.md", md))
+		.then((md) => Bun.write(`${process.cwd()}/AGENTS.md`, md))
 		.catch((err) =>
 			console.warn(
 				`[patties] AGENTS.md generation failed:`,
