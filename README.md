@@ -2,7 +2,7 @@
   <img src="./bun+patties-banner.png" alt="Bun + Patties" />
 </p>
 
-# patties
+# Bun + Patties
 
 Patties is a Bun-native full-stack meta-framework with React for UI and `Bun.serve` for HTTP. It is intentionally built around Bun primitives — `Bun.serve`, `Bun.Glob`, `Bun.build`, `bun --hot` — rather than as a Node-era framework with a Bun adapter. The goal is a smaller, more legible architecture that treats Bun as the foundation instead of a faster place to run old assumptions.
 
