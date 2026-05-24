@@ -1,1 +1,3 @@
-export default function H() { return <p>bm</p> }
+export default function H() {
+	return <p>bm</p>;
+}

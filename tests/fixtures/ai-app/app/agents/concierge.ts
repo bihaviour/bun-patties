@@ -1,7 +1,7 @@
-import { defineAgent } from "../../../../../src/ai/define.ts"
+import { defineAgent } from "../../../../../src/ai/define.ts";
 
 export default defineAgent({
-  name: "concierge",
-  model: "claude-sonnet-4-6",
-  systemPrompt: "Hotel concierge.",
-})
+	name: "concierge",
+	model: "claude-sonnet-4-6",
+	systemPrompt: "Hotel concierge.",
+});

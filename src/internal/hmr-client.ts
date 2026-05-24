@@ -34,4 +34,4 @@ export const HMR_CLIENT_SCRIPT = `
   }
   connect();
 })();
-`.trim()
+`.trim();

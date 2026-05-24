@@ -1,19 +1,19 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(bun install)",
-      "Bash(bun install:*)",
-      "Bash(bun add:*)",
-      "Bash(bun remove:*)",
-      "Bash(bun dev)",
-      "Bash(bun run:*)",
-      "Bash(bun test)",
-      "Bash(bun test:*)",
-      "Bash(bun build)",
-      "Bash(bunx patties:*)",
-      "Bash(git status)",
-      "Bash(git diff:*)",
-      "Bash(git log:*)"
-    ]
-  }
+	"permissions": {
+		"allow": [
+			"Bash(bun install)",
+			"Bash(bun install:*)",
+			"Bash(bun add:*)",
+			"Bash(bun remove:*)",
+			"Bash(bun dev)",
+			"Bash(bun run:*)",
+			"Bash(bun test)",
+			"Bash(bun test:*)",
+			"Bash(bun build)",
+			"Bash(bunx patties:*)",
+			"Bash(git status)",
+			"Bash(git diff:*)",
+			"Bash(git log:*)"
+		]
+	}
 }

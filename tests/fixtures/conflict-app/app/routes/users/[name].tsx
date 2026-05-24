@@ -1,1 +1,3 @@
-export default function U() { return <p>name</p> }
+export default function U() {
+	return <p>name</p>;
+}

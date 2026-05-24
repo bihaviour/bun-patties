@@ -4,5 +4,5 @@
 //   import { MANIFEST } from "...manifest.macro.ts" with { type: "macro" }
 //   const M = await MANIFEST("/abs/path/to/manifest.json")
 export async function MANIFEST(path: string) {
-  return await Bun.file(path).json()
+	return await Bun.file(path).json();
 }

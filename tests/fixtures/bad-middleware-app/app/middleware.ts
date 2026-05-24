@@ -1,1 +1,1 @@
-export default 42 as unknown as never
+export default 42 as unknown as never;

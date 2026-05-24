@@ -1,2 +1,2 @@
-export { createDevServer } from "./watcher.ts"
-export type { DevServer, DevOptions, WebSocketHandler } from "./watcher.ts"
+export type { DevOptions, DevServer, WebSocketHandler } from "./watcher.ts";
+export { createDevServer } from "./watcher.ts";
