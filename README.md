@@ -51,4 +51,4 @@ See `patties --help` for all flags.
 
 ## Background
 
-Read the longer write-up: _Bun, Patties, and Fries: Building a Complete Bun-Native Web Stack_.
+Read the longer write-up: [_Bun, Patties, and Fries: A Complete Meal for the Bun-Native Web Stack_](https://medium.com/bihaviour/bun-patties-and-fries-a-complete-meal-for-the-bun-native-web-stack-01bcf977f564).
