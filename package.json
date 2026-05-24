@@ -14,7 +14,8 @@
 		"./dev": "./src/dev/index.ts",
 		"./config": "./src/config/define.ts",
 		"./ai": "./src/ai/index.ts",
-		"./agents-md": "./src/agents-md/index.ts"
+		"./agents-md": "./src/agents-md/index.ts",
+		"./plugin": "./src/plugin/index.ts"
 	},
 	"bin": {
 		"patties": "./bin/patties.ts"

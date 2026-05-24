@@ -1,10 +1,19 @@
 import { z } from "zod";
+import type { Plugin } from "../plugin/index.ts";
+
+const PluginSchema = z.custom<Plugin>(
+	(v) =>
+		typeof v === "object" &&
+		v !== null &&
+		typeof (v as { name?: unknown }).name === "string",
+	{ message: "plugin must be an object with a `name: string`" },
+);
 
 export const PattiesConfigSchema = z.object({
 	target: z.enum(["bun", "edge"]).default("bun"),
 	appDir: z.string().default("./app"),
 	outDir: z.string().default("./.patties"),
-	plugins: z.array(z.unknown()).default([]),
+	plugins: z.array(PluginSchema).default([]),
 	env: z
 		.object({
 			required: z.array(z.string()).default([]),

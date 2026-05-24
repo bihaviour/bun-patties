@@ -2,6 +2,7 @@ import { bunAdapter } from "../adapters/bun.ts";
 import { edgeAdapter } from "../adapters/edge.ts";
 import type { Adapter } from "../adapters/types.ts";
 import { scanAgents, scanJobs, scanTools } from "../ai/scan.ts";
+import type { JobSummary, Plugin } from "../plugin/index.ts";
 import { scanRoutes } from "../router/filesystem.ts";
 import { type BuiltAsset, copyAssets } from "./assets.ts";
 import { generateClientEntry } from "./client-entry.ts";
@@ -32,6 +33,7 @@ export interface BuildOptions {
 	// "production"; otherwise silently ignored. See spec 04 §"Single-binary
 	// executable".
 	compile?: boolean;
+	plugins?: Plugin[];
 }
 
 const PUBLIC_PREFIX = "/_patties/client/";
@@ -41,6 +43,16 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 	const outDir = absolutize(options.outDir ?? ".patties");
 	const target = options.target ?? "bun";
 	const mode = options.mode ?? "production";
+	const plugins = options.plugins ?? [];
+
+	for (const p of plugins) {
+		if (!p.hooks?.onBuildStart) continue;
+		try {
+			await p.hooks.onBuildStart(options);
+		} catch (err) {
+			throw wrapHookError(p.name, "onBuildStart", err);
+		}
+	}
 
 	// genDir lives under appDir so generated entries can resolve react/react-dom
 	// via the normal upward node_modules walk. outDir holds only built artifacts.
@@ -54,6 +66,21 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 	const toolMods = await scanTools(appDir);
 	const jobMods = await scanJobs(appDir);
 	const hasUserMiddleware = await Bun.file(appDir + "/middleware.ts").exists();
+
+	if (plugins.length > 0) {
+		const summary: JobSummary[] = jobMods.map((j) => ({
+			name: j.name,
+			filePath: j.filePath,
+		}));
+		for (const p of plugins) {
+			if (!p.hooks?.onJobsCollect) continue;
+			try {
+				await p.hooks.onJobsCollect(summary);
+			} catch (err) {
+				throw wrapHookError(p.name, "onJobsCollect", err);
+			}
+		}
+	}
 
 	const manifest: ClientManifest = { entry: null, islands: {} };
 	const frameworkRoot = resolveFrameworkRoot();
@@ -162,11 +189,29 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 		{ appDir, outDir, mode, compile: options.compile === true },
 	);
 
-	return {
+	const result: BuildResult = {
 		clientManifest: manifest,
 		serverEntry: emitted.serverEntry,
 		assets: emitted.assets,
 	};
+
+	for (const p of plugins) {
+		if (!p.hooks?.onBuildEnd) continue;
+		try {
+			await p.hooks.onBuildEnd(result);
+		} catch (err) {
+			throw wrapHookError(p.name, "onBuildEnd", err);
+		}
+	}
+
+	return result;
+}
+
+function wrapHookError(name: string, hook: string, err: unknown): Error {
+	const msg = (err as Error)?.message ?? String(err);
+	const wrapped = new Error(`[plugin ${name}] ${hook}: ${msg}`);
+	(wrapped as Error & { cause?: unknown }).cause = err;
+	return wrapped;
 }
 
 function populateClientManifest(

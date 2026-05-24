@@ -2,6 +2,10 @@ import { resolve } from "node:path";
 import { generateAgentsMd } from "../agents-md/generate.ts";
 import { build } from "../build/index.ts";
 import { loadConfig } from "../config/load.ts";
+import { assertPluginCompat, type Plugin } from "../plugin/index.ts";
+import pkg from "../../package.json" with { type: "json" };
+
+const FRAMEWORK_VERSION = (pkg as { version: string }).version;
 
 export interface BuildArgs {
 	target?: "bun" | "edge";
@@ -25,12 +29,16 @@ export async function runBuild(argv: string[]): Promise<number> {
 		return 1;
 	}
 
+	const plugins = (config.plugins ?? []) as Plugin[];
+	for (const p of plugins) assertPluginCompat(FRAMEWORK_VERSION, p);
+
 	const result = await build({
 		appDir,
 		outDir,
 		target,
 		mode: args.mode,
 		compile,
+		plugins,
 	});
 
 	console.log(`[patties] built ${target} target`);
@@ -41,6 +49,7 @@ export async function runBuild(argv: string[]): Promise<number> {
 		const md = await generateAgentsMd(appDir, {
 			appDir,
 			env: { required: config.env.required, optional: config.env.public },
+			plugins,
 		});
 		await Bun.write(process.cwd() + "/AGENTS.md", md);
 		console.log(`[patties]   AGENTS.md: written`);

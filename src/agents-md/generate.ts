@@ -1,13 +1,11 @@
+import type { Plugin } from "../plugin/index.ts";
 import { collect } from "./collect.ts";
 import { render } from "./render.ts";
 
 export interface ResolvedConfigLike {
 	appDir?: string;
 	env?: { required?: string[]; optional?: string[] };
-	plugins?: Array<{
-		name?: string;
-		onAgentsMdGenerate?: (doc: string) => string | Promise<string>;
-	}>;
+	plugins?: Plugin[];
 }
 
 // Public entry point for spec 11. Caller writes the returned string to disk.
@@ -26,14 +24,21 @@ export async function generateAgentsMd(
 		envVars.push({ name: o, required: false });
 
 	const data = await collect(appDir, envVars);
-	let md = render(data);
+	let doc = { markdown: render(data) };
 
-	// Plugin hook (real plugin loading lands in phase 4; today this is a no-op
-	// when config.plugins is empty).
 	for (const p of config.plugins ?? []) {
-		if (typeof p?.onAgentsMdGenerate === "function") {
-			md = await p.onAgentsMdGenerate(md);
+		const hook = p.hooks?.onAgentsMdGenerate;
+		if (typeof hook !== "function") continue;
+		try {
+			doc = await hook(doc);
+		} catch (err) {
+			const msg = (err as Error)?.message ?? String(err);
+			const wrapped = new Error(
+				`[plugin ${p.name}] onAgentsMdGenerate: ${msg}`,
+			);
+			(wrapped as Error & { cause?: unknown }).cause = err;
+			throw wrapped;
 		}
 	}
-	return md;
+	return doc.markdown;
 }

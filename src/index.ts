@@ -37,8 +37,18 @@ export type {
 } from "./render/index.tsx";
 export { createRenderer } from "./render/index.tsx";
 export { scanRoutes } from "./router/filesystem.ts";
-export type { CompiledRouter, Plugin, RouterOptions } from "./router/index.ts";
+export type { CompiledRouter, RouterOptions } from "./router/index.ts";
 export { createRouter } from "./router/index.ts";
+export type {
+	AgentsMdDocument,
+	JobSummary,
+	Plugin,
+	PluginContext,
+	PluginHooks,
+	PluginLogger,
+	PluginServer,
+} from "./plugin/index.ts";
+export { assertPluginCompat, definePlugin } from "./plugin/index.ts";
 export type { ServerHandle, ServerOptions } from "./server/index.ts";
 export { createServer, startServer } from "./server/index.ts";
 export type { BunRoutes, HTTPMethod, RouteEntry, Segment } from "./types.ts";

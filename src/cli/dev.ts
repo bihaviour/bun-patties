@@ -1,11 +1,15 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import pkg from "../../package.json" with { type: "json" };
 import { generateAgentsMd } from "../agents-md/generate.ts";
 import { MissingEnv, validateRequiredEnv } from "../config/env.ts";
 import { loadConfig } from "../config/load.ts";
 import { loadSecrets } from "../config/secrets.ts";
 import { createDevServer } from "../dev/watcher.ts";
+import { assertPluginCompat, type Plugin } from "../plugin/index.ts";
 import { startServer } from "../server/index.ts";
+
+const FRAMEWORK_VERSION = (pkg as { version: string }).version;
 
 export interface DevArgs {
 	cold: boolean;
@@ -104,12 +108,28 @@ async function bootstrap(args: DevArgs): Promise<number> {
 		throw err;
 	}
 
+	const plugins = (config.plugins ?? []) as Plugin[];
+	for (const p of plugins) assertPluginCompat(FRAMEWORK_VERSION, p);
+
 	const devServer = createDevServer({ appDir: resolved.appDir });
+
+	for (const p of plugins) {
+		const hook = p.hooks?.onDevStart;
+		if (typeof hook !== "function") continue;
+		try {
+			await hook(devServer);
+		} catch (err) {
+			const msg = (err as Error)?.message ?? String(err);
+			console.error(`[patties] [plugin ${p.name}] onDevStart: ${msg}`);
+			return 1;
+		}
+	}
 
 	// Initial AGENTS.md generation — fire-and-forget; never crashes dev.
 	generateAgentsMd(resolved.appDir, {
 		appDir: resolved.appDir,
 		env: { required: config.env.required, optional: config.env.public },
+		plugins,
 	})
 		.then((md) => Bun.write(process.cwd() + "/AGENTS.md", md))
 		.catch((err) =>
