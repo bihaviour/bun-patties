@@ -1,6 +1,6 @@
 {
 	"name": "patties",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"type": "module",
 	"description": "Bun-native full-stack meta-framework with React rendering",
 	"exports": {
