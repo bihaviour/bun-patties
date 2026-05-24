@@ -23,7 +23,7 @@ const files = text
 	.filter(Boolean);
 
 const isDocsPath = (p: string): boolean => {
-	if (p.startsWith("docs/")) return true;
+	if (p.startsWith("fern/")) return true;
 	if (p.startsWith(".github/ISSUE_TEMPLATE/")) return true;
 	if (!p.includes("/") && p.endsWith(".md")) return true;
 	return false;
