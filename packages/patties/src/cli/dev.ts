@@ -91,7 +91,7 @@ async function resolveDev(
 }
 
 async function reexecUnderBun(args: DevArgs, ctx: CliContext): Promise<number> {
-	const entry = process.argv[1] ?? "";
+	const entry = resolveReexecEntry(ctx.cwd);
 	const mode = args.cold ? "--watch" : "--hot";
 	const passthrough: string[] = [];
 	if (ctx.cwd !== process.cwd()) passthrough.push("--cwd", ctx.cwd);
@@ -103,7 +103,12 @@ async function reexecUnderBun(args: DevArgs, ctx: CliContext): Promise<number> {
 	if (args.port !== null) passthrough.push("--port", String(args.port));
 	if (args.host !== null) passthrough.push("--host", args.host);
 	if (args.appDir !== null) passthrough.push("--app", args.appDir);
-	const proc = Bun.spawn(["bun", mode, entry, ...passthrough], {
+	// `--preserve-symlinks` keeps module resolution rooted in the user's
+	// project when `patties` is linked from a workspace / `bun link`. Without
+	// it, framework files realpath into the framework's own `node_modules`,
+	// loading a *second* copy of React alongside the app's — which breaks
+	// hooks during SSR ("Invalid hook call").
+	const proc = Bun.spawn(["bun", "--preserve-symlinks", mode, entry, ...passthrough], {
 		stdio: ["inherit", "inherit", "inherit"],
 		env: { ...process.env, [REEXEC_FLAG]: "1" },
 	});
@@ -128,6 +133,17 @@ async function reexecUnderBun(args: DevArgs, ctx: CliContext): Promise<number> {
 		process.off("SIGTERM", onTerm);
 		process.off("SIGHUP", onHup);
 	}
+}
+
+// Prefer the user-project copy of the bin (under their `node_modules/patties`)
+// over `process.argv[1]`, which may have already been realpath'd to the linked
+// framework checkout. Combined with `--preserve-symlinks`, this keeps module
+// resolution anchored in the user's project so `react` / `react-dom` resolve
+// to a single copy.
+function resolveReexecEntry(cwd: string): string {
+	const candidate = `${cwd}/node_modules/patties/bin/patties.ts`;
+	if (existsSync(candidate)) return candidate;
+	return process.argv[1] ?? "";
 }
 
 async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
