@@ -107,15 +107,16 @@ test("--template codex scaffolds the _codex overlay with no Claude leakage", asy
 		expect(existsSync(`${root}/demo/AGENTS.md`)).toBe(true);
 		expect(existsSync(`${root}/demo/.codex/README.md`)).toBe(true);
 		const agents = await Bun.file(`${root}/demo/AGENTS.md`).text();
-		// Parity with claude: same six rules + CLI section.
-		expect(agents).toContain("Bun-native first");
-		expect(agents).toContain("Web-standards boundary");
-		expect(agents).toContain("Filesystem routing");
-		expect(agents).toContain("Islands");
-		expect(agents).toContain("Build-time discovery");
-		expect(agents).toContain("Optional AI dependency");
-		expect(agents).toContain("## CLI");
+		// AGENTS.md is a thin index that links to focused rule files
+		// under .codex/rules/ (parity with the _claude pattern).
+		expect(agents).toContain(".codex/rules/bun-native.md");
+		expect(agents).toContain(".codex/rules/islands.md");
+		expect(agents).toContain(".codex/rules/patties-cli.md");
 		expect(agents).toContain("patties:generated");
+		// The rule files themselves must be present.
+		expect(existsSync(`${root}/demo/.codex/rules/bun-native.md`)).toBe(true);
+		expect(existsSync(`${root}/demo/.codex/rules/islands.md`)).toBe(true);
+		expect(existsSync(`${root}/demo/.codex/rules/patties-cli.md`)).toBe(true);
 		// Critical: no Claude-specific files under --template codex.
 		expect(existsSync(`${root}/demo/CLAUDE.md`)).toBe(false);
 		expect(existsSync(`${root}/demo/.claude`)).toBe(false);
