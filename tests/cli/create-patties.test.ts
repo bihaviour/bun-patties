@@ -106,6 +106,16 @@ test("--template codex scaffolds the _codex overlay with no Claude leakage", asy
 		expect(code).toBe(0);
 		expect(existsSync(`${root}/demo/AGENTS.md`)).toBe(true);
 		expect(existsSync(`${root}/demo/.codex/README.md`)).toBe(true);
+		const agents = await Bun.file(`${root}/demo/AGENTS.md`).text();
+		// Parity with claude: same six rules + CLI section.
+		expect(agents).toContain("Bun-native first");
+		expect(agents).toContain("Web-standards boundary");
+		expect(agents).toContain("Filesystem routing");
+		expect(agents).toContain("Islands");
+		expect(agents).toContain("Build-time discovery");
+		expect(agents).toContain("Optional AI dependency");
+		expect(agents).toContain("## CLI");
+		expect(agents).toContain("patties:generated");
 		// Critical: no Claude-specific files under --template codex.
 		expect(existsSync(`${root}/demo/CLAUDE.md`)).toBe(false);
 		expect(existsSync(`${root}/demo/.claude`)).toBe(false);

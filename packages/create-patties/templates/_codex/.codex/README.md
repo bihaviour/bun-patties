@@ -1,9 +1,10 @@
 # Codex workspace config
 
-Codex CLI reads project-level config from this directory. The conventions are
-still evolving — see https://github.com/openai/codex for the current schema.
+Codex CLI reads conventions from `AGENTS.md` at the project root — that
+file is the single source of truth for rules, the CLI surface, and the
+auto-regenerated inventory of routes / islands / agents / tools.
 
-Patties auto-regenerates `AGENTS.md` at the project root on every
-`patties build` to keep the live inventory of routes, islands, agents, and
-tools in sync. Hand-edited sections marked with `<!-- patties:user -->` /
-`<!-- /patties:user -->` are preserved across regenerations.
+This directory is reserved for future Codex-specific config (the
+conventions are still evolving — see https://github.com/openai/codex).
+Leave it in place; the scaffolder relies on it as a marker that the
+project opted into the Codex agent overlay.
