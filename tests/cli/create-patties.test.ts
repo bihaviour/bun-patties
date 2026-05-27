@@ -75,8 +75,14 @@ test("--template claude scaffolds the full _claude overlay", async () => {
 		expect(existsSync(`${root}/demo/CLAUDE.md`)).toBe(true);
 		expect(existsSync(`${root}/demo/.claude/settings.json`)).toBe(true);
 		expect(existsSync(`${root}/demo/.claude/hooks/biome-check.sh`)).toBe(true);
-		expect(existsSync(`${root}/demo/.claude/agents/README.md`)).toBe(true);
-		expect(existsSync(`${root}/demo/.claude/commands/README.md`)).toBe(true);
+		expect(existsSync(`${root}/demo/.claude/skills/patties-cli/SKILL.md`)).toBe(
+			true,
+		);
+		expect(existsSync(`${root}/demo/.claude/rules/bun-native.md`)).toBe(true);
+		expect(existsSync(`${root}/demo/.claude/rules/islands.md`)).toBe(true);
+		// Old placeholder dirs should be gone.
+		expect(existsSync(`${root}/demo/.claude/agents`)).toBe(false);
+		expect(existsSync(`${root}/demo/.claude/commands`)).toBe(false);
 		// No codex contamination.
 		expect(existsSync(`${root}/demo/AGENTS.md`)).toBe(false);
 		expect(existsSync(`${root}/demo/.codex`)).toBe(false);
@@ -169,6 +175,29 @@ test("--yes produces a deterministic project (no prompts even in TTY)", async ()
 		// Default --template is claude — no codex files should appear.
 		expect(existsSync(`${root}/demo/CLAUDE.md`)).toBe(true);
 		expect(existsSync(`${root}/demo/AGENTS.md`)).toBe(false);
+	} finally {
+		process.chdir(prev);
+	}
+});
+
+test("git init is opt-in: no .git/ by default; --git creates one", async () => {
+	const root = await mktemp();
+	const prev = process.cwd();
+	process.chdir(root);
+	try {
+		const code = await run(["demo", "--no-install"]);
+		expect(code).toBe(0);
+		expect(existsSync(`${root}/demo/.git`)).toBe(false);
+	} finally {
+		process.chdir(prev);
+	}
+
+	const root2 = await mktemp();
+	process.chdir(root2);
+	try {
+		const code = await run(["demo", "--no-install", "--git"]);
+		expect(code).toBe(0);
+		expect(existsSync(`${root2}/demo/.git`)).toBe(true);
 	} finally {
 		process.chdir(prev);
 	}

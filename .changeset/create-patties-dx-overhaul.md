@@ -33,3 +33,18 @@ Scaffolder DX overhaul (specs 09 + 10).
 - **`--blank` flag** — `bunx create-patties@latest <name> --blank`
   (alias: `--empty`) scaffolds a hello-world page with no demo and no
   `app/islands/` directory.
+- **Demo prompt** — interactive flow asks "Include the interactive
+  todo demo? [Y/n]" right after the agent question.
+- **Git is now opt-in** — `git init` no longer runs by default. Pass
+  `--git` to opt in. The success output reminds the user how to
+  initialise a repo when they're ready. `--no-git` is kept as a no-op
+  for back-compat.
+- **`_claude` overlay restructured.** The empty `.claude/agents/` and
+  `.claude/commands/` placeholders are gone. Replaced with:
+  - `.claude/skills/patties-cli/SKILL.md` — a real skill teaching
+    Claude how to use the project CLI (`patties dev/build/start/deploy/secret`).
+  - `.claude/rules/` — scaffolded meta-framework knowledge:
+    `bun-native.md`, `web-standards-boundary.md`,
+    `filesystem-routing.md`, `islands.md`, `build-time-discovery.md`,
+    `optional-ai.md`. Mirrors the framework's own rules but tuned
+    for users of the framework.

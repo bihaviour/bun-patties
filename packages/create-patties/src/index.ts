@@ -130,9 +130,10 @@ export async function run(argv: string[]): Promise<number> {
 		}
 	}
 
-	process.stdout.write(
-		`\n✓ created ${args.name}\n\n  cd ${args.name}\n  bun dev\n`,
-	);
+	const nextSteps = args.git
+		? `\n  cd ${args.name}\n  bun dev\n`
+		: `\n  cd ${args.name}\n  bun dev\n\n  # when you're ready to track this in git:\n  git init && git add -A && git commit -m "initial commit"\n`;
+	process.stdout.write(`\n✓ created ${args.name}\n${nextSteps}`);
 	if (gitSkippedReason === "git-missing") {
 		stderr("create-patties: `git` not found — skipping `git init`.");
 	}
@@ -157,7 +158,7 @@ function parseArgs(argv: string[]): Args {
 		deploy: "none",
 		deployExplicit: false,
 		install: true,
-		git: true,
+		git: false,
 		yes: false,
 		scaffold: "demo",
 		scaffoldExplicit: false,
@@ -187,6 +188,9 @@ function parseArgs(argv: string[]): Args {
 			out.deploy = a.slice(9) as Args["deploy"];
 			out.deployExplicit = true;
 		} else if (a === "--no-install") out.install = false;
+		else if (a === "--git") out.git = true;
+		// --no-git: kept as a no-op for back-compat. Git is now opt-in
+		// (default off) so most users don't need either flag.
 		else if (a === "--no-git") out.git = false;
 		else if (a === "--yes" || a === "-y") out.yes = true;
 		else if (a === "--blank" || a === "--empty") {
@@ -312,7 +316,7 @@ Options:
   --target   <bun|edge>             Runtime target (default: bun)
   --deploy   <cloudflare|vercel|deno|netlify|bun|none>
   --no-install                      Skip 'bun install'
-  --no-git                          Skip 'git init'
+  --git                             Run 'git init' + initial commit (opt-in)
   --yes, -y                         Accept all defaults, skip prompts
   --blank, --empty                  Scaffold a hello-world page only (no demo)
   --demo                            Scaffold the interactive todo demo (default)
@@ -320,6 +324,7 @@ Options:
 Examples:
   bunx create-patties@latest my-app
   bunx create-patties@latest my-app --template codex
-  bunx create-patties@latest my-app --template none --no-git
+  bunx create-patties@latest my-app --template none
+  bunx create-patties@latest my-app --git           # opt-in git init
 `);
 }
