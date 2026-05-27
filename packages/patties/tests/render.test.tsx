@@ -38,6 +38,18 @@ describe("renderer", () => {
 		expect(body).toContain("<title>Home</title>");
 	});
 
+	test("meta export still emits charset and viewport defaults", async () => {
+		const renderer = createRenderer({});
+		const entry = entryFor(`${FIXTURES}/basic-app/app/routes/index.tsx`, "/");
+		const req = new Request("http://localhost/");
+		const res = await renderer.renderPage(entry, req, makeContext(req));
+		const body = await res.text();
+		expect(body).toContain('<meta charSet="utf-8"');
+		expect(body).toContain(
+			'name="viewport" content="width=device-width, initial-scale=1"',
+		);
+	});
+
 	test("dev: true renders an error page for a broken module", async () => {
 		const renderer = createRenderer({ dev: true });
 		const entry = entryFor(

@@ -1,5 +1,10 @@
 import TodoApp from "../islands/TodoApp.tsx";
 
+export const meta = {
+	title: "Welcome to Patties",
+	description: "A Bun-native full-stack meta-framework.",
+};
+
 export default function Index(): JSX.Element {
 	return (
 		<main>

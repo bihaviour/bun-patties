@@ -50,12 +50,41 @@ describe("createDevServer", () => {
 		);
 	});
 
-	test("websocket.open subscribes to hmr topic and sends reload", () => {
+	test("websocket.open subscribes to hmr topic and sends a hello with serverId", () => {
 		const dev = createDevServer({ appDir: "/proj/app" });
 		const ws = mkWS();
 		dev.websocket.open?.(ws);
 		expect(ws.subscribe).toHaveBeenCalledWith("hmr");
-		expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: "reload" }));
+		const sent = (
+			ws.send.mock.calls[0] as unknown as [string] | undefined
+		)?.[0];
+		expect(typeof sent).toBe("string");
+		const msg = JSON.parse(sent as string) as {
+			type: string;
+			serverId: string;
+		};
+		expect(msg.type).toBe("hello");
+		expect(typeof msg.serverId).toBe("string");
+		expect(msg.serverId.length).toBeGreaterThan(0);
+	});
+
+	test("hello serverId is stable across opens within the same process", () => {
+		const dev = createDevServer({ appDir: "/proj/app" });
+		const ws1 = mkWS();
+		const ws2 = mkWS();
+		dev.websocket.open?.(ws1);
+		dev.websocket.open?.(ws2);
+		const id = (
+			JSON.parse((ws1.send.mock.calls[0] as unknown as [string])[0]) as {
+				serverId: string;
+			}
+		).serverId;
+		const id2 = (
+			JSON.parse((ws2.send.mock.calls[0] as unknown as [string])[0]) as {
+				serverId: string;
+			}
+		).serverId;
+		expect(id2).toBe(id);
 	});
 
 	test("fetch falls back to a 426 response", async () => {

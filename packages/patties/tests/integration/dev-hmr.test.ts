@@ -40,7 +40,7 @@ describe("spec 05 — dev routes wired through startServer", () => {
 		expect(res.status).toBe(400);
 	});
 
-	test("/__patties_hmr accepts a WebSocket upgrade and receives initial reload", async () => {
+	test("/__patties_hmr accepts a WebSocket upgrade and receives initial hello", async () => {
 		const ws = new WebSocket(`ws://127.0.0.1:${server.port}/__patties_hmr`);
 		const msg = await new Promise<string>((resolve, reject) => {
 			const timer = setTimeout(() => reject(new Error("ws timeout")), 2000);
@@ -54,7 +54,10 @@ describe("spec 05 — dev routes wired through startServer", () => {
 			});
 		});
 		ws.close();
-		expect(JSON.parse(msg)).toEqual({ type: "reload" });
+		const parsed = JSON.parse(msg) as { type: string; serverId: string };
+		expect(parsed.type).toBe("hello");
+		expect(typeof parsed.serverId).toBe("string");
+		expect(parsed.serverId.length).toBeGreaterThan(0);
 	});
 
 	test("ordinary routes still serve in dev mode", async () => {

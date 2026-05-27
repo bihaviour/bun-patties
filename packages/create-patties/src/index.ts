@@ -12,6 +12,32 @@ import {
 } from "./prompts.ts";
 import { renderTemplatesInTree } from "./readme.ts";
 
+// Step logger — visible progress so the user can see what scaffolding does.
+// Honors NO_COLOR; degrades gracefully on non-TTY streams.
+function colorOn(): boolean {
+	if (process.env.NO_COLOR) return false;
+	return Boolean((process.stdout as NodeJS.WriteStream).isTTY);
+}
+const COL = colorOn();
+const c = {
+	dim: (s: string) => (COL ? `\x1b[2m${s}\x1b[0m` : s),
+	green: (s: string) => (COL ? `\x1b[32m${s}\x1b[0m` : s),
+	cyan: (s: string) => (COL ? `\x1b[36m${s}\x1b[0m` : s),
+	bold: (s: string) => (COL ? `\x1b[1m${s}\x1b[0m` : s),
+};
+function step(msg: string): void {
+	process.stdout.write(`  ${c.green("✓")} ${msg}\n`);
+}
+function pending(msg: string): void {
+	process.stdout.write(`  ${c.dim("…")} ${msg}\n`);
+}
+function header(msg: string): void {
+	process.stdout.write(`\n${c.bold(c.cyan("▲"))} ${msg}\n\n`);
+}
+function fmtMs(ms: number): string {
+	return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
 interface Args {
 	name?: string;
 	template: AgentTemplate;
@@ -86,22 +112,33 @@ export async function run(argv: string[]): Promise<number> {
 
 	probeTools();
 
+	header(`create-patties — scaffolding ${c.bold(args.name)}`);
+
 	await Bun.$`mkdir -p ${targetDir}`.quiet();
+	step(`created directory ${c.dim(targetDir)}`);
+
 	await Bun.$`cp -R ${baseDir}/. ${targetDir}`.quiet();
+	step(`copied base template ${c.dim("(default)")}`);
 
 	await renameTemplateFiles(targetDir);
 	await writePackageJson(targetDir, args.name);
+	step(`wrote package.json ${c.dim(`(name: ${args.name})`)}`);
 	await patchPattiesConfig(targetDir, args);
+	step(`patched patties.config.ts ${c.dim(`(target: ${args.target})`)}`);
 
 	if (args.template !== "none") {
 		const overlay = resolve(TEMPLATES_ROOT, `_${args.template}`);
 		if (existsSync(overlay)) {
 			await Bun.$`cp -R ${overlay}/. ${targetDir}`.quiet();
+			step(`applied agent overlay ${c.dim(`(${args.template})`)}`);
 		}
 	}
 
 	if (args.scaffold === "blank") {
 		await applyBlankScaffold(targetDir);
+		step("applied blank scaffold (no demo)");
+	} else {
+		step("included interactive todo demo");
 	}
 
 	await renderTemplatesInTree(targetDir, {
@@ -111,9 +148,22 @@ export async function run(argv: string[]): Promise<number> {
 		deploy: args.deploy,
 		scaffold: args.scaffold,
 	});
+	step("rendered template variables (README, AGENTS.md, …)");
 
 	if (args.install) {
-		await Bun.$`bun install`.cwd(targetDir).quiet().nothrow();
+		pending("installing dependencies (bun install)…");
+		const t0 = performance.now();
+		const proc = await Bun.$`bun install`.cwd(targetDir).quiet().nothrow();
+		const dt = performance.now() - t0;
+		if (proc.exitCode === 0) {
+			step(`installed dependencies ${c.dim(`(${fmtMs(dt)})`)}`);
+		} else {
+			step(
+				`bun install exited with code ${proc.exitCode} — you may need to retry it manually`,
+			);
+		}
+	} else {
+		step(`skipped ${c.dim("`bun install`")} (--no-install)`);
 	}
 
 	let gitSkippedReason: string | undefined;
@@ -125,6 +175,7 @@ export async function run(argv: string[]): Promise<number> {
 				.cwd(targetDir)
 				.quiet()
 				.nothrow();
+			step("initialized git and committed");
 		} else {
 			gitSkippedReason = "git-missing";
 		}

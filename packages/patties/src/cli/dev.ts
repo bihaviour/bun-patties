@@ -107,8 +107,27 @@ async function reexecUnderBun(args: DevArgs, ctx: CliContext): Promise<number> {
 		stdio: ["inherit", "inherit", "inherit"],
 		env: { ...process.env, [REEXEC_FLAG]: "1" },
 	});
-	const code = await proc.exited;
-	return code ?? 0;
+	// Forward termination signals to the child so it doesn't get orphaned
+	// (reparented to init) and keep holding the listen port.
+	const forward = (sig: NodeJS.Signals) => {
+		try {
+			proc.kill(sig);
+		} catch {}
+	};
+	const onInt = () => forward("SIGINT");
+	const onTerm = () => forward("SIGTERM");
+	const onHup = () => forward("SIGHUP");
+	process.on("SIGINT", onInt);
+	process.on("SIGTERM", onTerm);
+	process.on("SIGHUP", onHup);
+	try {
+		const code = await proc.exited;
+		return code ?? 0;
+	} finally {
+		process.off("SIGINT", onInt);
+		process.off("SIGTERM", onTerm);
+		process.off("SIGHUP", onHup);
+	}
 }
 
 async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
@@ -180,7 +199,7 @@ async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
 				appDir: resolved.appDir,
 			});
 			printReady(resolved);
-			return EXIT.OK;
+			return await new Promise<number>(() => {});
 		}
 		log.warn(`${entry} has no default export; starting a stub dev server.`);
 	} else {
@@ -209,9 +228,9 @@ async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
 }
 
 function printReady(resolved: ResolvedDev): void {
-	log.success(
-		`▲ Patties dev ready at http://${resolved.host}:${resolved.port}`,
-	);
+	// URL banner is printed by startServer (Local + Network). Here we only
+	// confirm dev mode is up and show the app root for orientation.
+	log.success("▲ Patties dev ready");
 	log.dim(`  root: ${resolved.appDir}`);
 }
 

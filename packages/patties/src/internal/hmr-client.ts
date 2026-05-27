@@ -16,6 +16,21 @@ export const HMR_CLIENT_SCRIPT = `
       var msg;
       try { msg = JSON.parse(ev.data); } catch (e) { return; }
       if (!msg || typeof msg !== "object") return;
+      if (msg.type === "hello" && typeof msg.serverId === "string") {
+        // Reload only if the server id changed from a prior session — i.e. the
+        // server actually restarted. First-ever connect and same-server
+        // reconnects are no-ops.
+        var key = "patties:devServerId";
+        var prev = null;
+        try { prev = sessionStorage.getItem(key); } catch (e) {}
+        if (prev && prev !== msg.serverId) {
+          try { sessionStorage.setItem(key, msg.serverId); } catch (e) {}
+          location.reload();
+          return;
+        }
+        try { sessionStorage.setItem(key, msg.serverId); } catch (e) {}
+        return;
+      }
       if (msg.type === "reload") { location.reload(); return; }
       if (msg.type === "update" && msg.island) {
         try {

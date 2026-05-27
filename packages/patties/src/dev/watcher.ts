@@ -44,6 +44,11 @@ export interface DevOptions {
 
 const HMR_TOPIC = "hmr";
 const RELOAD_MSG = JSON.stringify({ type: "reload" });
+// Per-process id so reconnecting clients can tell "same server, transient
+// disconnect" (no reload) from "server restarted, reload". Survives `bun --hot`
+// module reloads (same process); changes on `--cold` / full restart.
+const SERVER_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+const HELLO_MSG = JSON.stringify({ type: "hello", serverId: SERVER_ID });
 
 export function createDevServer(options: DevOptions): DevServer {
 	let server: AnyServer | null = null;
@@ -67,11 +72,7 @@ export function createDevServer(options: DevOptions): DevServer {
 	const websocket: WebSocketHandler = {
 		open(ws) {
 			ws.subscribe(HMR_TOPIC);
-			// Server-driven reload on (re)connect: covers `--cold` restarts where
-			// the page should refresh against the new build. Under default
-			// `bun --hot` the WebSocket survives reloads and this `open` doesn't
-			// fire for existing tabs.
-			ws.send(RELOAD_MSG);
+			ws.send(HELLO_MSG);
 		},
 	};
 

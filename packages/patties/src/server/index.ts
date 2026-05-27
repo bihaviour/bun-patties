@@ -1,3 +1,4 @@
+import { networkInterfaces } from "node:os";
 import type { DevServer } from "../dev/watcher.ts";
 import { handleOpenInEditor } from "../internal/open-in-editor.ts";
 import { compilePatterns, dispatch } from "../router/match.ts";
@@ -13,6 +14,8 @@ export interface ServerOptions {
 	dev?: boolean;
 	devServer?: DevServer;
 	staticRoutes?: Record<string, Response>;
+	/** Suppress the bound-URL log line; the caller will print its own banner. */
+	quiet?: boolean;
 }
 
 export interface ServerHandle {
@@ -77,11 +80,24 @@ export function createServer(opts: ServerOptions): ServerHandle {
 
 export function startServer(opts: ServerOptions) {
 	validate(opts);
-	const routes = buildRoutes(opts);
+	let routes = buildRoutes(opts);
+	if (opts.dev) {
+		routes = wrapRoutesForDevLogging(routes);
+	}
+
+	const userFallback = opts.fallback;
+	const fallback = opts.dev
+		? async (req: Request): Promise<Response> => {
+				const t0 = performance.now();
+				const res = await userFallback(req);
+				logDevRequest(req, res.status, performance.now() - t0);
+				return res;
+			}
+		: (req: Request) => Promise.resolve(userFallback(req));
 
 	const serverOptions: Record<string, unknown> = {
 		routes,
-		fetch: (req: Request) => Promise.resolve(opts.fallback(req)),
+		fetch: fallback,
 		reusePort: opts.reusePort,
 	};
 	if (opts.devServer) {
@@ -103,9 +119,130 @@ export function startServer(opts: ServerOptions) {
 			server as unknown as { publish: (t: string, d: string) => number },
 		);
 	}
-	const bound = opts.unix
-		? `unix://${opts.unix}`
-		: `http://${server.hostname}:${server.port}`;
-	console.log(`[patties] listening on ${bound}`);
+	if (!opts.quiet) {
+		printBoundBanner(
+			opts,
+			server as unknown as { hostname: string; port: number },
+		);
+	}
 	return server;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Dev-mode logging helpers.
+//
+// In dev we wrap every route handler with a small middleware that prints
+// `HH:MM:SS METHOD path STATUS Xms`. Internal `/__patties_*` endpoints are
+// suppressed (they're noisy WS pings + editor-open beacons). Static `Response`
+// route values are passed through unwrapped — they can't be cleanly observed
+// without consuming/cloning the body, and the cost isn't worth it.
+
+const DEV_SKIP = /^\/__patties_/;
+
+function logDevRequest(req: Request, status: number, ms: number): void {
+	const path = new URL(req.url).pathname;
+	if (DEV_SKIP.test(path)) return;
+	const time = new Date().toTimeString().slice(0, 8);
+	const stream = process.stdout as NodeJS.WriteStream;
+	const tty = Boolean(stream.isTTY) && !process.env.NO_COLOR;
+	const dim = (s: string) => (tty ? `\x1b[2m${s}\x1b[0m` : s);
+	const color =
+		status >= 500
+			? (s: string) => (tty ? `\x1b[31m${s}\x1b[0m` : s)
+			: status >= 400
+				? (s: string) => (tty ? `\x1b[33m${s}\x1b[0m` : s)
+				: (s: string) => (tty ? `\x1b[32m${s}\x1b[0m` : s);
+	stream.write(
+		`${dim(time)} ${req.method} ${path} ${color(String(status))} ${dim(`${ms.toFixed(1)}ms`)}\n`,
+	);
+}
+
+// Route handlers can return undefined (e.g. WS upgrade path) — accept that.
+type AnyHandler = (
+	req: Request & { params: Record<string, string> },
+	server: unknown,
+) => Response | undefined | Promise<Response | undefined>;
+
+function wrapHandler(fn: AnyHandler): AnyHandler {
+	return async (req, server) => {
+		const t0 = performance.now();
+		const out = await fn(req, server);
+		if (out instanceof Response) {
+			logDevRequest(req, out.status, performance.now() - t0);
+		}
+		return out;
+	};
+}
+
+function wrapRoutesForDevLogging(routes: BunRoutes): BunRoutes {
+	const out: BunRoutes = {};
+	for (const [path, value] of Object.entries(routes)) {
+		if (typeof value === "function") {
+			out[path] = wrapHandler(
+				value as AnyHandler,
+			) as unknown as BunRoutes[string];
+		} else if (
+			value &&
+			typeof value === "object" &&
+			!(value instanceof Response)
+		) {
+			const wrapped: Record<string, AnyHandler> = {};
+			for (const [method, h] of Object.entries(value)) {
+				if (typeof h === "function") {
+					wrapped[method] = wrapHandler(h as AnyHandler);
+				}
+			}
+			out[path] = wrapped as unknown as BunRoutes[string];
+		} else {
+			out[path] = value;
+		}
+	}
+	return out;
+}
+
+function printBoundBanner(
+	opts: ServerOptions,
+	server: { hostname: string; port: number },
+): void {
+	if (opts.unix) {
+		console.log(`[patties] listening on unix://${opts.unix}`);
+		return;
+	}
+	const port = server.port;
+	const stream = process.stdout as NodeJS.WriteStream;
+	const tty = Boolean(stream.isTTY) && !process.env.NO_COLOR;
+	const dim = (s: string) => (tty ? `\x1b[2m${s}\x1b[0m` : s);
+	const cyan = (s: string) => (tty ? `\x1b[36m${s}\x1b[0m` : s);
+	const isAllInterfaces =
+		server.hostname === "0.0.0.0" || server.hostname === "::";
+	stream.write(`  ${dim("➜")}  Local:   ${cyan(`http://localhost:${port}`)}\n`);
+	if (isAllInterfaces) {
+		const lan = findLanIp();
+		if (lan) {
+			stream.write(
+				`  ${dim("➜")}  Network: ${cyan(`http://${lan}:${port}`)}\n`,
+			);
+		} else {
+			stream.write(`  ${dim("➜")}  Network: ${dim("(no LAN interface)")}\n`);
+		}
+	} else if (
+		server.hostname !== "localhost" &&
+		server.hostname !== "127.0.0.1"
+	) {
+		stream.write(
+			`  ${dim("➜")}  Network: ${cyan(`http://${server.hostname}:${port}`)}\n`,
+		);
+	}
+}
+
+function findLanIp(): string | null {
+	try {
+		const nets = networkInterfaces();
+		for (const list of Object.values(nets)) {
+			for (const ni of list ?? []) {
+				if (ni.family === "IPv4" && !ni.internal) return ni.address;
+			}
+		}
+	} catch {}
+	return null;
 }

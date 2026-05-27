@@ -61,6 +61,16 @@ export function createRenderer(options: RenderOptions = {}): Renderer {
 
 				const headNodes: React.ReactNode[] = [];
 				if (mod.meta) {
+					// Always include charset/viewport so opting into `meta` doesn't
+					// silently drop the baseline head tags.
+					headNodes.push(
+						<meta key="charset" charSet="utf-8" />,
+						<meta
+							key="viewport"
+							name="viewport"
+							content="width=device-width, initial-scale=1"
+						/>,
+					);
 					headNodes.push(...renderMetaTags(mod.meta));
 				} else if (!mod.head) {
 					headNodes.push(...defaultHead(ctx.url.pathname));
