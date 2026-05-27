@@ -1,3 +1,4 @@
+import { Island } from "patties/render";
 import TodoApp from "../islands/TodoApp.tsx";
 
 export const meta = {
@@ -13,7 +14,9 @@ export default function Index(): JSX.Element {
 				This page is server-rendered. The list below is a client island —{" "}
 				<code>app/islands/TodoApp.tsx</code> — hydrated in the browser.
 			</p>
-			<TodoApp />
+			<Island name="TodoApp">
+				<TodoApp />
+			</Island>
 			<hr />
 			<p>
 				<small>
