@@ -13,7 +13,8 @@
 		"bin",
 		"src",
 		"templates",
-		"README.md"
+		"README.md",
+		"CHANGELOG.md"
 	],
 	"engines": {
 		"bun": ">=1.0.0"
