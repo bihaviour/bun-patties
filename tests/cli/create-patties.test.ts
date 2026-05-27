@@ -1,6 +1,14 @@
 import { afterAll, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { run } from "../../packages/create-patties/src/index.ts";
+import {
+	hasGit,
+	probeTools,
+} from "../../packages/create-patties/src/probes.ts";
+import {
+	applyTemplate,
+	renderTemplatesInTree,
+} from "../../packages/create-patties/src/readme.ts";
 
 const created: string[] = [];
 afterAll(async () => {
@@ -31,7 +39,7 @@ test("scaffolds default template in an empty dir", async () => {
 	}
 });
 
-test("--agent claude-code adds CLAUDE.md and .claude/", async () => {
+test("--agent claude-code is a backwards-compat alias for --template claude", async () => {
 	const root = await mktemp();
 	const prev = process.cwd();
 	process.chdir(root);
@@ -46,6 +54,81 @@ test("--agent claude-code adds CLAUDE.md and .claude/", async () => {
 		expect(code).toBe(0);
 		expect(existsSync(`${root}/demo/CLAUDE.md`)).toBe(true);
 		expect(existsSync(`${root}/demo/.claude/settings.json`)).toBe(true);
+	} finally {
+		process.chdir(prev);
+	}
+});
+
+test("--template claude scaffolds the full _claude overlay", async () => {
+	const root = await mktemp();
+	const prev = process.cwd();
+	process.chdir(root);
+	try {
+		const code = await run([
+			"demo",
+			"--no-install",
+			"--no-git",
+			"--template",
+			"claude",
+		]);
+		expect(code).toBe(0);
+		expect(existsSync(`${root}/demo/CLAUDE.md`)).toBe(true);
+		expect(existsSync(`${root}/demo/.claude/settings.json`)).toBe(true);
+		expect(existsSync(`${root}/demo/.claude/hooks/biome-check.sh`)).toBe(true);
+		expect(existsSync(`${root}/demo/.claude/agents/README.md`)).toBe(true);
+		expect(existsSync(`${root}/demo/.claude/commands/README.md`)).toBe(true);
+		// No codex contamination.
+		expect(existsSync(`${root}/demo/AGENTS.md`)).toBe(false);
+		expect(existsSync(`${root}/demo/.codex`)).toBe(false);
+	} finally {
+		process.chdir(prev);
+	}
+});
+
+test("--template codex scaffolds the _codex overlay with no Claude leakage", async () => {
+	const root = await mktemp();
+	const prev = process.cwd();
+	process.chdir(root);
+	try {
+		const code = await run([
+			"demo",
+			"--no-install",
+			"--no-git",
+			"--template",
+			"codex",
+		]);
+		expect(code).toBe(0);
+		expect(existsSync(`${root}/demo/AGENTS.md`)).toBe(true);
+		expect(existsSync(`${root}/demo/.codex/README.md`)).toBe(true);
+		// Critical: no Claude-specific files under --template codex.
+		expect(existsSync(`${root}/demo/CLAUDE.md`)).toBe(false);
+		expect(existsSync(`${root}/demo/.claude`)).toBe(false);
+	} finally {
+		process.chdir(prev);
+	}
+});
+
+test("README is generated with project name as H1 and deploy section", async () => {
+	const root = await mktemp();
+	const prev = process.cwd();
+	process.chdir(root);
+	try {
+		const code = await run([
+			"demo",
+			"--no-install",
+			"--no-git",
+			"--target",
+			"edge",
+			"--deploy",
+			"cloudflare",
+		]);
+		expect(code).toBe(0);
+		const readme = await Bun.file(`${root}/demo/README.md`).text();
+		expect(readme).toMatch(/^# demo\n/);
+		expect(readme).toContain("**Cloudflare**");
+		// Other deploy sections must be stripped.
+		expect(readme).not.toContain("**Vercel**");
+		expect(readme).not.toContain("**Netlify Edge**");
 	} finally {
 		process.chdir(prev);
 	}
@@ -73,5 +156,81 @@ test("invalid name exits 2", async () => {
 		expect(code).toBe(2);
 	} finally {
 		process.chdir(prev);
+	}
+});
+
+test("--yes produces a deterministic project (no prompts even in TTY)", async () => {
+	const root = await mktemp();
+	const prev = process.cwd();
+	process.chdir(root);
+	try {
+		const code = await run(["demo", "--no-install", "--no-git", "--yes"]);
+		expect(code).toBe(0);
+		// Default --template is claude — no codex files should appear.
+		expect(existsSync(`${root}/demo/CLAUDE.md`)).toBe(true);
+		expect(existsSync(`${root}/demo/AGENTS.md`)).toBe(false);
+	} finally {
+		process.chdir(prev);
+	}
+});
+
+test("applyTemplate substitutes placeholders and keeps matching conditional blocks", () => {
+	const out = applyTemplate(
+		"# {{name}}\n<!-- if:agent=claude -->ok<!-- /if -->" +
+			"<!-- if:agent=codex -->no<!-- /if -->",
+		{ name: "x", agent: "claude", target: "bun", deploy: "none" },
+	);
+	expect(out).toContain("# x");
+	expect(out).toContain("ok");
+	expect(out).not.toContain("no");
+});
+
+test("renderTemplatesInTree leaves non-templated files untouched", async () => {
+	const root = await mktemp();
+	await Bun.write(`${root}/plain.ts`, "const x = 1;\n");
+	await Bun.write(`${root}/template.md`, "Hello {{name}}\n");
+	await renderTemplatesInTree(root, {
+		name: "world",
+		agent: "none",
+		target: "bun",
+		deploy: "none",
+	});
+	expect(await Bun.file(`${root}/plain.ts`).text()).toBe("const x = 1;\n");
+	expect(await Bun.file(`${root}/template.md`).text()).toBe("Hello world\n");
+});
+
+test("probeTools exits 1 when bun is missing", () => {
+	const original = Bun.which;
+	let calledExit: number | undefined;
+	let stderrMsg = "";
+	try {
+		(Bun as { which: typeof Bun.which }).which = ((cmd: string) =>
+			cmd === "bun" ? null : "/usr/bin/git") as typeof Bun.which;
+		probeTools({
+			stderr: (m) => {
+				stderrMsg = m;
+			},
+			exit: ((code: number) => {
+				calledExit = code;
+				throw new Error("__exit__");
+			}) as never,
+		});
+	} catch (err) {
+		expect((err as Error).message).toBe("__exit__");
+	} finally {
+		(Bun as { which: typeof Bun.which }).which = original;
+	}
+	expect(calledExit).toBe(1);
+	expect(stderrMsg).toContain("`bun` not found");
+});
+
+test("hasGit returns false when git is missing", () => {
+	const original = Bun.which;
+	try {
+		(Bun as { which: typeof Bun.which }).which = ((cmd: string) =>
+			cmd === "git" ? null : "/usr/bin/bun") as typeof Bun.which;
+		expect(hasGit()).toBe(false);
+	} finally {
+		(Bun as { which: typeof Bun.which }).which = original;
 	}
 });
