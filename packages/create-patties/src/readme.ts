@@ -16,6 +16,7 @@ export interface TemplateVars {
 	agent: "claude" | "codex" | "none";
 	target: "bun" | "edge";
 	deploy: "cloudflare" | "vercel" | "deno" | "netlify" | "bun" | "none";
+	scaffold: "demo" | "blank";
 }
 
 const CONDITIONAL_RE =
@@ -38,6 +39,7 @@ export function applyTemplate(source: string, vars: TemplateVars): string {
 			.replaceAll("{{agent}}", vars.agent)
 			.replaceAll("{{target}}", vars.target)
 			.replaceAll("{{deploy}}", vars.deploy)
+			.replaceAll("{{scaffold}}", vars.scaffold)
 			// Legacy placeholders from earlier overlay revisions — kept so existing
 			// CLAUDE.md / AGENTS.md template text keeps interpolating.
 			.replaceAll("{{PROJECT_NAME}}", vars.name)

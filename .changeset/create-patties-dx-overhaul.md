@@ -24,6 +24,12 @@ Scaffolder DX overhaul (specs 09 + 10).
   generic templating pass also interpolates `{{name}}` into CLAUDE.md
   and AGENTS.md.
 
-The todo demo from spec 09 item 1 is **not** in this bump — it depends
-on framework specs 17 + 18 (dev-time island bundler) which are still in
-draft.
+- **Todo demo template** — the default scaffold now ships a `TodoApp.tsx`
+  island and a route that mounts it. The README explains that buttons
+  don't react under `bun dev` today (dev hydration lands with framework
+  spec 18) and tells the user to `bun run build && bun start` to see the
+  island work; it also includes a "Remove the demo" section for when the
+  user is ready to start their real app.
+- **`--blank` flag** — `bunx create-patties@latest <name> --blank`
+  (alias: `--empty`) scaffolds a hello-world page with no demo and no
+  `app/islands/` directory.

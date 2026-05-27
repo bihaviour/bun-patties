@@ -22,6 +22,7 @@ interface Args {
 	install: boolean;
 	git: boolean;
 	yes: boolean;
+	scaffold: "demo" | "blank";
 }
 
 const TEMPLATES_ROOT = resolve(dirname(import.meta.dir), "templates");
@@ -96,11 +97,16 @@ export async function run(argv: string[]): Promise<number> {
 		}
 	}
 
+	if (args.scaffold === "blank") {
+		await applyBlankScaffold(targetDir);
+	}
+
 	await renderTemplatesInTree(targetDir, {
 		name: args.name,
 		agent: args.template,
 		target: args.target,
 		deploy: args.deploy,
+		scaffold: args.scaffold,
 	});
 
 	if (args.install) {
@@ -150,6 +156,7 @@ function parseArgs(argv: string[]): Args {
 		install: true,
 		git: true,
 		yes: false,
+		scaffold: "demo",
 	};
 	const setTemplate = (raw: string) => {
 		out.template = aliasTemplate(raw);
@@ -178,6 +185,8 @@ function parseArgs(argv: string[]): Args {
 		} else if (a === "--no-install") out.install = false;
 		else if (a === "--no-git") out.git = false;
 		else if (a === "--yes" || a === "-y") out.yes = true;
+		else if (a === "--blank" || a === "--empty") out.scaffold = "blank";
+		else if (a === "--demo") out.scaffold = "demo";
 		else if (!out.name && !a.startsWith("-")) out.name = a;
 	}
 	return out;
@@ -213,6 +222,28 @@ async function renameTemplateFiles(dir: string): Promise<void> {
 			await Bun.$`mv ${src} ${dir}/${to}`.quiet();
 		}
 	}
+}
+
+// --blank scaffold: drop the interactive demo and ship a single hello page.
+// We start from the same default template and prune so we keep exactly one
+// source-of-truth for things like patties.config.ts / tsconfig.json.
+async function applyBlankScaffold(dir: string): Promise<void> {
+	await Bun.$`rm -rf ${dir}/app/islands`.quiet();
+	await Bun.write(
+		`${dir}/app/routes/index.tsx`,
+		`export default function Index(): JSX.Element {
+	return (
+		<main>
+			<h1>Hello from {{name}}</h1>
+			<p>
+				This page is server-rendered by Patties. Add more files under{" "}
+				<code>app/routes/</code> to grow your app.
+			</p>
+		</main>
+	);
+}
+`,
+	);
 }
 
 async function writePackageJson(dir: string, name: string): Promise<void> {
@@ -275,6 +306,8 @@ Options:
   --no-install                      Skip 'bun install'
   --no-git                          Skip 'git init'
   --yes, -y                         Accept all defaults, skip prompts
+  --blank, --empty                  Scaffold a hello-world page only (no demo)
+  --demo                            Scaffold the interactive todo demo (default)
 
 Examples:
   bunx create-patties@latest my-app

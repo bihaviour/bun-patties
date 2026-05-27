@@ -178,11 +178,55 @@ test("applyTemplate substitutes placeholders and keeps matching conditional bloc
 	const out = applyTemplate(
 		"# {{name}}\n<!-- if:agent=claude -->ok<!-- /if -->" +
 			"<!-- if:agent=codex -->no<!-- /if -->",
-		{ name: "x", agent: "claude", target: "bun", deploy: "none" },
+		{
+			name: "x",
+			agent: "claude",
+			target: "bun",
+			deploy: "none",
+			scaffold: "demo",
+		},
 	);
 	expect(out).toContain("# x");
 	expect(out).toContain("ok");
 	expect(out).not.toContain("no");
+});
+
+test("default scaffold ships the todo demo", async () => {
+	const root = await mktemp();
+	const prev = process.cwd();
+	process.chdir(root);
+	try {
+		const code = await run(["demo", "--no-install", "--no-git"]);
+		expect(code).toBe(0);
+		expect(existsSync(`${root}/demo/app/islands/TodoApp.tsx`)).toBe(true);
+		expect(existsSync(`${root}/demo/app/islands/Counter.tsx`)).toBe(false);
+		const route = await Bun.file(`${root}/demo/app/routes/index.tsx`).text();
+		expect(route).toContain("TodoApp");
+		const readme = await Bun.file(`${root}/demo/README.md`).text();
+		expect(readme).toContain("Remove the demo");
+		expect(readme).toContain("bun run build");
+	} finally {
+		process.chdir(prev);
+	}
+});
+
+test("--blank scaffolds a hello-world page with no islands", async () => {
+	const root = await mktemp();
+	const prev = process.cwd();
+	process.chdir(root);
+	try {
+		const code = await run(["demo", "--no-install", "--no-git", "--blank"]);
+		expect(code).toBe(0);
+		expect(existsSync(`${root}/demo/app/islands`)).toBe(false);
+		const route = await Bun.file(`${root}/demo/app/routes/index.tsx`).text();
+		expect(route).toContain("Hello from demo");
+		expect(route).not.toContain("TodoApp");
+		const readme = await Bun.file(`${root}/demo/README.md`).text();
+		expect(readme).not.toContain("Remove the demo");
+		expect(readme).toContain("Add your first interactive feature");
+	} finally {
+		process.chdir(prev);
+	}
 });
 
 test("renderTemplatesInTree leaves non-templated files untouched", async () => {
@@ -194,6 +238,7 @@ test("renderTemplatesInTree leaves non-templated files untouched", async () => {
 		agent: "none",
 		target: "bun",
 		deploy: "none",
+		scaffold: "demo",
 	});
 	expect(await Bun.file(`${root}/plain.ts`).text()).toBe("const x = 1;\n");
 	expect(await Bun.file(`${root}/template.md`).text()).toBe("Hello world\n");
