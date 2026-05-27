@@ -3,34 +3,55 @@ title: Project Scaffolding
 description: Starting new projects with create-patties.
 ---
 
-Patties ships a separate scaffolder: `create-patties`.
+Patties ships a separate scaffolder: `create-patties`. It generates a single
+base app and layers an optional agent-platform overlay on top.
 
 ## Basic usage
 
 ```sh
-bunx create-patties my-app
+bunx create-patties@latest my-app
 ```
 
-## Supported options
+This creates `my-app/` from the base template, runs `bun install`, and
+initializes a git repository with an initial commit.
+
+## Options
 
 ```sh
-bunx create-patties my-app \
-  --template default|with-islands|ai-starter \
-  --target bun|edge \
-  --deploy cloudflare|vercel|deno|netlify|bun|none \
-  --agent claude-code|none
+bunx create-patties@latest my-app \
+  --template claude|codex|none \
+  --target   bun|edge \
+  --deploy   cloudflare|vercel|deno|netlify|bun|none \
+  --no-install \
+  --no-git
 ```
 
-Additional flags:
+- `--template` selects an **agent-platform overlay** layered on top of the base
+  app. `claude` adds a `CLAUDE.md`, `codex` adds an `AGENTS.md`, `none` skips
+  the overlay. Default: `claude`.
+- `--target` sets the runtime target written into `patties.config.ts`
+  (`bun` or `edge`). Default: `bun`.
+- `--deploy` records the intended deploy target. Default: `none`.
+- `--no-install` skips `bun install`.
+- `--no-git` skips `git init` and the initial commit.
 
-- `--no-install`
-- `--no-git`
+## What the scaffolder produces
 
-## Current templates
+The base template is a minimal Patties app: `app/routes/`, `app/islands/`,
+`app/server.ts`, `patties.config.ts`, `tsconfig.json`, and a `.gitignore`.
+The scaffolder then:
 
-- `default` for a minimal Patties app
-- `with-islands` for client hydration examples
-- `ai-starter` for an app that includes agent-oriented structure
+- writes a fresh `package.json` with the project name and `patties` /
+  `react` / `react-dom` pinned to current versions
+- rewrites `patties.config.ts` to match the chosen `--target`
+- copies the selected agent overlay (`_claude` or `_codex`) over the project
+- installs dependencies and commits, unless `--no-install` / `--no-git`
 
-The scaffolder patches the generated `package.json` name and updates
-`patties.config.ts` to match the selected target.
+## Examples
+
+```sh
+bunx create-patties@latest my-app
+bunx create-patties@latest my-app --template codex
+bunx create-patties@latest my-app --template none --no-git
+bunx create-patties@latest my-app --target edge --deploy cloudflare
+```
