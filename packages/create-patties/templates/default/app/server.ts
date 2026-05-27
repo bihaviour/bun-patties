@@ -1,4 +1,4 @@
-import type { DevServer } from "patties/dev";
+import { type DevServer, setupDevClient } from "patties/dev";
 import { createRenderer } from "patties/render";
 import { createRouter } from "patties/router";
 import { startServer } from "patties/server";
@@ -11,7 +11,10 @@ interface StartOpts {
 }
 
 export default async function start(opts: StartOpts): Promise<void> {
-	const renderer = createRenderer({ dev: true });
+	// Bundle islands and serve their chunks under `/_patties/client/*`.
+	// `manifest` tells the renderer which <script> to inject so islands hydrate.
+	const devClient = await setupDevClient({ appDir: opts.appDir });
+	const renderer = createRenderer({ manifest: devClient.manifest, dev: true });
 	const router = await createRouter({ appDir: opts.appDir, renderer });
 
 	startServer({
@@ -19,7 +22,7 @@ export default async function start(opts: StartOpts): Promise<void> {
 		hostname: opts.host,
 		dev: true,
 		devServer: opts.devServer,
-		routes: router.routes,
+		routes: { ...devClient.routes, ...router.routes },
 		fallback: router.fallback,
 	});
 }

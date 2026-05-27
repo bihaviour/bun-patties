@@ -108,10 +108,13 @@ async function reexecUnderBun(args: DevArgs, ctx: CliContext): Promise<number> {
 	// it, framework files realpath into the framework's own `node_modules`,
 	// loading a *second* copy of React alongside the app's — which breaks
 	// hooks during SSR ("Invalid hook call").
-	const proc = Bun.spawn(["bun", "--preserve-symlinks", mode, entry, ...passthrough], {
-		stdio: ["inherit", "inherit", "inherit"],
-		env: { ...process.env, [REEXEC_FLAG]: "1" },
-	});
+	const proc = Bun.spawn(
+		["bun", "--preserve-symlinks", mode, entry, ...passthrough],
+		{
+			stdio: ["inherit", "inherit", "inherit"],
+			env: { ...process.env, [REEXEC_FLAG]: "1" },
+		},
+	);
 	// Forward termination signals to the child so it doesn't get orphaned
 	// (reparented to init) and keep holding the listen port.
 	const forward = (sig: NodeJS.Signals) => {
