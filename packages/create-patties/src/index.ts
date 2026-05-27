@@ -148,7 +148,13 @@ export async function run(argv: string[]): Promise<number> {
 		deploy: args.deploy,
 		scaffold: args.scaffold,
 	});
-	step("rendered template variables (README, AGENTS.md, …)");
+	const manifestName =
+		args.template === "codex"
+			? "AGENTS.md"
+			: args.template === "claude"
+				? "CLAUDE.md"
+				: "manifest";
+	step(`rendered template variables (README, ${manifestName}, …)`);
 
 	if (args.install) {
 		pending("installing dependencies (bun install)…");
