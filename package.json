@@ -1,6 +1,6 @@
 {
 	"name": "patties",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"type": "module",
 	"description": "Bun-native full-stack meta-framework with React rendering",
 	"exports": {
@@ -55,7 +55,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.4.15",
 		"@changesets/cli": "^2.31.0",
-		"@types/bun": "latest",
+		"@types/bun": "^1.1.0",
 		"@types/react": "^19.0.0",
 		"@types/react-dom": "^19.0.0",
 		"fern-api": "^5.37.9",

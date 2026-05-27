@@ -1,6 +1,6 @@
 {
 	"name": "create-patties",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"type": "module",
 	"description": "Scaffolder for new Patties projects.",
 	"bin": {
@@ -14,5 +14,8 @@
 		"src",
 		"templates",
 		"README.md"
-	]
+	],
+	"engines": {
+		"bun": ">=1.0.0"
+	}
 }
