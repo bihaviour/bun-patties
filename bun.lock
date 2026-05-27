@@ -15,14 +15,14 @@
     },
     "packages/create-patties": {
       "name": "create-patties",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "bin": {
         "create-patties": "./bin/create-patties.ts",
       },
     },
     "packages/patties": {
       "name": "patties",
-      "version": "0.0.7",
+      "version": "0.0.9",
       "bin": {
         "patties": "./bin/patties.ts",
       },
@@ -42,6 +42,18 @@
       },
       "optionalPeers": [
         "@anthropic-ai/sdk",
+      ],
+    },
+    "packages/patties-ui": {
+      "name": "patties-ui",
+      "version": "0.0.0",
+      "peerDependencies": {
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+      },
+      "optionalPeers": [
+        "react",
+        "react-dom",
       ],
     },
   },
@@ -333,6 +345,8 @@
     "path-type": ["path-type@4.0.0", "", {}, "sha512-gDKb8aZMDeD/tZWs9P6+q0J9Mwkdl6xMV8TjnGP3qJVJ06bdMgkbBlLU8IdfOsIsFz2BW1rNVT3XuNEl8zPAvw=="],
 
     "patties": ["patties@workspace:packages/patties"],
+
+    "patties-ui": ["patties-ui@workspace:packages/patties-ui"],
 
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 

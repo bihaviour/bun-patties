@@ -1,4 +1,1 @@
-# Skip tests/ui — happy-dom GlobalRegistrator side effects leak across
-# files and trip the hook with unhandled errors even when 0 tests fail.
-# Remove this exclusion once those tests isolate their globals.
-bun test --path-ignore-patterns '**/tests/ui/**'
+bun test

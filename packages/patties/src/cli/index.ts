@@ -1,6 +1,7 @@
 import { isAbsolute, resolve } from "node:path";
 import pkg from "../../package.json" with { type: "json" };
 import { runBuild } from "./build.ts";
+import { runAdd } from "./commands/add.ts";
 import { runDeploy } from "./commands/deploy.ts";
 import { runSecret } from "./commands/secret.ts";
 import { runDev } from "./dev.ts";
@@ -49,6 +50,8 @@ export async function main(argv: string[]): Promise<number> {
 			return runDeploy(rest, ctx);
 		case "secret":
 			return runSecret(rest, ctx);
+		case "add":
+			return runAdd(rest, ctx);
 		default:
 			log.error(`unknown command: ${cmd}`);
 			printHelp();
@@ -99,6 +102,7 @@ Commands:
   build    Produce a production bundle for the configured target.
   deploy   Build then dispatch to an installed deploy plugin.
   secret   Manage dev-time secrets in the OS keychain.
+  add      Stamp UI components from patties-ui into your project.
   help     Show this message.
 
 Global flags:

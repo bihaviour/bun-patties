@@ -6,7 +6,12 @@
 			"entry": ["scripts/*.ts"]
 		},
 		"packages/patties": {
-			"ignore": ["tests/fixtures/**"],
+			"ignore": [
+				"tests/fixtures/**",
+				"tests/ui/__fixtures__/**",
+				"tests/ui/helpers/assert-json-props.ts"
+			],
+			"ignoreDependencies": ["@happy-dom/global-registrator"],
 			"entry": [
 				"src/types.ts",
 				"src/cli/build.ts",
@@ -22,6 +27,10 @@
 		"packages/create-patties": {
 			"ignore": ["templates/**"],
 			"entry": ["tests/*.test.ts"]
+		},
+		"packages/patties-ui": {
+			"ignore": ["templates/**"],
+			"project": ["src/**/*.{ts,tsx}"]
 		}
 	}
 }
