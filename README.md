@@ -6,13 +6,27 @@
 
 Patties is a Bun-native full-stack meta-framework with React for UI and `Bun.serve` for HTTP. It is intentionally built around Bun primitives — `Bun.serve`, `Bun.Glob`, `Bun.build`, `bun --hot` — rather than as a Node-era framework with a Bun adapter. The goal is a smaller, more legible architecture that treats Bun as the foundation instead of a faster place to run old assumptions.
 
-## Install
+## Quick start
+
+```sh
+bunx create-patties@latest my-app
+cd my-app
+bun dev
+```
+
+By default the scaffold includes a `CLAUDE.md` for Claude Code. Pick a different
+agent platform with `--template`:
+
+```sh
+bunx create-patties@latest my-app --template codex   # AGENTS.md for Codex
+bunx create-patties@latest my-app --template none    # no agent file
+```
+
+## Manual setup
 
 ```sh
 bun add patties react react-dom
 ```
-
-## Quick start
 
 ```ts
 import { createRenderer, createRouter, startServer } from "patties"
