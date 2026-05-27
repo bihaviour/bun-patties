@@ -1,6 +1,5 @@
 import { dirname, join } from "node:path";
 import { log } from "../../log.ts";
-import { resolveTemplatesDir } from "./resolve-templates.ts";
 
 const START = (group: string) => `/* @patties:tokens ${group} */`;
 const END = (group: string) => `/* @patties:end ${group} */`;
@@ -8,11 +7,11 @@ const END = (group: string) => `/* @patties:end ${group} */`;
 export async function mergeTokens(
 	groups: string[],
 	cwd: string,
+	templatesDir: string,
 	opts: { dryRun: boolean },
 ): Promise<{ added: string[] }> {
 	if (groups.length === 0) return { added: [] };
-	const templates = resolveTemplatesDir();
-	const sourcePath = join(templates, "tokens.css");
+	const sourcePath = join(templatesDir, "tokens.css");
 	const source = await Bun.file(sourcePath).text();
 	const target = join(cwd, "app", "styles", "tokens.css");
 	const existing = (await Bun.file(target).exists())

@@ -26,6 +26,10 @@
 		"packages/create-patties": {
 			"ignore": ["templates/**"],
 			"entry": ["tests/*.test.ts"]
+		},
+		"packages/patties-ui": {
+			"ignore": ["templates/**"],
+			"project": ["src/**/*.{ts,tsx}"]
 		}
 	}
 }

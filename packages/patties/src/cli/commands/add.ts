@@ -1,14 +1,10 @@
 import { join } from "node:path";
+import type { ComponentEntry } from "patties-ui/types";
 import type { CliContext } from "../index.ts";
 import { EXIT, log } from "../log.ts";
 import { stampInternals } from "./add/internal.ts";
+import { type Catalog, loadCatalog } from "./add/load-catalog.ts";
 import { applyDeps, planDeps } from "./add/peer-deps.ts";
-import {
-	type ComponentEntry,
-	completedComponents,
-	findByName,
-	listAll,
-} from "./add/registry.ts";
 import { applyStamp, planStamp } from "./add/stamper.ts";
 import { mergeTokens } from "./add/tokens.ts";
 
@@ -24,6 +20,9 @@ interface AddArgs {
 const PROD_MSG =
 	"patties add is a dev-only tool; refusing to run with NODE_ENV=production.";
 
+const MISSING_CATALOG_MSG =
+	"patties-ui is not installed. Run `bun add -D patties-ui` to enable component stamping.";
+
 export async function runAdd(argv: string[], ctx: CliContext): Promise<number> {
 	const args = parseArgs(argv);
 
@@ -37,17 +36,25 @@ export async function runAdd(argv: string[], ctx: CliContext): Promise<number> {
 		return EXIT.USAGE;
 	}
 
-	if (args.list) {
-		printList();
-		return EXIT.OK;
-	}
-
 	if (!(await Bun.file(join(ctx.cwd, "package.json")).exists())) {
 		log.error(`not a Patties project (no package.json found at ${ctx.cwd})`);
 		return EXIT.USAGE;
 	}
 
-	const entries = args.all ? completedComponents() : resolveNames(args.names);
+	const catalog = await loadCatalog(ctx.cwd);
+	if (!catalog) {
+		log.error(MISSING_CATALOG_MSG);
+		return EXIT.USAGE;
+	}
+
+	if (args.list) {
+		printList(catalog);
+		return EXIT.OK;
+	}
+
+	const entries = args.all
+		? catalog.components.filter((c) => c.status === "completed")
+		: resolveNames(catalog, args.names);
 	if (entries === null) return EXIT.USAGE;
 	if (entries.length === 0) {
 		log.error("no components selected. Pass a name or --all.");
@@ -56,22 +63,25 @@ export async function runAdd(argv: string[], ctx: CliContext): Promise<number> {
 	}
 
 	for (const entry of entries) {
-		const rc = await stampOne(entry, ctx.cwd, args);
+		const rc = await stampOne(entry, ctx.cwd, catalog.templatesDir, args);
 		if (rc !== EXIT.OK) return rc;
 	}
 
-	if (!args.dryRun) {
-		log.dim("done. Run `bun install` to fetch any new peer dependencies.");
-	} else {
+	if (args.dryRun) {
 		log.dim("dry-run: no files written.");
+	} else {
+		log.dim("done. Run `bun install` to fetch any new peer dependencies.");
 	}
 	return EXIT.OK;
 }
 
-function resolveNames(names: string[]): ComponentEntry[] | null {
+function resolveNames(
+	catalog: Catalog,
+	names: string[],
+): ComponentEntry[] | null {
 	const out: ComponentEntry[] = [];
 	for (const name of names) {
-		const entry = findByName(name);
+		const entry = catalog.components.find((c) => c.name === name);
 		if (!entry) {
 			log.error(`unknown component: ${name}`);
 			return null;
@@ -84,13 +94,14 @@ function resolveNames(names: string[]): ComponentEntry[] | null {
 async function stampOne(
 	entry: ComponentEntry,
 	cwd: string,
+	templatesDir: string,
 	args: AddArgs,
 ): Promise<number> {
 	log.info(
 		`${entry.name}  (phase ${entry.phase}, island=${entry.island}, ${entry.status})`,
 	);
 
-	const plan = await planStamp(entry, cwd);
+	const plan = await planStamp(entry, cwd, templatesDir);
 	const depPlan = await planDeps(entry.peerDeps, cwd);
 
 	if (args.dryRun) {
@@ -105,16 +116,19 @@ async function stampOne(
 			log.dim(`  ! ${c.name}: user ${c.user} vs requested ${c.requested}`);
 		}
 		for (const g of entry.tokens ?? []) log.dim(`  tokens: ${g}`);
-		for (const h of entry.internalHelpers)
+		for (const h of entry.internalHelpers) {
 			log.dim(`  helper: _internal/${h}.ts`);
+		}
 		return EXIT.OK;
 	}
 
 	try {
-		await stampInternals(entry.internalHelpers, cwd, { dryRun: false });
+		await stampInternals(entry.internalHelpers, cwd, templatesDir, {
+			dryRun: false,
+		});
 		await applyStamp(plan, { force: args.force });
 		await applyDeps(depPlan, cwd);
-		await mergeTokens(entry.tokens ?? [], cwd, { dryRun: false });
+		await mergeTokens(entry.tokens ?? [], cwd, templatesDir, { dryRun: false });
 	} catch (err) {
 		log.error(err instanceof Error ? err.message : String(err));
 		return EXIT.ERROR;
@@ -122,8 +136,8 @@ async function stampOne(
 	return EXIT.OK;
 }
 
-function printList(): void {
-	const rows = listAll();
+function printList(catalog: Catalog): void {
+	const rows = catalog.components;
 	const widths = {
 		name: Math.max(4, ...rows.map((r) => r.name.length)),
 		phase: 5,
@@ -172,6 +186,8 @@ Usage:
   patties add --all
   patties add --list
   patties add --dry-run <component>
+
+Requires patties-ui to be installed: bun add -D patties-ui
 
 Flags:
   --all        Stamp every component whose status is completed.

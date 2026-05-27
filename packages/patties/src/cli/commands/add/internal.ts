@@ -1,7 +1,6 @@
 import { dirname, join } from "node:path";
+import type { InternalHelper } from "patties-ui/types";
 import { log } from "../../log.ts";
-import { resolveTemplatesDir } from "./resolve-templates.ts";
-import type { InternalHelper } from "./types.ts";
 
 const FILES: Record<InternalHelper, string> = {
 	cn: "cn.ts",
@@ -12,13 +11,13 @@ const FILES: Record<InternalHelper, string> = {
 export async function stampInternals(
 	helpers: InternalHelper[],
 	cwd: string,
+	templatesDir: string,
 	opts: { dryRun: boolean },
 ): Promise<{ written: string[] }> {
 	if (helpers.length === 0) return { written: [] };
-	const templates = resolveTemplatesDir();
 	const written: string[] = [];
 	for (const h of helpers) {
-		const from = join(templates, "_internal", FILES[h]);
+		const from = join(templatesDir, "_internal", FILES[h]);
 		const to = join(cwd, "app", "components", "ui", "_internal", FILES[h]);
 		if (await Bun.file(to).exists()) {
 			log.dim(`  helper _internal/${FILES[h]} present`);

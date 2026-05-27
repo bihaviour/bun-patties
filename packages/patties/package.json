@@ -23,7 +23,6 @@
 	"files": [
 		"bin",
 		"src",
-		"templates",
 		"CLAUDE.md",
 		"README.md",
 		"CHANGELOG.md"
@@ -51,6 +50,7 @@
 		"@happy-dom/global-registrator": "^15.0.0",
 		"@types/react": "^19.0.0",
 		"@types/react-dom": "^19.0.0",
+		"patties-ui": "workspace:*",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0"
 	},

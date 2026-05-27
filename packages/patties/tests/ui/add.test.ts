@@ -2,10 +2,18 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { setTemplatesDirForTest } from "../../src/cli/commands/add/resolve-templates.ts";
+import { components } from "patties-ui/registry";
+import { setCatalogForTest } from "../../src/cli/commands/add/load-catalog.ts";
 import { runAdd } from "../../src/cli/commands/add.ts";
 
-const TEMPLATES = join(import.meta.dir, "..", "..", "templates", "ui");
+const TEMPLATES = join(
+	import.meta.dir,
+	"..",
+	"..",
+	"..",
+	"patties-ui",
+	"templates",
+);
 
 const captured: { stdout: string; stderr: string } = { stdout: "", stderr: "" };
 
@@ -34,11 +42,11 @@ let workdir: string;
 
 beforeEach(async () => {
 	workdir = await mkdtemp(join(tmpdir(), "patties-add-"));
-	setTemplatesDirForTest(TEMPLATES);
+	setCatalogForTest({ components, templatesDir: TEMPLATES });
 });
 
 afterEach(async () => {
-	setTemplatesDirForTest(undefined);
+	setCatalogForTest(undefined);
 	await rm(workdir, { recursive: true, force: true });
 });
 
@@ -55,6 +63,7 @@ function ctx(): { cwd: string; verbose: boolean } {
 
 describe("patties add", () => {
 	test("--list prints the fixture row", async () => {
+		await writePkg();
 		const cap = captureOutput();
 		const rc = await runAdd(["--list"], ctx());
 		cap.restore();
@@ -69,6 +78,17 @@ describe("patties add", () => {
 		cap.restore();
 		expect(rc).toBe(2);
 		expect(captured.stderr).toContain("not a Patties project");
+	});
+
+	test("errors when patties-ui is not installed", async () => {
+		await writePkg();
+		setCatalogForTest(undefined);
+		const cap = captureOutput();
+		const rc = await runAdd(["hello"], { cwd: workdir, verbose: false });
+		cap.restore();
+		expect(rc).toBe(2);
+		expect(captured.stderr).toContain("patties-ui is not installed");
+		expect(captured.stderr).toContain("bun add -D patties-ui");
 	});
 
 	test("unknown component exits non-zero", async () => {

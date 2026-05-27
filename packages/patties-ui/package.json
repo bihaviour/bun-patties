@@ -1,0 +1,27 @@
+{
+	"name": "patties-ui",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"description": "Patties UI catalog — copy-in component source, registry, and shared helpers stamped by `patties add`. Currently private; flip `private: false` to publish to npm.",
+	"exports": {
+		".": "./src/index.ts",
+		"./registry": "./src/registry.ts",
+		"./types": "./src/types.ts",
+		"./templates/*": "./templates/*"
+	},
+	"files": [
+		"src",
+		"templates",
+		"README.md",
+		"CHANGELOG.md"
+	],
+	"scripts": {
+		"test": "bun test",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check ."
+	},
+	"engines": {
+		"bun": ">=1.0.0"
+	}
+}
