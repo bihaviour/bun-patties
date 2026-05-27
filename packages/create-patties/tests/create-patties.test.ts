@@ -106,7 +106,8 @@ test("--template codex scaffolds the _codex overlay with no Claude leakage", asy
 		expect(agents).toContain(".codex/rules/bun-native.md");
 		expect(agents).toContain(".codex/rules/islands.md");
 		expect(agents).toContain(".codex/rules/patties-cli.md");
-		expect(agents).toContain("patties:generated");
+		expect(agents).toContain("patties:manifest-start");
+		expect(agents).toContain("patties:manifest-end");
 		// The rule files themselves must be present.
 		expect(existsSync(`${root}/demo/.codex/rules/bun-native.md`)).toBe(true);
 		expect(existsSync(`${root}/demo/.codex/rules/islands.md`)).toBe(true);

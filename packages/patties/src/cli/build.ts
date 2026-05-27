@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import pkg from "../../package.json" with { type: "json" };
 import { generateAgentsMd } from "../agents-md/generate.ts";
+import { writeManifestToFile } from "../agents-md/write.ts";
 import { build } from "../build/index.ts";
 import { loadConfig } from "../config/load.ts";
 import { assertPluginCompat, type Plugin } from "../plugin/index.ts";
@@ -77,8 +78,8 @@ export async function runBuild(
 		});
 		const targets = agentsMdTargets(config.agentsMd.path);
 		for (const t of targets) {
-			await Bun.write(`${ctx.cwd}/${t}`, md);
-			log.success(`${t}: written`);
+			await writeManifestToFile(`${ctx.cwd}/${t}`, md);
+			log.success(`${t}: manifest section updated`);
 		}
 	} catch (err) {
 		log.warn(

@@ -11,5 +11,6 @@ must still install and run without `@anthropic-ai/sdk` present.
 - Do not move `@anthropic-ai/sdk` into `dependencies` unless your app
   genuinely requires it at boot. Even then, prefer keeping it as a
   peer + `bun add @anthropic-ai/sdk` step.
-- The auto-generated `AGENTS.md` references AI types, but does not
-  require a live SDK at import time.
+- The auto-generated manifest (default `CLAUDE.md`; configurable via
+  `config.agentsMd.path`) references AI types, but does not require a
+  live SDK at import time.

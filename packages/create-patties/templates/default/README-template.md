@@ -17,27 +17,18 @@ An interactive todo demo:
 
 ```sh
 bun install      # if you used --no-install
-bun dev          # → http://localhost:3000
+bunx patties dev # → http://localhost:3000
 ```
 
-> **Heads up — dev mode currently only does SSR.** The todo list will render
-> but the buttons won't react to clicks under `bun dev`. To see the island
-> hydrate and the demo actually work, build and serve:
->
-> ```sh
-> bun run build
-> bun start
-> ```
->
-> Full dev-mode hydration is tracked under framework spec 18 and will land
-> in a future Patties release — at that point `bun dev` will be enough.
+Dev mode SSRs the page and hydrates the island, so the todo buttons work
+immediately. HMR reloads the browser when you edit a route or island.
 
 ## Try editing
 
 1. Open `app/routes/index.tsx`, change the heading text, save. The browser
    reloads (HMR).
 2. Open `app/islands/TodoApp.tsx`, change the initial todo list or input
-   placeholder, save, rebuild with `bun run build && bun start`, and try it.
+   placeholder, save, and try it — the bundle rebuilds on the next request.
 
 ## Remove the demo when you're ready
 
@@ -73,18 +64,15 @@ A minimal hello-world Patties app:
 
 ```sh
 bun install      # if you used --no-install
-bun dev          # → http://localhost:3000
+bunx patties dev # → http://localhost:3000
 ```
 
 ## Add your first interactive feature
 
 Create `app/islands/` and drop in a component that uses `useState` or
-`useEffect`. Import it from a route file under `app/routes/`. Islands hydrate
-on the client; everything else runs server-only.
-
-> Note: full dev-mode island hydration is tracked under framework spec 18
-> and lands in a future Patties release. Until then, build + start to see
-> islands react: `bun run build && bun start`.
+`useEffect`. Import it from a route file under `app/routes/` and wrap the
+use site in `<Island name="MyIsland">…</Island>` (from `patties/render`)
+so the SSR markers are emitted and the client runtime hydrates it.
 <!-- /if -->
 
 ## Project layout
@@ -156,9 +144,10 @@ Launch a session with `claude` in this directory.
 ## Codex is set up
 
 `AGENTS.md` at the project root describes the framework conventions for
-Codex CLI and other AGENTS.md-aware tools. Patties regenerates this file on
-`patties build` while preserving sections you mark with
-`<!-- patties:user --> ... <!-- /patties:user -->`.
+Codex CLI and other AGENTS.md-aware tools. Patties regenerates the
+inventory section between `<!-- patties:manifest-start -->` and
+`<!-- patties:manifest-end -->` on every `patties dev/build` — everything
+outside those markers is yours to edit.
 
 Launch a session with `codex` in this directory.
 <!-- /if -->

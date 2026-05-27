@@ -182,8 +182,8 @@ export async function run(argv: string[]): Promise<number> {
 	}
 
 	const nextSteps = args.git
-		? `\n  cd ${args.name}\n  bun dev\n`
-		: `\n  cd ${args.name}\n  bun dev\n\n  # when you're ready to track this in git:\n  git init && git add -A && git commit -m "initial commit"\n`;
+		? `\n  cd ${args.name}\n  bunx patties dev\n`
+		: `\n  cd ${args.name}\n  bunx patties dev\n\n  # when you're ready to track this in git:\n  git init && git add -A && git commit -m "initial commit"\n`;
 	process.stdout.write(`\n✓ created ${args.name}\n${nextSteps}`);
 	if (gitSkippedReason === "git-missing") {
 		stderr("create-patties: `git` not found — skipping `git init`.");
@@ -345,10 +345,18 @@ async function patchPattiesConfig(dir: string, args: Args): Promise<void> {
 	const path = `${dir}/patties.config.ts`;
 	if (!(await Bun.file(path).exists())) return;
 	const current = await Bun.file(path).text();
-	const next = current.replace(
+	let next = current.replace(
 		/target:\s*"(bun|edge)"/,
 		`target: "${args.target}"`,
 	);
+	// Point the agent manifest at the file the chosen agent already reads.
+	// Default (claude / none) leaves the framework default ("CLAUDE.md").
+	if (args.template === "codex" && !/agentsMd:/.test(next)) {
+		next = next.replace(
+			/target:\s*"(bun|edge)",?\n/,
+			(m) => `${m.replace(/,?\n$/, ",\n")}\tagentsMd: { path: "AGENTS.md" },\n`,
+		);
+	}
 	if (next !== current) await Bun.write(path, next);
 }
 

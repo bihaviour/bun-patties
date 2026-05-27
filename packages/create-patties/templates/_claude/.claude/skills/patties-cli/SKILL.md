@@ -15,15 +15,14 @@ ad-hoc Bun invocations.
 ### `patties dev` — start the dev server
 
 ```sh
-bun dev          # equivalent to `patties dev`
+bunx patties dev # the canonical invocation (bun dev runs the same thing via the package.json script)
 patties dev --port 4000
 patties dev --host 0.0.0.0
 ```
 
 Starts the dev server with HMR over WebSocket. Reads `patties.config.ts`
-for `target`, `port`, env, and secrets. SSR-only today — full island
-hydration in dev lands with framework spec 18. To exercise interactivity
-right now, build and start instead.
+for `target`, `port`, env, and secrets. Islands are bundled and hydrated
+in dev — the same code path users see in production, minus minification.
 
 ### `patties build` — produce a production bundle
 
@@ -35,8 +34,9 @@ patties build --compile           # bun target only; single-binary
 ```
 
 Outputs to `.patties/` by default. The server entry is at
-`.patties/server/server-entry.js`. Build also regenerates `AGENTS.md` at
-the project root.
+`.patties/server/server-entry.js`. Build also regenerates the agent
+manifest section (default `CLAUDE.md`; configurable via
+`config.agentsMd.path`).
 
 ### `patties start` — run the production bundle
 
@@ -45,8 +45,7 @@ bun start        # equivalent to `patties start`
 ```
 
 Runs the last `patties build` output. If no build exists, prints an
-error directing you to `patties build` first. Use this (after `bun run
-build`) to verify island hydration today, since dev mode only SSRs.
+error directing you to `patties build` first.
 
 ### `patties deploy` — build then dispatch to a deploy plugin
 
@@ -90,10 +89,10 @@ the dev server reads `config.secrets`.
 **First-run sanity check after scaffolding:**
 ```sh
 bun install
-bun dev          # opens http://localhost:3000
+bunx patties dev # opens http://localhost:3000 — SSR + island hydration
 ```
 
-**Verify an island actually hydrates today (workaround until spec 18):**
+**Verify the production bundle:**
 ```sh
 bun run build
 bun start

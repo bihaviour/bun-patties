@@ -11,14 +11,15 @@ Patties is a Bun-native full-stack meta-framework with React for UI and `Bun.ser
 ```sh
 bunx create-patties@latest my-app
 cd my-app
-bun dev
+bunx patties dev
 ```
 
-By default the scaffold includes a `CLAUDE.md` for Claude Code. Pick a different
+By default the scaffold includes a `CLAUDE.md` for Claude Code (rules +
+auto-generated manifest fenced into a marked section). Pick a different
 agent platform with `--template`:
 
 ```sh
-bunx create-patties@latest my-app --template codex   # AGENTS.md for Codex
+bunx create-patties@latest my-app --template codex   # .codex/ + AGENTS.md
 bunx create-patties@latest my-app --template none    # no agent file
 ```
 
@@ -29,18 +30,37 @@ bun add patties react react-dom
 ```
 
 ```ts
-import { createRenderer, createRouter, startServer } from "patties"
+import { setupDevClient } from "patties/dev"
+import { createRenderer } from "patties/render"
+import { createRouter } from "patties/router"
+import { startServer } from "patties/server"
 
-const renderer = createRenderer({ dev: true })
-const { routes, fallback } = await createRouter({
-  appDir: import.meta.dir + "/app",
-  renderer,
+const appDir = import.meta.dir + "/app"
+const devClient = await setupDevClient({ appDir })
+const renderer = createRenderer({ manifest: devClient.manifest, dev: true })
+const { routes, fallback } = await createRouter({ appDir, renderer })
+
+startServer({
+  routes: { ...devClient.routes, ...routes },
+  fallback,
+  dev: true,
 })
-
-startServer({ routes, fallback, dev: true })
 ```
 
-Drop files into `app/routes/` for pages and API handlers, and into `app/islands/` for components you want hydrated on the client.
+Drop files into `app/routes/` for pages and API handlers, and into
+`app/islands/` for components you want hydrated on the client. Wrap each
+island use site in `<Island name="MyIsland">…</Island>` (from
+`patties/render`) so the SSR markers are emitted and the client runtime
+hydrates them.
+
+## Agent manifest
+
+`patties dev` / `patties build` regenerate a route + island + agent +
+tool + job + middleware + env inventory. It's spliced between
+`<!-- patties:manifest-start -->` … `<!-- patties:manifest-end -->` so
+rules and notes above the section are preserved across regenerations.
+Default target is `CLAUDE.md`; override with `config.agentsMd.path`
+(string or `string[]`) in `patties.config.ts`.
 
 ## CLI
 
@@ -60,7 +80,7 @@ See `patties --help` for all flags.
 - HMR over a small WebSocket layer
 - Build pipeline that inlines route + island manifests for portable Bun / edge output
 - Middleware composition, typed context, config + secrets loading
-- Optional AI primitives (agents, tools, jobs) and `AGENTS.md` generation
+- Optional AI primitives (agents, tools, jobs) and agent-manifest generation (default `CLAUDE.md`, configurable)
 - Plugin system
 
 ## Background

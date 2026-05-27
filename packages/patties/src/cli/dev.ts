@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import pkg from "../../package.json" with { type: "json" };
 import { generateAgentsMd } from "../agents-md/generate.ts";
+import { writeManifestToFile } from "../agents-md/write.ts";
 import { MissingEnv, validateRequiredEnv } from "../config/env.ts";
 import { loadConfig } from "../config/load.ts";
 import { loadSecrets } from "../config/secrets.ts";
@@ -195,7 +196,7 @@ async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
 	})
 		.then(async (md) => {
 			for (const t of agentsMdTargets) {
-				await Bun.write(`${ctx.cwd}/${t.replace(/^\/+/, "")}`, md);
+				await writeManifestToFile(`${ctx.cwd}/${t.replace(/^\/+/, "")}`, md);
 			}
 		})
 		.catch((err) =>

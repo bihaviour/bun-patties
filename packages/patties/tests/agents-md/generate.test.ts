@@ -6,7 +6,7 @@ const FIXTURE = `${import.meta.dir}/../fixtures/ai-app/app`;
 describe("generateAgentsMd", () => {
 	test("emits expected sections for the fixture", async () => {
 		const md = await generateAgentsMd(FIXTURE);
-		expect(md).toContain("# AGENTS.md");
+		expect(md).toContain("## Patties manifest");
 		expect(md).toContain("## Route map");
 		expect(md).toContain("## Agents");
 		expect(md).toContain("| booking |");

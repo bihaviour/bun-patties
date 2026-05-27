@@ -2,29 +2,23 @@
 
 ## What this project is
 
-`patties` is a Bun-native full-stack meta-framework. The runtime is Bun (not Node), HTTP comes from `Bun.serve`, bundling from `Bun.build`, filesystem discovery from `Bun.Glob`. UI is React 19 via `renderToReadableStream`. Build targets are `bun` and `edge`.
+`patties` is a Bun-native full-stack meta-framework. The runtime is Bun (not
+Node), HTTP comes from `Bun.serve`, bundling from `Bun.build`, filesystem
+discovery from `Bun.Glob`. UI is React 19 via `renderToReadableStream`. Build
+targets are `bun` and `edge`.
 
-Public entry points are declared in `package.json#exports` (`patties`, `patties/router`, `patties/render`, `patties/client`, `patties/build`, `patties/dev`, `patties/config`, `patties/middleware`, `patties/server`, `patties/ai`, `patties/agents-md`, `patties/plugin`). The CLI lives at `bin/patties.ts` (`patties dev` / `patties build`).
+This repo is a Bun workspace monorepo with two packages:
 
-Source layout under `src/`:
+- [`packages/patties`](packages/patties/CLAUDE.md) — the framework itself
+- [`packages/create-patties`](packages/create-patties/CLAUDE.md) — the official scaffolder
 
-- `router/` — filesystem route scan + compile to Bun route patterns
-- `render/` — React SSR + dev error overlay
-- `client/` — browser hydration runtime for islands
-- `build/` — route + island scan, client/server entry generation, `Bun.build` pipeline
-- `dev/` — `bun --hot` / `bun --watch` integration, HMR WebSocket
-- `server/` — `startServer` / `createServer` around `Bun.serve`
-- `middleware/` — composition, `PattiesContext`
-- `config/` — `defineConfig`, env + secrets loading, Zod schemas
-- `ai/` — optional agents / tools / jobs primitives (Anthropic SDK is an optional peer dep)
-- `agents-md/` — `AGENTS.md` generator
-- `plugin/` — plugin system
-- `adapters/` — `bun` and `edge` runtime adapters
+Read the package-level `CLAUDE.md` for the package you're touching. The notes
+below apply to the whole repo.
 
 ## Lint / typecheck
 
 - Formatter and linter: **Biome** (`biome.json` at repo root).
-- Typecheck: `bun run typecheck` (`tsc --noEmit`).
+- Typecheck: `bun run typecheck` (`tsc --noEmit`, runs across all workspace packages).
 - A `PostToolUse` hook (`.claude/hooks/biome-check.sh`) runs `biome check <file>` plus `tsc --noEmit` after every `Edit`/`Write`/`MultiEdit`. The turn is blocked until both pass — fix the reported issues before moving on.
 - Aggregate check: `bun run check` (biome + tsc). Full gate: `bun run validate` (lint + typecheck + test + knip).
 
@@ -49,3 +43,19 @@ When you touch a file, leave it cleaner than you found it:
 - **Do expensive thinking at build time.** Route + island discovery happens during `build`; the production server bundle must not re-scan the filesystem at runtime. Tests assert this — don't regress it.
 - **Adapters, not vendor lock-in.** Deployment targets (`bun`, `edge`) live in `src/adapters/`. Keep platform specifics out of the framework core.
 - **AI features are optional.** `@anthropic-ai/sdk` is an optional peer dep — code under `src/ai/` must not be required to import or instantiate it at module load for non-AI users.
+- **Single React copy.** `patties dev` re-execs with `--preserve-symlinks` and prefers the user-project bin path, because linked installs can otherwise resolve a second React from the framework's `node_modules` and crash SSR hooks.
+
+## Agent manifest (`CLAUDE.md` / `AGENTS.md`)
+
+`patties dev` and `patties build` regenerate an inventory of routes,
+islands, agents, tools, jobs, middleware, and env vars from the user's app.
+By default the inventory is written to `CLAUDE.md`, fenced between
+`<!-- patties:manifest-start -->` … `<!-- patties:manifest-end -->`. Anything
+outside the markers is preserved across regenerations — so rules and notes
+above the section survive. Users override the target via
+`config.agentsMd.path` (string or `string[]`) in `patties.config.ts`.
+
+In this repo, the framework workspace's manifest lives in
+[`packages/patties/CLAUDE.md`](packages/patties/CLAUDE.md), generated from
+`tests/fixtures/ai-app`. CI fails on drift; regenerate with
+`bun --filter patties generate:agents-md`.

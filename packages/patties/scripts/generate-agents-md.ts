@@ -8,7 +8,10 @@
 // User projects pick their own target via `config.agentsMd.path`.
 
 import { join } from "node:path";
-import { generateAgentsMd } from "../src/agents-md/index.ts";
+import {
+	generateAgentsMd,
+	writeManifestToFile,
+} from "../src/agents-md/index.ts";
 
 const appDir = join(
 	import.meta.dir,
@@ -21,5 +24,5 @@ const appDir = join(
 const outPath = join(import.meta.dir, "..", "CLAUDE.md");
 
 const markdown = await generateAgentsMd(appDir);
-await Bun.write(outPath, markdown);
-console.log(`Wrote ${outPath} (${markdown.length} bytes)`);
+await writeManifestToFile(outPath, markdown);
+console.log(`Updated manifest section in ${outPath}`);

@@ -38,16 +38,19 @@ export const PattiesConfigSchema = z.object({
 				.default({ compile: false }),
 		})
 		.default({ bun: { compile: false } }),
-	// Generated agent-manifest target(s). Defaults to "AGENTS.md" for
-	// agent-tool-agnostic projects; set to "CLAUDE.md" (or an array) to land
-	// the manifest where your agent of choice already reads instructions from.
+	// Generated agent-manifest target(s). Defaults to "CLAUDE.md" so the
+	// manifest lands in the same file Claude already reads. The CLI splices
+	// the manifest between fenced markers so any human-written content
+	// (rules, notes) around the section is preserved across regenerations.
+	// Use an array to write the same manifest to multiple files
+	// (e.g. ["CLAUDE.md", "AGENTS.md"]).
 	agentsMd: z
 		.object({
 			path: z
 				.union([z.string(), z.array(z.string()).min(1)])
-				.default("AGENTS.md"),
+				.default("CLAUDE.md"),
 		})
-		.default({ path: "AGENTS.md" }),
+		.default({ path: "CLAUDE.md" }),
 });
 
 export type PattiesConfig = z.infer<typeof PattiesConfigSchema>;

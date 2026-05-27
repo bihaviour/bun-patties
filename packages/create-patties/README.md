@@ -9,7 +9,7 @@ bunx create-patties@latest my-app
 
 Runs an interactive prompt (project name, agent overlay, demo template,
 runtime target, deploy target), then scaffolds, installs, and gets you
-to `bun dev` in one shot.
+to `bunx patties dev` in one shot.
 
 ## Options
 
