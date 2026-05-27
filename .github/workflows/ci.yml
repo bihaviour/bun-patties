@@ -60,7 +60,7 @@ jobs:
           name: build-output
           path: |
             dist/
-            packages/patties/AGENTS.md
+            packages/patties/CLAUDE.md
           retention-days: 1
           if-no-files-found: error
 
@@ -190,7 +190,7 @@ jobs:
         run: bun test tests/plugin
 
   # ---------------------------------------------------------------------------
-  # docs / — AGENTS.md drift + docs link integrity
+  # docs / — agent manifest drift + docs link integrity
   # ---------------------------------------------------------------------------
   check-agents-md:
     name: docs / agents-md
@@ -204,7 +204,7 @@ jobs:
           fetch-depth: 2
       - uses: ./.github/actions/setup
       - run: bun --filter patties generate:agents-md
-      - run: git diff --exit-code packages/patties/AGENTS.md
+      - run: git diff --exit-code packages/patties/CLAUDE.md
 
   docs-link-check:
     name: docs / link-check

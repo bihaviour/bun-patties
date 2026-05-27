@@ -184,16 +184,23 @@ async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
 		}
 	}
 
-	// Initial AGENTS.md generation — fire-and-forget; never crashes dev.
+	// Initial agent-manifest generation — fire-and-forget; never crashes dev.
+	const agentsMdTargets = Array.isArray(config.agentsMd.path)
+		? config.agentsMd.path
+		: [config.agentsMd.path];
 	generateAgentsMd(resolved.appDir, {
 		appDir: resolved.appDir,
 		env: { required: config.env.required, optional: config.env.public },
 		plugins,
 	})
-		.then((md) => Bun.write(`${ctx.cwd}/AGENTS.md`, md))
+		.then(async (md) => {
+			for (const t of agentsMdTargets) {
+				await Bun.write(`${ctx.cwd}/${t.replace(/^\/+/, "")}`, md);
+			}
+		})
 		.catch((err) =>
 			log.warn(
-				`AGENTS.md generation failed: ${(err as Error)?.message ?? String(err)}`,
+				`agent manifest generation failed: ${(err as Error)?.message ?? String(err)}`,
 			),
 		);
 

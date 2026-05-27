@@ -1,7 +1,11 @@
 #!/usr/bin/env bun
-// Regenerates AGENTS.md from the canonical ai-app fixture. CI runs this
-// followed by `git diff --exit-code AGENTS.md` to enforce that the committed
-// file is fresh. See spec 16 §"check-agents-md" and spec 11.
+// Regenerates the framework workspace's agent manifest from the canonical
+// ai-app fixture. CI runs this followed by `git diff --exit-code` against the
+// committed file to enforce freshness. See spec 16 §"check-agents-md" and
+// spec 11.
+//
+// This workspace standardizes on Claude, so the manifest lands in CLAUDE.md.
+// User projects pick their own target via `config.agentsMd.path`.
 
 import { join } from "node:path";
 import { generateAgentsMd } from "../src/agents-md/index.ts";
@@ -14,7 +18,7 @@ const appDir = join(
 	"ai-app",
 	"app",
 );
-const outPath = join(import.meta.dir, "..", "AGENTS.md");
+const outPath = join(import.meta.dir, "..", "CLAUDE.md");
 
 const markdown = await generateAgentsMd(appDir);
 await Bun.write(outPath, markdown);

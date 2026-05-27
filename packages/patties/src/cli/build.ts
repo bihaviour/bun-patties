@@ -75,14 +75,22 @@ export async function runBuild(
 			env: { required: config.env.required, optional: config.env.public },
 			plugins,
 		});
-		await Bun.write(`${ctx.cwd}/AGENTS.md`, md);
-		log.success("AGENTS.md: written");
+		const targets = agentsMdTargets(config.agentsMd.path);
+		for (const t of targets) {
+			await Bun.write(`${ctx.cwd}/${t}`, md);
+			log.success(`${t}: written`);
+		}
 	} catch (err) {
 		log.warn(
-			`AGENTS.md generation failed: ${(err as Error)?.message ?? String(err)}`,
+			`agent manifest generation failed: ${(err as Error)?.message ?? String(err)}`,
 		);
 	}
 	return EXIT.OK;
+}
+
+function agentsMdTargets(path: string | string[]): string[] {
+	const list = Array.isArray(path) ? path : [path];
+	return list.map((p) => p.replace(/^\/+/, ""));
 }
 
 function printError(err: Error): void {
