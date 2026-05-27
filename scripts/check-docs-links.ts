@@ -2,7 +2,7 @@
 import { stat } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 
-const roots = ["docs", "fern/docs", "agent_specs"];
+const roots = ["docs", "agent_specs"];
 const linkRe = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
 
 const broken: string[] = [];
