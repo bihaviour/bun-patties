@@ -20,6 +20,12 @@
 	"bin": {
 		"patties": "./bin/patties.ts"
 	},
+	"files": [
+		"bin",
+		"src",
+		"README.md",
+		"CHANGELOG.md"
+	],
 	"scripts": {
 		"test": "bun test",
 		"typecheck": "tsc --noEmit",
