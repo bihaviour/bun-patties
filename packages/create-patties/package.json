@@ -1,6 +1,6 @@
 {
 	"name": "create-patties",
-	"version": "0.0.7",
+	"version": "0.0.8",
 	"type": "module",
 	"description": "Scaffolder for new Patties projects.",
 	"bin": {
