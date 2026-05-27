@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+export {};
+
 if (typeof Bun === "undefined") {
 	console.error(
 		"create-patties requires Bun. Install Bun first: https://bun.sh",

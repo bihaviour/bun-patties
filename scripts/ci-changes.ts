@@ -28,16 +28,20 @@ const isDocsPath = (p: string): boolean => {
 	return false;
 };
 
-const adapterPrefixes = ["src/adapters/", "src/build/", "src/server/"];
+const adapterPrefixes = [
+	"packages/patties/src/adapters/",
+	"packages/patties/src/build/",
+	"packages/patties/src/server/",
+];
 const isAdapterTouched = (p: string): boolean => {
 	if (adapterPrefixes.some((pre) => p.startsWith(pre))) return true;
-	if (p.startsWith("tests/fixtures/edge-smoke/")) return true;
-	if (p.startsWith("tests/adapters/")) return true;
+	if (p.startsWith("packages/patties/tests/fixtures/edge-smoke/")) return true;
+	if (p.startsWith("packages/patties/tests/adapters/")) return true;
 	return false;
 };
 
 const isPluginTouched = (p: string): boolean =>
-	p.startsWith("src/plugin/") || p.startsWith("plugins/");
+	p.startsWith("packages/patties/src/plugin/") || p.startsWith("plugins/");
 
 const docsOnly = files.length > 0 && files.every(isDocsPath);
 const adaptersTouched = files.some(isAdapterTouched);

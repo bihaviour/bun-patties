@@ -1,14 +1,8 @@
 import { afterAll, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
-import { run } from "../../packages/create-patties/src/index.ts";
-import {
-	hasGit,
-	probeTools,
-} from "../../packages/create-patties/src/probes.ts";
-import {
-	applyTemplate,
-	renderTemplatesInTree,
-} from "../../packages/create-patties/src/readme.ts";
+import { run } from "../src/index.ts";
+import { hasGit, probeTools } from "../src/probes.ts";
+import { applyTemplate, renderTemplatesInTree } from "../src/readme.ts";
 
 const created: string[] = [];
 afterAll(async () => {

@@ -16,6 +16,11 @@
 		"README.md",
 		"CHANGELOG.md"
 	],
+	"scripts": {
+		"test": "bun test",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check ."
+	},
 	"engines": {
 		"bun": ">=1.0.0"
 	}
