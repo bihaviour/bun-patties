@@ -1,7 +1,7 @@
 import { dirname, join } from "node:path";
-import type { ComponentEntry } from "patties-ui/types";
 import { log } from "../../log.ts";
 import { resolveTemplatesDir } from "./resolve-templates.ts";
+import type { ComponentEntry } from "./types.ts";
 
 export interface StampPlan {
 	from: string;
@@ -13,7 +13,7 @@ export async function planStamp(
 	entry: ComponentEntry,
 	cwd: string,
 ): Promise<StampPlan[]> {
-	const templates = await resolveTemplatesDir();
+	const templates = resolveTemplatesDir();
 	const out: StampPlan[] = [];
 	for (const f of entry.files) {
 		const from = join(templates, f.from);

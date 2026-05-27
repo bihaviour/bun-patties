@@ -11,7 +11,7 @@ export async function mergeTokens(
 	opts: { dryRun: boolean },
 ): Promise<{ added: string[] }> {
 	if (groups.length === 0) return { added: [] };
-	const templates = await resolveTemplatesDir();
+	const templates = resolveTemplatesDir();
 	const sourcePath = join(templates, "tokens.css");
 	const source = await Bun.file(sourcePath).text();
 	const target = join(cwd, "app", "styles", "tokens.css");

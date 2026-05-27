@@ -5,14 +5,7 @@ import { join } from "node:path";
 import { setTemplatesDirForTest } from "../../src/cli/commands/add/resolve-templates.ts";
 import { runAdd } from "../../src/cli/commands/add.ts";
 
-const TEMPLATES = join(
-	import.meta.dir,
-	"..",
-	"..",
-	"..",
-	"patties-ui",
-	"templates",
-);
+const TEMPLATES = join(import.meta.dir, "..", "..", "templates", "ui");
 
 const captured: { stdout: string; stderr: string } = { stdout: "", stderr: "" };
 

@@ -23,6 +23,7 @@
 	"files": [
 		"bin",
 		"src",
+		"templates",
 		"CLAUDE.md",
 		"README.md",
 		"CHANGELOG.md"
@@ -47,6 +48,7 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@happy-dom/global-registrator": "^15.0.0",
 		"@types/react": "^19.0.0",
 		"@types/react-dom": "^19.0.0",
 		"react": "^19.0.0",

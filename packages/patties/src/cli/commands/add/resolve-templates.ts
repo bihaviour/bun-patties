@@ -3,11 +3,10 @@ import { fileURLToPath } from "node:url";
 
 let cached: string | undefined;
 
-export async function resolveTemplatesDir(): Promise<string> {
+export function resolveTemplatesDir(): string {
 	if (cached) return cached;
-	const pkgUrl = import.meta.resolve("patties-ui/package.json");
-	const pkgPath = pkgUrl.startsWith("file:") ? fileURLToPath(pkgUrl) : pkgUrl;
-	const dir = resolve(dirname(pkgPath), "templates");
+	const here = fileURLToPath(import.meta.url);
+	const dir = resolve(dirname(here), "..", "..", "..", "..", "templates", "ui");
 	cached = dir;
 	return dir;
 }
