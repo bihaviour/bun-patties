@@ -6,6 +6,7 @@
 
 export type AgentTemplate = "claude" | "codex" | "none";
 export type Target = "bun" | "edge";
+export type Scaffold = "demo" | "blank";
 export type Deploy =
 	| "cloudflare"
 	| "vercel"
@@ -58,6 +59,15 @@ export function promptAgent(io: PromptIO = {}): AgentTemplate {
 	if (answer === "codex") return "codex";
 	if (answer === "none") return "none";
 	return "claude";
+}
+
+export function promptScaffold(io: PromptIO = {}): Scaffold {
+	const ask = io.prompt ?? prompt;
+	const answer = (ask("Include the interactive todo demo? [Y/n] (Y) ") ?? "")
+		.trim()
+		.toLowerCase();
+	if (answer === "n" || answer === "no" || answer === "blank") return "blank";
+	return "demo";
 }
 
 export function promptTarget(io: PromptIO = {}): Target {

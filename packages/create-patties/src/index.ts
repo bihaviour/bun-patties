@@ -7,6 +7,7 @@ import {
 	promptAgent,
 	promptDeploy,
 	promptName,
+	promptScaffold,
 	promptTarget,
 } from "./prompts.ts";
 import { renderTemplatesInTree } from "./readme.ts";
@@ -23,6 +24,7 @@ interface Args {
 	git: boolean;
 	yes: boolean;
 	scaffold: "demo" | "blank";
+	scaffoldExplicit: boolean;
 }
 
 const TEMPLATES_ROOT = resolve(dirname(import.meta.dir), "templates");
@@ -53,6 +55,7 @@ export async function run(argv: string[]): Promise<number> {
 
 	if (interactive) {
 		if (!args.templateExplicit) args.template = promptAgent();
+		if (!args.scaffoldExplicit) args.scaffold = promptScaffold();
 		if (!args.targetExplicit) args.target = promptTarget();
 		if (args.target === "edge" && !args.deployExplicit) {
 			args.deploy = promptDeploy();
@@ -157,6 +160,7 @@ function parseArgs(argv: string[]): Args {
 		git: true,
 		yes: false,
 		scaffold: "demo",
+		scaffoldExplicit: false,
 	};
 	const setTemplate = (raw: string) => {
 		out.template = aliasTemplate(raw);
@@ -185,9 +189,13 @@ function parseArgs(argv: string[]): Args {
 		} else if (a === "--no-install") out.install = false;
 		else if (a === "--no-git") out.git = false;
 		else if (a === "--yes" || a === "-y") out.yes = true;
-		else if (a === "--blank" || a === "--empty") out.scaffold = "blank";
-		else if (a === "--demo") out.scaffold = "demo";
-		else if (!out.name && !a.startsWith("-")) out.name = a;
+		else if (a === "--blank" || a === "--empty") {
+			out.scaffold = "blank";
+			out.scaffoldExplicit = true;
+		} else if (a === "--demo") {
+			out.scaffold = "demo";
+			out.scaffoldExplicit = true;
+		} else if (!out.name && !a.startsWith("-")) out.name = a;
 	}
 	return out;
 }
