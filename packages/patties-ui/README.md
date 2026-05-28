@@ -24,6 +24,6 @@ Component source lands at `app/components/ui/<name>.tsx` — yours to edit. The 
 
 ## Status
 
-Phase 0 — plumbing only. Real components arrive in Phase 1+. Currently `private: true`; not yet on npm.
+All 60 components shipped and published to npm. `patties add <component>` stamps source into your project.
 
 See [`agent_specs/ui`](https://github.com/) in the docs repo for per-component specs.

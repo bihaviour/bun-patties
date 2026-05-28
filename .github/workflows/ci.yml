@@ -125,6 +125,9 @@ jobs:
       - name: Run create-patties tests
         working-directory: packages/create-patties
         run: bun test
+      - name: Run patties-ui tests
+        working-directory: packages/patties-ui
+        run: bun test
 
   test-integration:
     name: tests / integration
