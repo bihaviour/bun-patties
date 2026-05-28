@@ -30,7 +30,7 @@ Declared in `package.json#exports`:
 `patties/build`, `patties/dev`, `patties/config`, `patties/middleware`,
 `patties/server`, `patties/ai`, `patties/agents-md`, `patties/plugin`.
 
-CLI at `bin/patties.ts` (`patties dev` / `patties build` / `patties start` / `patties deploy` / `patties secret`).
+CLI at `bin/patties.ts` (`patties dev` / `patties build` / `patties start` / `patties deploy` / `patties secret` / `patties add`). `patties add <component>` stamps shadcn-compatible UI source from the `patties-ui` catalog into `app/components/ui/`; see `src/cli/commands/add.ts` and `.claude/rules/ui-catalog.md`.
 
 ## Dev mode wiring
 

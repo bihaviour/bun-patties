@@ -7,10 +7,11 @@ Node), HTTP comes from `Bun.serve`, bundling from `Bun.build`, filesystem
 discovery from `Bun.Glob`. UI is React 19 via `renderToReadableStream`. Build
 targets are `bun` and `edge`.
 
-This repo is a Bun workspace monorepo with two packages:
+This repo is a Bun workspace monorepo with three packages:
 
 - [`packages/patties`](packages/patties/CLAUDE.md) — the framework itself
 - [`packages/create-patties`](packages/create-patties/CLAUDE.md) — the official scaffolder
+- `packages/patties-ui` — the shadcn-compatible, copy-in component catalog (`src/registry.ts` is the source of truth; `templates/` holds the stamped source). All 60 components ship; `patties add <component>` stamps them. See `.claude/rules/ui-catalog.md`.
 
 Read the package-level `CLAUDE.md` for the package you're touching. The notes
 below apply to the whole repo.
