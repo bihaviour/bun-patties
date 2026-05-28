@@ -149,6 +149,28 @@ describe("patties add", () => {
 		expect(tokensAfter).toBe(tokens);
 	});
 
+	test("stamps pagination together with its button.tsx dependency", async () => {
+		await writePkg();
+		const cap = captureOutput();
+		const rc = await runAdd(["pagination"], ctx());
+		cap.restore();
+		expect(rc).toBe(0);
+
+		const uiDir = join(workdir, "app", "components", "ui");
+		expect(await Bun.file(join(uiDir, "pagination.tsx")).exists()).toBe(true);
+		expect(await Bun.file(join(uiDir, "button.tsx")).exists()).toBe(true);
+		expect(await Bun.file(join(uiDir, "_internal", "slot.ts")).exists()).toBe(
+			true,
+		);
+
+		const pagination = await Bun.file(join(uiDir, "pagination.tsx")).text();
+		expect(pagination).toContain('from "./button.tsx"');
+		expect(pagination).not.toContain("Phase 1 inlines button styling");
+
+		const pkg = await Bun.file(join(workdir, "package.json")).json();
+		expect(pkg.dependencies["class-variance-authority"]).toBeDefined();
+	});
+
 	test("refuses under NODE_ENV=production", async () => {
 		const prev = process.env.NODE_ENV;
 		process.env.NODE_ENV = "production";

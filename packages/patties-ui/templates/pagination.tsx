@@ -1,31 +1,11 @@
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import type { ComponentProps } from "react";
 import { cn } from "./_internal/cn.ts";
-import { cva } from "./_internal/variants.ts";
+import { type ButtonSize, buttonVariants } from "./button.tsx";
 
 export const island = false as const;
 
-// Phase 1 inlines button styling; the phase-2 Button is not part of this catalog yet.
-const pageLinkVariants = cva(
-	"inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md font-medium text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring aria-disabled:pointer-events-none aria-disabled:opacity-50",
-	{
-		variants: {
-			variant: {
-				ghost: "",
-				outline: "border bg-background shadow-sm hover:bg-accent",
-			},
-			size: {
-				default: "h-9 px-4 py-2",
-				sm: "h-8 px-3",
-				lg: "h-10 px-8",
-				icon: "size-9",
-			},
-		},
-		defaultVariants: { variant: "ghost", size: "icon" },
-	},
-);
-
-export type PaginationLinkSize = "default" | "sm" | "lg" | "icon";
+export type PaginationLinkSize = ButtonSize;
 
 export function Pagination({ className, ...props }: ComponentProps<"nav">) {
 	return (
@@ -72,7 +52,7 @@ export function PaginationLink({
 			data-active={isActive}
 			aria-current={isActive ? "page" : undefined}
 			className={cn(
-				pageLinkVariants({ variant: isActive ? "outline" : "ghost", size }),
+				buttonVariants({ variant: isActive ? "outline" : "ghost", size }),
 				className,
 			)}
 			{...props}

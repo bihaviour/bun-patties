@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 import { cn } from "./_internal/cn.ts";
 import { cva, type VariantProps } from "./_internal/variants.ts";
+import { buttonVariants } from "./button.tsx";
 
 export const island = false as const;
 
@@ -81,24 +82,21 @@ export function InputGroupText({
 	);
 }
 
-// Phase 1 inlines button styling; the phase-2 Button is not part of this catalog yet.
-const inputGroupButtonVariants = cva(
-	"flex items-center gap-2 rounded-md font-medium text-sm shadow-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-	{
-		variants: {
-			size: {
-				xs: "h-6 gap-1 px-2 [&>svg:not([class*='size-'])]:size-3.5",
-				sm: "h-8 gap-1.5 px-2.5",
-				"icon-xs": "size-6 p-0",
-				"icon-sm": "size-8 p-0",
-			},
+// Sizes are input-group-specific; the base/variant layer composes `buttonVariants`.
+const inputGroupButtonSizes = cva("shadow-none", {
+	variants: {
+		size: {
+			xs: "h-6 gap-1 px-2 [&>svg:not([class*='size-'])]:size-3.5",
+			sm: "h-8 gap-1.5 px-2.5",
+			"icon-xs": "size-6 p-0",
+			"icon-sm": "size-8 p-0",
 		},
-		defaultVariants: { size: "xs" },
 	},
-);
+	defaultVariants: { size: "xs" },
+});
 
 export type InputGroupButtonSize = NonNullable<
-	VariantProps<typeof inputGroupButtonVariants>["size"]
+	VariantProps<typeof inputGroupButtonSizes>["size"]
 >;
 
 export function InputGroupButton({
@@ -106,12 +104,16 @@ export function InputGroupButton({
 	size,
 	type = "button",
 	...props
-}: ComponentProps<"button"> & VariantProps<typeof inputGroupButtonVariants>) {
+}: ComponentProps<"button"> & VariantProps<typeof inputGroupButtonSizes>) {
 	return (
 		<button
 			type={type}
 			data-slot="input-group-button"
-			className={cn(inputGroupButtonVariants({ size }), className)}
+			className={cn(
+				buttonVariants({ variant: "ghost" }),
+				inputGroupButtonSizes({ size }),
+				className,
+			)}
 			{...props}
 		/>
 	);

@@ -25,12 +25,24 @@
 		"bun": ">=1.0.0"
 	},
 	"devDependencies": {
+		"@happy-dom/global-registrator": "^15.0.0",
+		"@radix-ui/react-checkbox": "^1.1.0",
 		"@radix-ui/react-direction": "^1.1.0",
 		"@radix-ui/react-label": "^2.1.0",
+		"@radix-ui/react-progress": "^1.1.0",
+		"@radix-ui/react-radio-group": "^1.2.0",
 		"@radix-ui/react-separator": "^1.1.0",
+		"@radix-ui/react-slider": "^1.2.0",
+		"@radix-ui/react-switch": "^1.1.0",
+		"@radix-ui/react-toggle": "^1.1.0",
+		"@types/react": "^19.0.0",
+		"@types/react-dom": "^19.0.0",
 		"class-variance-authority": "^0.7.0",
 		"clsx": "^2.1.0",
 		"lucide-react": "^0.400.0",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"react-hook-form": "^7.53.0",
 		"tailwind-merge": "^2.5.0"
 	}
 }
