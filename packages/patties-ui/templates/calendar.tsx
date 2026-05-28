@@ -6,9 +6,15 @@ import { buttonVariants } from "./button.tsx";
 
 export const island = true as const;
 
+// Plain `Omit` collapses react-day-picker's mode-discriminated union (losing
+// `selected`/`onSelect`), so omit distributively to keep each union member.
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+	? Omit<T, K>
+	: never;
+
 // `defaultMonth` crosses the island boundary as an ISO string (Dates are not
 // JSON-serializable island props) and is parsed back to a Date in-component.
-export type CalendarProps = Omit<
+export type CalendarProps = DistributiveOmit<
 	ComponentProps<typeof DayPicker>,
 	"defaultMonth"
 > & {
