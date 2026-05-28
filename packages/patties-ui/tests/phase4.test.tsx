@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { ColumnDef } from "@tanstack/react-table";
 import * as Recharts from "recharts";
 import { Calendar } from "../templates/calendar.tsx";
 import {
@@ -9,6 +10,7 @@ import {
 	CarouselPrevious,
 } from "../templates/carousel.tsx";
 import { ChartContainer } from "../templates/chart.tsx";
+import { Combobox } from "../templates/combobox.tsx";
 import {
 	Command,
 	CommandEmpty,
@@ -17,11 +19,23 @@ import {
 	CommandItem,
 	CommandList,
 } from "../templates/command.tsx";
+import { DataTable } from "../templates/data-table.tsx";
+import { DatePicker } from "../templates/date-picker.tsx";
 import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "../templates/resizable.tsx";
+import {
+	Sidebar,
+	SidebarContent,
+	SidebarInset,
+	SidebarMenu,
+	SidebarMenuButton,
+	SidebarMenuItem,
+	SidebarProvider,
+	SidebarTrigger,
+} from "../templates/sidebar.tsx";
 import { hydrate } from "./helpers/hydrate.ts";
 import { renderStatic } from "./helpers/render-static.ts";
 
@@ -153,6 +167,108 @@ describe("Resizable", () => {
 		expect(html).toContain("Left");
 		expect(html).toContain("Right");
 		expect(html).toContain('data-panel-size="40.0"');
+	});
+
+	test("hydrates without errors", async () => {
+		const { errors } = await hydrate(<Demo />);
+		expect(hydrationErrors(errors)).toEqual([]);
+	});
+});
+
+describe("Combobox", () => {
+	const options = [
+		{ value: "next", label: "Next.js" },
+		{ value: "remix", label: "Remix" },
+	];
+
+	test("SSR renders the closed trigger with the placeholder", async () => {
+		const html = await renderStatic(
+			<Combobox options={options} placeholder="Pick a framework" />,
+		);
+		expect(html).toContain('role="combobox"');
+		expect(html).toContain("Pick a framework");
+		// Popover content is closed, so the command list is not in the SSR markup.
+		expect(html).not.toContain("Next.js");
+	});
+
+	test("hydrates without errors", async () => {
+		const { errors } = await hydrate(<Combobox options={options} />);
+		expect(hydrationErrors(errors)).toEqual([]);
+	});
+});
+
+describe("DataTable", () => {
+	type Row = { name: string; email: string };
+	const columns: ColumnDef<Row>[] = [
+		{ accessorKey: "name", header: "Name", cell: (info) => info.getValue() },
+		{ accessorKey: "email", header: "Email", cell: (info) => info.getValue() },
+	];
+	const data: Row[] = [
+		{ name: "Ada", email: "ada@example.com" },
+		{ name: "Linus", email: "linus@example.com" },
+	];
+
+	test("SSR pre-renders the first page of rows", async () => {
+		const html = await renderStatic(
+			<DataTable columns={columns} data={data} filterColumn="name" />,
+		);
+		expect(html).toContain("Name");
+		expect(html).toContain("Ada");
+		expect(html).toContain("linus@example.com");
+	});
+
+	test("hydrates without errors", async () => {
+		const { errors } = await hydrate(
+			<DataTable columns={columns} data={data} />,
+		);
+		expect(hydrationErrors(errors)).toEqual([]);
+	});
+});
+
+describe("DatePicker", () => {
+	test("SSR renders the placeholder and a hidden input for server forms", async () => {
+		const html = await renderStatic(<DatePicker name="due" />);
+		expect(html).toContain("Pick a date");
+		expect(html).toContain('type="hidden"');
+		expect(html).toContain('name="due"');
+	});
+
+	test("SSR renders the formatted value in the trigger", async () => {
+		const html = await renderStatic(<DatePicker value="2026-01-15" />);
+		expect(html).toContain("January 15th, 2026");
+	});
+
+	test("hydrates without errors", async () => {
+		const { errors } = await hydrate(<DatePicker defaultValue="2026-01-15" />);
+		expect(hydrationErrors(errors)).toEqual([]);
+	});
+});
+
+describe("Sidebar", () => {
+	function Demo() {
+		return (
+			<SidebarProvider>
+				<Sidebar>
+					<SidebarContent>
+						<SidebarMenu>
+							<SidebarMenuItem>
+								<SidebarMenuButton tooltip="Home">Home</SidebarMenuButton>
+							</SidebarMenuItem>
+						</SidebarMenu>
+					</SidebarContent>
+				</Sidebar>
+				<SidebarInset>
+					<SidebarTrigger />
+				</SidebarInset>
+			</SidebarProvider>
+		);
+	}
+
+	test("SSR renders the expanded desktop shell from the default state", async () => {
+		const html = await renderStatic(<Demo />);
+		expect(html).toContain('data-state="expanded"');
+		expect(html).toContain("Home");
+		expect(html).toContain("Toggle Sidebar");
 	});
 
 	test("hydrates without errors", async () => {
