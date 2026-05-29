@@ -6,6 +6,7 @@ Monorepo for the Patties framework and its scaffolder.
 
 - [`packages/patties`](packages/patties) — Bun-native full-stack meta-framework. React 19 SSR + filesystem routing on `Bun.serve`. [npm](https://www.npmjs.com/package/patties)
 - [`packages/create-patties`](packages/create-patties) — the official scaffolder. [npm](https://www.npmjs.com/package/create-patties)
+- [`packages/patties-ui`](packages/patties-ui) — optional shadcn-compatible, copy-in component catalog (60 components). Stamped into your project by `patties add`. [npm](https://www.npmjs.com/package/patties-ui)
 
 ## Quick start
 
@@ -13,6 +14,14 @@ Monorepo for the Patties framework and its scaffolder.
 bunx create-patties@latest my-app
 cd my-app
 bunx patties dev
+```
+
+Add UI components (copy-in source you own and edit):
+
+```sh
+bun add -D patties-ui
+bunx patties add button card        # stamp into app/components/ui/
+bunx patties add --list             # browse the catalog
 ```
 
 ## Working on the monorepo
@@ -48,6 +57,7 @@ Per-package contributor rules:
 
 - [`packages/patties/CLAUDE.md`](packages/patties/CLAUDE.md)
 - [`packages/create-patties/CLAUDE.md`](packages/create-patties/CLAUDE.md)
+- [`.claude/rules/ui-catalog.md`](.claude/rules/ui-catalog.md) — how the `patties-ui` catalog and `patties add` work
 
 ## License
 
