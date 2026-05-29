@@ -9,6 +9,21 @@ const PluginSchema = z.custom<Plugin>(
 	{ message: "plugin must be an object with a `name: string`" },
 );
 
+// Optional UI-scaffolding overrides. Everything not listed here stays a fixed
+// convention (style, baseColor, cssVariables, rsc, aliases, iconLibrary) — see
+// framework/25-ui-config-block. `.strict()` so an unknown key (e.g. `aliases`)
+// is a config error pointing the user at the convention it replaces. Paths are
+// kept relative here; the project-root-escape guard lives in `resolveUiPaths`.
+export const UiConfigSchema = z
+	.object({
+		componentsDir: z.string().default("app/components/ui"),
+		internalDir: z.string().optional(),
+		tokensFile: z.string().default("app/styles/tokens.css"),
+	})
+	.strict();
+
+export type UiConfig = z.infer<typeof UiConfigSchema>;
+
 export const PattiesConfigSchema = z.object({
 	target: z.enum(["bun", "edge"]).default("bun"),
 	appDir: z.string().default("./app"),
@@ -51,6 +66,8 @@ export const PattiesConfigSchema = z.object({
 				.default("CLAUDE.md"),
 		})
 		.default({ path: "CLAUDE.md" }),
+	// Optional, no default: absent must behave exactly as today (conventions only).
+	ui: UiConfigSchema.optional(),
 });
 
 export type PattiesConfig = z.infer<typeof PattiesConfigSchema>;

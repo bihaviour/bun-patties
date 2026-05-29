@@ -1,12 +1,19 @@
 import { join } from "node:path";
 import type { ComponentEntry } from "patties-ui/types";
+import { loadConfigOrUsage } from "../../config/load.ts";
 import type { CliContext } from "../index.ts";
-import { EXIT, log } from "../log.ts";
-import { stampInternals } from "./add/internal.ts";
+import { EXIT, isTTY, log } from "../log.ts";
+import { applyComponent } from "./add/apply.ts";
+import {
+	diffComponentItems,
+	listStampedComponents,
+} from "./add/component-diff.ts";
 import { type Catalog, loadCatalog } from "./add/load-catalog.ts";
-import { applyDeps, planDeps } from "./add/peer-deps.ts";
-import { applyStamp, planStamp } from "./add/stamper.ts";
-import { mergeTokens } from "./add/tokens.ts";
+import { planDeps } from "./add/peer-deps.ts";
+import { planStamp } from "./add/stamper.ts";
+import { themeExists } from "./add/tokens.ts";
+import { resolveUiPaths, UiPathError, type UiPaths } from "./add/ui-paths.ts";
+import { writeComponentView } from "./ui/view.ts";
 
 interface AddArgs {
 	names: string[];
@@ -15,6 +22,13 @@ interface AddArgs {
 	dryRun: boolean;
 	force: boolean;
 	help: boolean;
+	path?: string;
+	pathMissing: boolean;
+	view: boolean;
+	diff: boolean;
+	check: boolean;
+	theme?: string;
+	themeMissing: boolean;
 }
 
 const PROD_MSG =
@@ -36,6 +50,16 @@ export async function runAdd(argv: string[], ctx: CliContext): Promise<number> {
 		return EXIT.USAGE;
 	}
 
+	if (args.pathMissing) {
+		log.error("--path requires a directory value.");
+		return EXIT.USAGE;
+	}
+
+	if (args.themeMissing) {
+		log.error("--theme requires a preset name.");
+		return EXIT.USAGE;
+	}
+
 	if (!(await Bun.file(join(ctx.cwd, "package.json")).exists())) {
 		log.error(`not a Patties project (no package.json found at ${ctx.cwd})`);
 		return EXIT.USAGE;
@@ -52,6 +76,51 @@ export async function runAdd(argv: string[], ctx: CliContext): Promise<number> {
 		return EXIT.OK;
 	}
 
+	if (args.view) {
+		const entries = resolveNames(catalog, args.names);
+		if (entries === null) return EXIT.USAGE;
+		if (entries.length === 0) {
+			log.error("no components selected. Pass a component name.");
+			return EXIT.USAGE;
+		}
+		for (const entry of entries) {
+			await writeComponentView(entry, catalog.templatesDir);
+		}
+		return EXIT.OK;
+	}
+
+	const loaded = await loadConfigOrUsage({
+		cwd: ctx.cwd,
+		configPath: ctx.configPath,
+	});
+	if ("error" in loaded) {
+		log.error(loaded.error);
+		return EXIT.USAGE;
+	}
+	let uiPaths: UiPaths;
+	try {
+		uiPaths = resolveUiPaths({
+			cwd: ctx.cwd,
+			ui: loaded.config.ui,
+			pathOverride: args.path,
+		});
+	} catch (err) {
+		if (err instanceof UiPathError) {
+			log.error(err.message);
+			return EXIT.USAGE;
+		}
+		throw err;
+	}
+
+	if (args.diff) {
+		return runDiff(catalog, uiPaths, args);
+	}
+
+	if (args.theme && !(await themeExists(catalog.templatesDir, args.theme))) {
+		log.error(`unknown theme preset: ${args.theme}`);
+		return EXIT.USAGE;
+	}
+
 	const entries = args.all
 		? catalog.components.filter((c) => c.status === "completed")
 		: resolveNames(catalog, args.names);
@@ -63,7 +132,13 @@ export async function runAdd(argv: string[], ctx: CliContext): Promise<number> {
 	}
 
 	for (const entry of entries) {
-		const rc = await stampOne(entry, ctx.cwd, catalog.templatesDir, args);
+		const rc = await stampOne(
+			entry,
+			ctx.cwd,
+			uiPaths,
+			catalog.templatesDir,
+			args,
+		);
 		if (rc !== EXIT.OK) return rc;
 	}
 
@@ -75,7 +150,45 @@ export async function runAdd(argv: string[], ctx: CliContext): Promise<number> {
 	return EXIT.OK;
 }
 
-function resolveNames(
+async function runDiff(
+	catalog: Catalog,
+	uiPaths: UiPaths,
+	args: AddArgs,
+): Promise<number> {
+	const color = isTTY(process.stdout) && !process.env.NO_COLOR;
+	const entries =
+		args.names.length > 0
+			? resolveNames(catalog, args.names)
+			: await listStampedComponents(catalog, uiPaths);
+	if (entries === null) return EXIT.USAGE;
+
+	let drift = false;
+	for (const entry of entries) {
+		const items = await diffComponentItems(
+			entry,
+			uiPaths,
+			catalog.templatesDir,
+			color,
+		);
+		log.info(entry.name);
+		for (const item of items) {
+			if (item.status === "drift") {
+				drift = true;
+				log.info(`  drift  ${item.label}`);
+				process.stdout.write(`${item.body}\n`);
+			} else if (item.status === "not-stamped") {
+				log.dim(`  not stamped  ${item.label}`);
+			} else {
+				log.dim(`  up to date   ${item.label}`);
+			}
+		}
+	}
+
+	if (args.check) return drift ? EXIT.ERROR : EXIT.OK;
+	return EXIT.OK;
+}
+
+export function resolveNames(
 	catalog: Catalog,
 	names: string[],
 ): ComponentEntry[] | null {
@@ -94,6 +207,7 @@ function resolveNames(
 async function stampOne(
 	entry: ComponentEntry,
 	cwd: string,
+	uiPaths: UiPaths,
 	templatesDir: string,
 	args: AddArgs,
 ): Promise<number> {
@@ -101,10 +215,9 @@ async function stampOne(
 		`${entry.name}  (phase ${entry.phase}, island=${entry.island}, ${entry.status})`,
 	);
 
-	const plan = await planStamp(entry, cwd, templatesDir);
-	const depPlan = await planDeps(entry.peerDeps, cwd);
-
 	if (args.dryRun) {
+		const plan = await planStamp(entry, uiPaths, templatesDir);
+		const depPlan = await planDeps(entry.peerDeps, cwd);
 		for (const p of plan) {
 			const marker = p.exists ? "exists" : "new";
 			log.dim(`  [${marker}] ${p.to}`);
@@ -123,12 +236,10 @@ async function stampOne(
 	}
 
 	try {
-		await stampInternals(entry.internalHelpers, cwd, templatesDir, {
-			dryRun: false,
+		await applyComponent(entry, cwd, uiPaths, templatesDir, {
+			force: args.force,
+			themeName: args.theme,
 		});
-		await applyStamp(plan, { force: args.force });
-		await applyDeps(depPlan, cwd);
-		await mergeTokens(entry.tokens ?? [], cwd, templatesDir, { dryRun: false });
 	} catch (err) {
 		log.error(err instanceof Error ? err.message : String(err));
 		return EXIT.ERROR;
@@ -166,14 +277,36 @@ function parseArgs(argv: string[]): AddArgs {
 		dryRun: false,
 		force: false,
 		help: false,
+		pathMissing: false,
+		view: false,
+		diff: false,
+		check: false,
+		themeMissing: false,
 	};
-	for (const a of argv) {
+	for (let i = 0; i < argv.length; i++) {
+		const a = argv[i];
+		if (a === undefined) continue;
 		if (a === "--list") out.list = true;
 		else if (a === "--all") out.all = true;
 		else if (a === "--dry-run") out.dryRun = true;
 		else if (a === "--force") out.force = true;
+		else if (a === "--view") out.view = true;
+		else if (a === "--diff") out.diff = true;
+		else if (a === "--check") out.check = true;
 		else if (a === "--help" || a === "-h") out.help = true;
-		else out.names.push(a);
+		else if (a === "--path") {
+			const v = argv[++i];
+			if (v === undefined) out.pathMissing = true;
+			else out.path = v;
+		} else if (a.startsWith("--path=")) {
+			out.path = a.slice("--path=".length);
+		} else if (a === "--theme") {
+			const v = argv[++i];
+			if (v === undefined) out.themeMissing = true;
+			else out.theme = v;
+		} else if (a.startsWith("--theme=")) {
+			out.theme = a.slice("--theme=".length);
+		} else out.names.push(a);
 	}
 	return out;
 }
@@ -190,9 +323,14 @@ Usage:
 Requires patties-ui to be installed: bun add -D patties-ui
 
 Flags:
-  --all        Stamp every component whose status is completed.
-  --list       Print every component with phase, island flag, and status.
-  --dry-run    Print the file/dep diff without writing.
-  --force      Overwrite existing files.
+  --all          Stamp every component whose status is completed.
+  --list         Print every component with phase, island flag, and status.
+  --dry-run      Print the file/dep diff without writing.
+  --force        Overwrite existing files.
+  --view         Print the component's source instead of stamping.
+  --diff         Show how stamped files drift from the catalog (read-only).
+  --check        With --diff, exit non-zero if any component has drifted.
+  --path <dir>   Stamp into <dir> for this invocation (overrides config.ui).
+  --theme <name> Merge a base-color preset's tokens (neutral|slate|stone|zinc).
 `);
 }

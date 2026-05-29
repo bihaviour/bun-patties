@@ -69,6 +69,20 @@ export async function loadConfig(
 	return { config: parsed, path: found };
 }
 
+// CLI-friendly wrapper: never throws. On a missing/invalid config it returns a
+// one-line message the caller surfaces via log.error before exiting EXIT.USAGE,
+// instead of leaking an uncaught stack.
+export async function loadConfigOrUsage(
+	opts: LoadOptions,
+): Promise<{ config: PattiesConfig } | { error: string }> {
+	try {
+		const { config } = await loadConfig(opts);
+		return { config };
+	} catch (err) {
+		return { error: err instanceof Error ? err.message : String(err) };
+	}
+}
+
 async function readWithCache(path: string): Promise<unknown> {
 	const bytes = await Bun.file(path).bytes();
 	const hash = Bun.hash(bytes) as bigint;

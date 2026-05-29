@@ -3,7 +3,11 @@ import pkg from "../../package.json" with { type: "json" };
 import { runBuild } from "./build.ts";
 import { runAdd } from "./commands/add.ts";
 import { runDeploy } from "./commands/deploy.ts";
+import { runMigrate } from "./commands/migrate.ts";
 import { runSecret } from "./commands/secret.ts";
+import { runUi } from "./commands/ui.ts";
+import { runUpdate } from "./commands/update.ts";
+import { runView } from "./commands/view.ts";
 import { runDev } from "./dev.ts";
 import { EXIT, log, setVerbose } from "./log.ts";
 
@@ -52,6 +56,14 @@ export async function main(argv: string[]): Promise<number> {
 			return runSecret(rest, ctx);
 		case "add":
 			return runAdd(rest, ctx);
+		case "ui":
+			return runUi(rest, ctx);
+		case "view":
+			return runView(rest, ctx);
+		case "update":
+			return runUpdate(rest, ctx);
+		case "migrate":
+			return runMigrate(rest, ctx);
 		default:
 			log.error(`unknown command: ${cmd}`);
 			printHelp();
@@ -103,6 +115,10 @@ Commands:
   deploy   Build then dispatch to an installed deploy plugin.
   secret   Manage dev-time secrets in the OS keychain.
   add      Stamp UI components from patties-ui into your project.
+  ui       UI catalog setup (patties ui init).
+  view     Print a component's source before stamping.
+  update   Re-stamp components from the catalog after showing the diff.
+  migrate  Codemods: radix imports / RTL logical properties.
   help     Show this message.
 
 Global flags:
