@@ -1,3 +1,4 @@
+import { generateRequestId } from "../middleware/request-id.ts";
 import { AnthropicSdkNotInstalled, MissingAnthropicKey } from "./errors.ts";
 import type { AiContext, AnthropicLike } from "./types.ts";
 
@@ -16,7 +17,7 @@ export interface CreateAiContextOptions {
 }
 
 export function createAiContext(opts: CreateAiContextOptions = {}): AiContext {
-	const requestId = opts.requestId ?? cryptoRandomId();
+	const requestId = opts.requestId ?? generateRequestId();
 	let cached: AnthropicLike | null = opts.anthropic ?? null;
 
 	const ctx: AiContext = {
@@ -71,10 +72,4 @@ function readApiKey(): string | undefined {
 		string | undefined
 	>;
 	return env.ANTHROPIC_API_KEY;
-}
-
-function cryptoRandomId(): string {
-	if (typeof crypto !== "undefined" && "randomUUID" in crypto)
-		return crypto.randomUUID();
-	return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
