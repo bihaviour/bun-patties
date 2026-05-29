@@ -17,6 +17,8 @@ export interface ServerEntryInput {
 	manifestPath: string; // absolute path to the on-disk manifest.json
 	target: "bun" | "edge";
 	port?: number;
+	/** Emit Bun.embeddedFiles static-map wiring (bun + --compile only). */
+	compile?: boolean;
 }
 
 // Generate the source for the synthetic server entry written into outDir/.gen/.
@@ -42,6 +44,26 @@ export function generateServerEntry(input: ServerEntryInput): string {
 	const agents = input.agents ?? [];
 	const tools = input.tools ?? [];
 	const jobs = input.jobs ?? [];
+
+	// Compile mode embeds app/public assets + client chunks into the binary and
+	// serves them from Bun.embeddedFiles. Bun-only; edge never compiles.
+	const emitEmbedded = target === "bun" && input.compile === true;
+	const embeddedImport = emitEmbedded
+		? `import { EMBEDDED_ASSET_PATHS } from "./embedded-manifest.ts"`
+		: "";
+	const staticMapSetup = emitEmbedded
+		? `const __filesByName = new Map()
+for (const f of Bun.embeddedFiles) {
+  __filesByName.set(f.name, f)
+  const __base = String(f.name).split("/").pop()
+  if (__base && !__filesByName.has(__base)) __filesByName.set(__base, f)
+}
+const __staticMap = {}
+for (const [route, id] of Object.entries(EMBEDDED_ASSET_PATHS)) {
+  const f = __filesByName.get(id) ?? __filesByName.get(String(id).split("/").pop())
+  if (f) __staticMap[route] = new Response(f, { headers: { "content-type": f.type || "application/octet-stream" } })
+}`
+		: "";
 
 	const fwImport = (sub: string) => JSON.stringify(`${frameworkRoot}/${sub}`);
 
@@ -150,10 +172,11 @@ if (typeof (Bun).cron === "function") {
 	const bootForBun = `
 ${triggerWire}
 ${cronWire}
+${staticMapSetup}
 const server = startServer({
   port: ${port ?? 3000},
   routes: router.routes,
-  fallback: router.fallback,
+  fallback: router.fallback,${emitEmbedded ? "\n  staticRoutes: __staticMap," : ""}
 })
 export { server }
 `.trim();
@@ -186,6 +209,7 @@ import { createCompiledRouter } from ${fwImport("router/index.ts")}
 import { createRenderer } from ${fwImport("render/index.tsx")}
 import { startServer } from ${fwImport("server/index.ts")}
 import { compilePatterns, dispatch } from ${fwImport("router/match.ts")}
+${embeddedImport}
 
 const ROUTE_TABLE = await ROUTES(${appDirLiteral})
 const PUBLIC_ENV_VALUES = PUBLIC_ENV()

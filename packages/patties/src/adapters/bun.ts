@@ -12,9 +12,12 @@ export const bunAdapter: Adapter = {
 		input: AdapterBuildInput,
 		ctx: AdapterContext,
 	): Promise<EmittedArtifacts> {
-		let serverEntry = input.serverEntryOut;
 		if (ctx.compile && ctx.mode === "production") {
 			const exePath = `${ctx.outDir}/server-bin`;
+			// Compile the SOURCE entry, not the stage-1 bundle: `with { type: "file" }`
+			// and `with { type: "macro" }` attributes only survive into --compile when
+			// the compiler sees the source. The source transitively imports the
+			// generated embedded-manifest.ts, so all assets land in the binary.
 			const proc = Bun.spawn({
 				cmd: [
 					"bun",
@@ -22,7 +25,7 @@ export const bunAdapter: Adapter = {
 					"--compile",
 					"--outfile",
 					exePath,
-					input.serverEntryOut,
+					input.serverEntrySrc,
 				],
 				stdout: "pipe",
 				stderr: "pipe",
@@ -34,8 +37,18 @@ export const bunAdapter: Adapter = {
 					`patties build: --compile failed (exit ${code})\n${err}`,
 				);
 			}
-			serverEntry = exePath;
+			// Single-file deploy: assets + client chunks are embedded; drop the
+			// on-disk sidecars so the binary is the whole artifact.
+			await Bun.$`rm -rf ${`${ctx.outDir}/server`}`.quiet();
+			await Bun.$`rm -rf ${`${ctx.outDir}/client`}`.quiet();
+			await Bun.$`rm -rf ${`${ctx.outDir}/assets`}`.quiet();
+			return { serverEntry: exePath, assets: [] };
 		}
-		return { serverEntry, assets: input.assets };
+		if (!input.serverEntryOut) {
+			throw new Error(
+				"patties build: bun target requires a bundled server entry",
+			);
+		}
+		return { serverEntry: input.serverEntryOut, assets: input.assets };
 	},
 };

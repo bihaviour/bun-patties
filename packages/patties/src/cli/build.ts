@@ -43,6 +43,13 @@ export async function runBuild(
 	const outDir = args.outDir ?? config.outDir;
 	const compile = args.compile ?? config.adapter.bun.compile;
 
+	if (compile && target === "edge") {
+		log.error(
+			'patties build: adapter.bun.compile is only supported with target "bun" (got target "edge"). Remove --compile or set target: "bun".',
+		);
+		return EXIT.ERROR;
+	}
+
 	const plugins = (config.plugins ?? []) as Plugin[];
 	for (const p of plugins) assertPluginCompat(FRAMEWORK_VERSION, p);
 
