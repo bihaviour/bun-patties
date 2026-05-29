@@ -47,6 +47,39 @@ describe("spec 07 — middleware via real Bun.serve", () => {
 			expect(r3.status).toBe(404);
 			expect(counter.__getCount()).toBe(3);
 		});
+
+		test("responses carry X-Request-Id + dev Server-Timing (specs 19/20)", async () => {
+			const prev = process.env.NODE_ENV;
+			process.env.NODE_ENV = "development";
+			try {
+				const res = await fetch(`${base(server)}/`);
+				await res.text();
+				expect(res.headers.get("x-request-id") ?? "").toMatch(
+					/^[A-Za-z0-9._-]{8,128}$/,
+				);
+				expect(res.headers.get("server-timing") ?? "").toMatch(
+					/^total;dur=\d+\.\d$/,
+				);
+			} finally {
+				if (prev === undefined) delete process.env.NODE_ENV;
+				else process.env.NODE_ENV = prev;
+			}
+		});
+
+		test("echoes a well-shaped inbound X-Request-Id, including on the 404 path", async () => {
+			const ok = await fetch(`${base(server)}/`, {
+				headers: { "x-request-id": "abc12345" },
+			});
+			await ok.text();
+			expect(ok.headers.get("x-request-id")).toBe("abc12345");
+
+			const miss = await fetch(`${base(server)}/does-not-exist`, {
+				headers: { "x-request-id": "abc12345" },
+			});
+			await miss.text();
+			expect(miss.status).toBe(404);
+			expect(miss.headers.get("x-request-id")).toBe("abc12345");
+		});
 	});
 
 	describe("cookie-app: ctx.cookies flush without explicit serialization", () => {

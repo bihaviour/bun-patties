@@ -10,16 +10,12 @@ export function createAiContextMiddleware(
 		if (!ctx.aiContext) {
 			ctx.aiContext = createAiContext({
 				...defaults,
-				requestId: defaults.requestId ?? cryptoRandomId(),
+				// Reuse the composer-generated correlation id so logs/agent traces
+				// line up: ctx.aiContext.requestId === ctx.requestId.
+				requestId: defaults.requestId ?? ctx.requestId,
 				signal: req.signal,
 			});
 		}
 		return next();
 	};
-}
-
-function cryptoRandomId(): string {
-	if (typeof crypto !== "undefined" && "randomUUID" in crypto)
-		return crypto.randomUUID();
-	return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }

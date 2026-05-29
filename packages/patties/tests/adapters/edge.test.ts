@@ -60,3 +60,36 @@ test("edge worker dispatches a real request and exposes :param via dispatch", as
 	);
 	expect(res).toBeInstanceOf(Response);
 });
+
+test("edge worker dispatch runs the response finalizer (X-Request-Id, spec 19)", async () => {
+	const outDir = await makeOut();
+	await build({
+		appDir: join(FIXTURES, "build-app/app"),
+		outDir,
+		target: "edge",
+		mode: "production",
+	});
+	const mod = (await import(`${outDir}/worker.js`)) as {
+		default: {
+			fetch: (req: Request, env?: unknown, ctx?: unknown) => Promise<Response>;
+		};
+	};
+
+	// Fresh id is minted and echoed on the response.
+	const fresh = await mod.default.fetch(
+		new Request("http://x/"),
+		{},
+		undefined,
+	);
+	expect(fresh.headers.get("x-request-id") ?? "").toMatch(
+		/^[A-Za-z0-9._-]{8,128}$/,
+	);
+
+	// A well-shaped inbound id is echoed back unchanged.
+	const echoed = await mod.default.fetch(
+		new Request("http://x/", { headers: { "x-request-id": "edge-1234" } }),
+		{},
+		undefined,
+	);
+	expect(echoed.headers.get("x-request-id")).toBe("edge-1234");
+});

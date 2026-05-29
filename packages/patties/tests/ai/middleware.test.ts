@@ -16,6 +16,17 @@ describe("createAiContextMiddleware", () => {
 		expect((seen as { requestId: string }).requestId).toBeTruthy();
 	});
 
+	test("aiContext.requestId matches ctx.requestId (spec 19)", async () => {
+		const mw = createAiContextMiddleware();
+		const req = new Request("http://x/test", {
+			headers: { "x-request-id": "corr-1234" },
+		});
+		const ctx = makeContext(req);
+		await mw(req, ctx, async () => new Response("ok"));
+		expect(ctx.aiContext?.requestId).toBe(ctx.requestId);
+		expect(ctx.aiContext?.requestId).toBe("corr-1234");
+	});
+
 	test("preserves existing aiContext if already set", async () => {
 		const mw = createAiContextMiddleware();
 		const req = new Request("http://x/test");
