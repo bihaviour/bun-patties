@@ -214,9 +214,19 @@ test.skipIf(!hasGit())(
 	async () => {
 		// Outer repo with a known HEAD; scaffolding into it must not touch it.
 		const outer = await mktemp();
-		await Bun.$`git init`.cwd(outer).quiet();
+		// Clear git env vars — when run inside a pre-commit hook, GIT_INDEX_FILE
+		// is inherited and would point at the parent repo's index, breaking git
+		// commands in unrelated temp repos.
+		const cleanEnv = {
+			...process.env,
+			GIT_INDEX_FILE: undefined,
+			GIT_DIR: undefined,
+			GIT_WORK_TREE: undefined,
+		};
+		await Bun.$`git init`.cwd(outer).env(cleanEnv).quiet();
 		await Bun.$`git -c user.email=t@t -c user.name=t commit --allow-empty -m base`
 			.cwd(outer)
+			.env(cleanEnv)
 			.quiet();
 		const head = (await Bun.$`git rev-parse HEAD`.cwd(outer).text()).trim();
 

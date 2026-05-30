@@ -51,19 +51,42 @@ Wait for the user's answers before proceeding.
 ### Step 3a — if worktree = yes
 
 ```bash
-# derive branch name from the message (kebab-case, max 40 chars)
-git worktree add -b <branch> ../<repo-slug>-<branch> main
+# Remote branch keeps the feature name (e.g. feat/dev-island-bundler).
+# Renaming the remote branch after PR creation causes GitHub to auto-close the PR.
+# Only the LOCAL worktree directory uses the wt-<pr-number>-<repo-slug> format.
+git worktree add -b <feature-branch> ../<feature-branch> main
 ```
 
-Report the worktree path and branch name.
+After Step 5 creates the PR and you have the number, rename only the local
+worktree directory — do NOT rename the remote branch:
+```bash
+git worktree move ../<feature-branch> ../wt-<n>-<repo-slug>
+```
+
+The worktree path will be `../wt-<n>-<repo-slug>`; the branch (local + remote)
+stays `<feature-branch>`. Report both clearly.
 
 ### Step 3b — if issue = yes
 
 Ask: **One issue per PR, or multiple issues rolled into this one PR?**
 `one` / `multi`
 
-- If `one`: create one issue from the `<message>`, link it in the PR body.
-- If `multi`: ask the user to list the issues (one line each), create each with `gh issue create`, then link all of them in the PR body.
+- If `one`: derive one issue from the `<message>`.
+- If `multi`: ask the user to list the issues (one line each), then derive each issue's title, labels, and body.
+
+Auto-detect labels using the label rules in §Issue label taxonomy below.
+
+### Step 4 — confirmation prompt
+
+Before running any `gh` commands, call `AskUserQuestion` with a single question summarising what will be created:
+
+- Show each issue: title + labels (one line each)
+- Show the PR: title, branch, draft status
+- Options: `Proceed` / `Cancel`
+
+Only continue if the user selects `Proceed`.
+
+### Step 5 — execute after approval
 
 Issue creation command (run for each issue):
 ```bash
@@ -74,9 +97,7 @@ gh issue create \
   --assignee "@me"
 ```
 
-Auto-detect labels using the label rules in §Issue label taxonomy below.
-
-### Step 4 — create the PR
+Then create the PR:
 
 ```bash
 gh pr create \
@@ -129,6 +150,17 @@ If no changeset is detected, add in the **same message**:
 > `patch` / `minor` / `major` / `skip`
 
 Wait for answers.
+
+### Step 2b — confirmation prompt
+
+Call `AskUserQuestion` with a summary of what will happen:
+
+- Merge strategy: squash, PR #<n> "<title>"
+- Version bump: <patch/minor/major/skip>
+- Branch cleanup: yes/no (worktree path if applicable)
+- Options: `Proceed` / `Cancel`
+
+Only continue if the user selects `Proceed`.
 
 ### Step 3 — version bump (if requested)
 
@@ -187,7 +219,18 @@ git log --oneline -20
 
 Cross-check auto-detected labels against the repo's actual label list. Only use labels that exist; if a label is missing, note it.
 
-### Step 2 — emit the issue
+### Step 2 — confirmation prompt
+
+Call `AskUserQuestion` showing:
+
+- Title: <derived title>
+- Labels: <label list>
+- Body preview: first 3–4 lines of body
+- Options: `Proceed` / `Cancel`
+
+Only continue if the user selects `Proceed`.
+
+### Step 3 — emit the issue
 
 ```bash
 gh issue create \
