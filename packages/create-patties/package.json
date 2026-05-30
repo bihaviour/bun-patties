@@ -3,6 +3,7 @@
 	"version": "0.0.10",
 	"type": "module",
 	"description": "Scaffolder for new Patties projects.",
+	"license": "MIT",
 	"bin": {
 		"create-patties": "./bin/create-patties.ts"
 	},

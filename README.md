@@ -20,13 +20,17 @@ Add UI components (copy-in source you own and edit):
 
 ```sh
 bun add -D patties-ui
+bunx patties ui init                # scaffold tokens + helpers (once)
 bunx patties add button card        # stamp into app/components/ui/
 bunx patties add --list             # browse the catalog
+bunx patties view button            # print source before stamping
+bunx patties update button          # re-stamp from the catalog (shows diff)
+bunx patties migrate                # codemod radix imports / RTL logical props
 ```
 
 ## Working on the monorepo
 
-Requires [Bun](https://bun.sh) 1.0+.
+Requires [Bun](https://bun.sh) 1.3+ (`bun build --compile` needs the 1.3.x macro fix).
 
 ```sh
 bun install                # workspace install (single root lockfile)
@@ -59,6 +63,13 @@ Per-package contributor rules:
 - [`packages/create-patties/CLAUDE.md`](packages/create-patties/CLAUDE.md)
 - [`.claude/rules/ui-catalog.md`](.claude/rules/ui-catalog.md) — how the `patties-ui` catalog and `patties add` work
 
+## Contributing
+
+Contributions are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup,
+the local check gate, and release flow. By participating you agree to the
+[Code of Conduct](CODE_OF_CONDUCT.md). To report a security issue, follow
+[`SECURITY.md`](SECURITY.md) (please don't open a public issue).
+
 ## License
 
-MIT.
+[MIT](LICENSE) © Reza Baita.

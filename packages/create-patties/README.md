@@ -49,5 +49,5 @@ guide.
 
 ## Requires
 
-Bun 1.0+. `bunx create-patties@latest` won't work under Node — install
+Bun 1.3+. `bunx create-patties@latest` won't work under Node — install
 Bun first from [bun.sh](https://bun.sh).

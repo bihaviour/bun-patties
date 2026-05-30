@@ -3,6 +3,7 @@
 	"version": "0.0.10",
 	"type": "module",
 	"description": "Bun-native full-stack meta-framework with React rendering",
+	"license": "MIT",
 	"exports": {
 		".": "./src/index.ts",
 		"./middleware": "./src/middleware/index.ts",
