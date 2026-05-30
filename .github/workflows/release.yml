@@ -1,0 +1,111 @@
+name: Release
+
+# Fires only after the CI workflow on master has finished with a successful
+# conclusion — not on every push. This means a broken master can never
+# accidentally publish, and we don't redundantly re-run the validate gate
+# that CI already covered.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [master]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Changesets-driven release:
+  #
+  # When there are pending `.changeset/*.md` files, this opens (or updates)
+  # a "Version Packages" PR that bumps versions and rewrites CHANGELOG.md.
+  #
+  # When that PR is merged into master, this job instead runs
+  # `changeset publish` — which publishes any package whose version is ahead
+  # of npm, creates git tags, and (because `createGithubReleases: true`) opens
+  # a GitHub Release per published package with notes from CHANGELOG.md.
+  # ---------------------------------------------------------------------------
+  release:
+    name: changesets / release
+    runs-on: ubuntu-latest
+    # Only run when the triggering CI workflow succeeded **and** it was the
+    # push-to-master variant. PR-triggered CI runs do not publish.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'master'
+    permissions:
+      contents: write       # bump versions, push tags, create releases
+      pull-requests: write  # open the Version Packages PR
+      id-token: write       # npm provenance attestations
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+      publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
+    steps:
+      # Check out the exact SHA that CI just validated, not the latest tip of
+      # master, so we publish what was actually tested.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: ./.github/actions/setup
+
+      - name: Configure npm auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+
+      - name: Create Version PR or publish to npm
+        id: changesets
+        uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
+        with:
+          publish: bunx changeset publish
+          version: bunx changeset version
+          commit: "chore: version packages"
+          title: "chore: version packages"
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summarise published packages
+        if: success() && steps.changesets.outputs.published == 'true'
+        env:
+          PUBLISHED: ${{ steps.changesets.outputs.publishedPackages }}
+        run: |
+          {
+            echo "## Released"
+            echo ""
+            echo "\`\`\`json"
+            echo "$PUBLISHED"
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Surface release failure
+        if: failure()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CI_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          {
+            echo "## Release failed"
+            echo ""
+            echo "**SHA:** \`$HEAD_SHA\`"
+            echo ""
+            echo "- Release run: $RUN_URL"
+            echo "- Triggering CI run: $CI_RUN_URL"
+            echo ""
+            echo "### Common causes"
+            echo ""
+            echo "- \`NPM_TOKEN\` repo secret missing, expired, or not an automation token (2FA blocks publish-type tokens)."
+            echo "- Package name unavailable or maintainer rights missing on npm."
+            echo "- \`createGithubReleases: true\` requires \`contents: write\` permission — already set, but verify in repo Settings → Actions → General."
+            echo "- A version already published at that semver — \`npm view <pkg> versions\` to confirm."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1

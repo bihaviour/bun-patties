@@ -1,7 +1,6 @@
 node_modules
-.patties
-dist
-.env
-.env.local
-*.log
 .DS_Store
+bun.lockb
+package-lock.json
+*.log
+patties-gen/
