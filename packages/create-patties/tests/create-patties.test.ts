@@ -257,7 +257,10 @@ test.skipIf(!hasGit())(
 					.text()
 			).trim(),
 		).toBe(realpathSync(demo));
-		const demoLog = await Bun.$`git log --oneline`.cwd(demo).env(cleanEnv).text();
+		const demoLog = await Bun.$`git log --oneline`
+			.cwd(demo)
+			.env(cleanEnv)
+			.text();
 		expect(demoLog).toContain("initial commit from create-patties");
 	},
 );
