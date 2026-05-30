@@ -1,23 +1,19 @@
-export type Island = "no" | "yes" | "subtree" | "yes-downgrade";
-export type Kind = "primitive" | "recipe" | "provider";
-export type Status = "draft" | "completed";
-export type Phase = 0 | 1 | 2 | 3 | 4;
-export type InternalHelper = "cn" | "slot" | "variants";
+import type { z } from "zod";
+import type {
+	ComponentEntrySchema,
+	ComponentFileSchema,
+	InternalHelperSchema,
+	IslandSchema,
+	KindSchema,
+	PhaseSchema,
+	StatusSchema,
+} from "./schema.ts";
 
-export interface ComponentFile {
-	from: string;
-	to: string;
-}
+export type Island = z.infer<typeof IslandSchema>;
+export type Kind = z.infer<typeof KindSchema>;
+export type Status = z.infer<typeof StatusSchema>;
+export type Phase = z.infer<typeof PhaseSchema>;
+export type InternalHelper = z.infer<typeof InternalHelperSchema>;
 
-export interface ComponentEntry {
-	name: string;
-	spec: string;
-	phase: Phase;
-	kind: Kind;
-	island: Island;
-	status: Status;
-	files: ComponentFile[];
-	peerDeps: Record<string, string>;
-	internalHelpers: InternalHelper[];
-	tokens?: string[];
-}
+export type ComponentFile = z.infer<typeof ComponentFileSchema>;
+export type ComponentEntry = z.infer<typeof ComponentEntrySchema>;
