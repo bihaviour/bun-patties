@@ -61,6 +61,23 @@ export const log = {
 	},
 };
 
+// Ask a yes/no question on stderr and read one line from stdin. Returns false
+// on EOF / non-affirmative input. Callers gate this on a TTY and an explicit
+// `--yes` escape hatch (cli/15 show-before-stamp).
+export async function confirm(question: string): Promise<boolean> {
+	process.stderr.write(`${question} [y/N] `);
+	const line = await new Promise<string>((resolveLine) => {
+		const onData = (chunk: Buffer): void => {
+			process.stdin.pause();
+			process.stdin.off("data", onData);
+			resolveLine(chunk.toString());
+		};
+		process.stdin.resume();
+		process.stdin.on("data", onData);
+	});
+	return /^\s*y(es)?\s*$/i.test(line);
+}
+
 export interface FormatErrorInput {
 	title: string;
 	file?: string;

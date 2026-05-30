@@ -1,6 +1,7 @@
 import { dirname, join } from "node:path";
 import type { ComponentEntry } from "patties-ui/types";
 import { log } from "../../log.ts";
+import type { UiPaths } from "./ui-paths.ts";
 
 export interface StampPlan {
 	from: string;
@@ -10,13 +11,13 @@ export interface StampPlan {
 
 export async function planStamp(
 	entry: ComponentEntry,
-	cwd: string,
+	uiPaths: UiPaths,
 	templatesDir: string,
 ): Promise<StampPlan[]> {
 	const out: StampPlan[] = [];
 	for (const f of entry.files) {
 		const from = join(templatesDir, f.from);
-		const to = join(cwd, "app", "components", "ui", f.to);
+		const to = join(uiPaths.componentsDir, f.to);
 		out.push({ from, to, exists: await Bun.file(to).exists() });
 	}
 	return out;
