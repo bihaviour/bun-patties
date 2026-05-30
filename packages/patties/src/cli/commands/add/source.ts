@@ -1,6 +1,6 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import type { ComponentEntry } from "patties-ui/types";
 import { log } from "../../log.ts";
 import type { Catalog } from "./load-catalog.ts";
@@ -69,8 +69,15 @@ async function materialize(
 	payload: ComponentPayload,
 ): Promise<{ templatesDir: string; cleanup: () => Promise<void> }> {
 	const dir = await mkdtemp(join(tmpdir(), "patties-reg-"));
+	const root = resolve(dir);
 	for (const [rel, contents] of Object.entries(payload.templates)) {
-		await Bun.write(join(dir, rel), contents);
+		// Defense-in-depth: the payload schema already rejects unsafe keys, but
+		// never let a join escape the temp dir even if that boundary regresses.
+		const dest = resolve(dir, rel);
+		if (dest !== root && !dest.startsWith(root + sep)) {
+			throw new RegistryError(`unsafe template path escapes temp dir: ${rel}`);
+		}
+		await Bun.write(dest, contents);
 	}
 	return {
 		templatesDir: dir,

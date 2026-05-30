@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { hasGit, probeTools } from "./probes.ts";
 import {
@@ -175,13 +175,31 @@ export async function run(argv: string[]): Promise<number> {
 	let gitSkippedReason: string | undefined;
 	if (args.git) {
 		if (hasGit()) {
-			await Bun.$`git init`.cwd(targetDir).quiet().nothrow();
-			await Bun.$`git add -A`.cwd(targetDir).quiet().nothrow();
-			await Bun.$`git commit -m ${"chore: initial commit from create-patties"}`
+			const init = await Bun.$`git init`.cwd(targetDir).quiet().nothrow();
+			// Only stage/commit once `targetDir` is itself the git top-level. If
+			// `git init` failed, or the scaffold landed inside an existing repo (e.g.
+			// a git worktree), git resolves `.git` to a parent and `git add`/`commit`
+			// would clobber that outer repo. Compare the resolved top-level to be sure.
+			const top = await Bun.$`git rev-parse --show-toplevel`
 				.cwd(targetDir)
 				.quiet()
 				.nothrow();
-			step("initialized git and committed");
+			// `git rev-parse` reports a symlink-resolved path; resolve `targetDir` the
+			// same way so the comparison holds on macOS (/var → /private/var).
+			const ownsRepo =
+				init.exitCode === 0 &&
+				top.exitCode === 0 &&
+				top.stdout.toString().trim() === realpathSync(targetDir);
+			if (ownsRepo) {
+				await Bun.$`git add -A`.cwd(targetDir).quiet().nothrow();
+				await Bun.$`git commit -m ${"chore: initial commit from create-patties"}`
+					.cwd(targetDir)
+					.quiet()
+					.nothrow();
+				step("initialized git and committed");
+			} else {
+				gitSkippedReason = "git-init-failed";
+			}
 		} else {
 			gitSkippedReason = "git-missing";
 		}
@@ -193,6 +211,9 @@ export async function run(argv: string[]): Promise<number> {
 	process.stdout.write(`\n✓ created ${args.name}\n${nextSteps}`);
 	if (gitSkippedReason === "git-missing") {
 		stderr("create-patties: `git` not found — skipping `git init`.");
+	}
+	if (gitSkippedReason === "git-init-failed") {
+		stderr("create-patties: `git init` failed — skipping the initial commit.");
 	}
 	if (args.template === "claude") {
 		process.stdout.write(
@@ -337,6 +358,7 @@ async function writePackageJson(dir: string, name: string): Promise<void> {
 			"bun-types": "latest",
 			typescript: "^5.5.0",
 		}),
+		engines: { bun: ">=1.3.0" },
 	};
 	await Bun.write(`${dir}/package.json`, `${JSON.stringify(pkg, null, 2)}\n`);
 }

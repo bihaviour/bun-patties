@@ -16,10 +16,31 @@ export const PhaseSchema = z.union([
 ]);
 export const InternalHelperSchema = z.enum(["cn", "slot", "variants"]);
 
+// `from`/`to` here and registry `templates` keys are joined against temp dirs
+// and the project's components/internal dirs when stamping fetched or
+// third-party registries. Reject anything that could escape the destination:
+// absolute paths, drive letters, backslashes, `..` segments, or null bytes.
+// Exported so the registry payload schema can reuse it for `templates` keys.
+export const SafeRelPath = z
+	.string()
+	.refine(
+		(p) =>
+			p.length > 0 &&
+			!p.includes("\0") &&
+			!p.includes("\\") &&
+			!p.startsWith("/") &&
+			!/^[a-zA-Z]:/.test(p) &&
+			!p.split("/").some((seg) => seg === ".."),
+		{
+			message:
+				"unsafe path: must be relative, without '..' segments, backslashes, drive letters, or null bytes",
+		},
+	);
+
 export const ComponentFileSchema = z
 	.object({
-		from: z.string(),
-		to: z.string(),
+		from: SafeRelPath,
+		to: SafeRelPath,
 	})
 	.strict();
 

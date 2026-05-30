@@ -7,10 +7,18 @@ export interface BuiltAsset {
 	hash: string;
 }
 
+export interface CopyAssetsOptions {
+	/** When false, enumerate + hash assets but do not write them to outDir.
+	 * Compile mode embeds assets into the binary, so the disk copy is skipped. */
+	write?: boolean;
+}
+
 export async function copyAssets(
 	appDir: string,
 	outDir: string,
+	options: CopyAssetsOptions = {},
 ): Promise<BuiltAsset[]> {
+	const write = options.write ?? true;
 	const publicDir = `${appDir.replace(/\/+$/, "")}/public`;
 	const destDir = `${outDir.replace(/\/+$/, "")}/assets`;
 	const glob = new Bun.Glob("**/*");
@@ -22,7 +30,7 @@ export async function copyAssets(
 			const bytes = await Bun.file(src).bytes();
 			const hash = xxh64(bytes);
 			const dest = `${destDir}/${rel}`;
-			await Bun.write(dest, bytes);
+			if (write) await Bun.write(dest, bytes);
 			out.push({
 				src,
 				dest,
