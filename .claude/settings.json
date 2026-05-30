@@ -1,15 +1,15 @@
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash /Users/baita-artotel/Development/bihaviour/bun-patties-framework/.claude/hooks/biome-check.sh"
-          }
-        ]
-      }
-    ]
-  }
+	"hooks": {
+		"PostToolUse": [
+			{
+				"matcher": "Edit|Write|MultiEdit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash /Users/baita-artotel/Development/bihaviour/bun-patties-framework/.claude/hooks/biome-check.sh"
+					}
+				]
+			}
+		]
+	}
 }
