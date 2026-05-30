@@ -3,6 +3,8 @@
 // reference is not pinned to a 40-character commit SHA. Local composite
 // actions (`uses: ./...`) are allowed.
 
+export {};
+
 const usesRe = /^\s*-?\s*uses:\s*([^\s#]+)/gm;
 const sha40 = /^[0-9a-f]{40}$/;
 
