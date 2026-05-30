@@ -1,4 +1,4 @@
-import { ComponentEntrySchema } from "patties-ui/schema";
+import { ComponentEntrySchema, SafeRelPath } from "patties-ui/schema";
 import type { ComponentEntry } from "patties-ui/types";
 import { z } from "zod";
 import { INTERNAL_FILES } from "./internal.ts";
@@ -30,7 +30,9 @@ export class RegistryError extends Error {
 
 const PayloadSchema = z.object({
 	entry: ComponentEntrySchema,
-	templates: z.record(z.string(), z.string()),
+	// Keys are relative paths written under a temp dir during materialize();
+	// SafeRelPath blocks `..`/absolute/backslash/null traversal at the boundary.
+	templates: z.record(SafeRelPath, z.string()),
 });
 
 // Every relative path an entry needs present in `templates`.
