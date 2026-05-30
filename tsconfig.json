@@ -1,19 +1,12 @@
 {
 	"compilerOptions": {
-		"target": "ESNext",
+		"target": "ES2022",
 		"module": "ESNext",
-		"moduleResolution": "bundler",
+		"moduleResolution": "Bundler",
+		"jsx": "react-jsx",
 		"strict": true,
-		"noUncheckedIndexedAccess": true,
-		"esModuleInterop": true,
 		"skipLibCheck": true,
-		"resolveJsonModule": true,
-		"allowImportingTsExtensions": true,
-		"noEmit": true,
-		"isolatedModules": true,
-		"verbatimModuleSyntax": false,
-		"types": ["@types/bun"],
-		"lib": ["ESNext", "DOM", "DOM.Iterable"]
+		"types": ["bun-types", "react", "react-dom"]
 	},
-	"include": ["scripts/**/*"]
+	"include": ["app", "patties.config.ts"]
 }
