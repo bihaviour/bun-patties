@@ -6,6 +6,7 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./registry": "./src/registry.ts",
+		"./schema": "./src/schema.ts",
 		"./types": "./src/types.ts",
 		"./templates/*": "./templates/*"
 	},
@@ -23,6 +24,9 @@
 	},
 	"engines": {
 		"bun": ">=1.0.0"
+	},
+	"dependencies": {
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@happy-dom/global-registrator": "^15.0.0",

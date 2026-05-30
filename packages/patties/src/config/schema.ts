@@ -19,6 +19,11 @@ export const UiConfigSchema = z
 		componentsDir: z.string().default("app/components/ui"),
 		internalDir: z.string().optional(),
 		tokensFile: z.string().default("app/styles/tokens.css"),
+		// Third-party registries for namespaced installs (`patties add @acme/x`).
+		// Keys are `@namespace`; values are an https base URL or a local path that
+		// `patties ui build` produced. The built-in patties-ui catalog is always
+		// available unprefixed and needs no entry. See cli/15.
+		registries: z.record(z.string().regex(/^@/), z.string()).optional(),
 	})
 	.strict();
 

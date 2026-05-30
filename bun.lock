@@ -49,6 +49,9 @@
     "packages/patties-ui": {
       "name": "patties-ui",
       "version": "0.0.1",
+      "dependencies": {
+        "zod": "^4.4.3",
+      },
       "devDependencies": {
         "@happy-dom/global-registrator": "^15.0.0",
         "@radix-ui/react-accordion": "^1.2.0",
