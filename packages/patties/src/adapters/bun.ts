@@ -30,9 +30,16 @@ export const bunAdapter: Adapter = {
 				stdout: "pipe",
 				stderr: "pipe",
 			});
-			const code = await proc.exited;
+			// Drain both pipes concurrently with the exit wait. On a fresh runner
+			// `bun build --compile` downloads the runtime and streams progress; if we
+			// only read after `exited`, a full OS pipe buffer blocks the child on
+			// write while we block on exit — a deadlock that hangs CI until timeout.
+			const [, err, code] = await Promise.all([
+				new Response(proc.stdout).text(),
+				new Response(proc.stderr).text(),
+				proc.exited,
+			]);
 			if (code !== 0) {
-				const err = await new Response(proc.stderr).text();
 				throw new Error(
 					`patties build: --compile failed (exit ${code})\n${err}`,
 				);
