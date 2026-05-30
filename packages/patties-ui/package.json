@@ -3,6 +3,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"description": "Patties UI catalog — copy-in component source, registry, and shared helpers stamped by `patties add`.",
+	"license": "MIT",
 	"exports": {
 		".": "./src/index.ts",
 		"./registry": "./src/registry.ts",

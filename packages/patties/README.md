@@ -68,6 +68,19 @@ Default target is `CLAUDE.md`; override with `config.agentsMd.path`
 patties dev               # bun --hot dev server (use --cold for bun --watch)
 patties build             # production bundle
 patties build --target edge
+patties deploy            # build then dispatch to an installed deploy plugin
+patties secret            # manage dev-time secrets in the OS keychain
+```
+
+UI catalog (via the optional `patties-ui` package):
+
+```sh
+patties ui init           # scaffold tokens + _internal helpers (once)
+patties add button card   # stamp components into app/components/ui/
+patties view button       # print a component's source before stamping
+patties update button     # re-stamp from the catalog after showing the diff
+patties migrate           # codemods: radix imports / RTL logical properties
+patties ui build          # emit a fetchable registry.json (for registry authors)
 ```
 
 See `patties --help` for all flags.
@@ -79,6 +92,8 @@ See `patties --help` for all flags.
 - Client islands with on-demand hydration
 - HMR over a small WebSocket layer
 - Build pipeline that inlines route + island manifests for portable Bun / edge output
+- Single-file `--compile` binaries (`adapter.bun.compile`) with app/public + client chunks embedded via `Bun.embeddedFiles` — no `dist/` sidecar to ship
+- Per-request correlation IDs on `ctx.requestId`, echoed as `X-Request-Id`; dev responses also carry `Server-Timing: total;dur=<ms>`
 - Middleware composition, typed context, config + secrets loading
 - Optional AI primitives (agents, tools, jobs) and agent-manifest generation (default `CLAUDE.md`, configurable)
 - Plugin system

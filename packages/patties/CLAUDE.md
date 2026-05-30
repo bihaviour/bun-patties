@@ -12,10 +12,10 @@ below are specific to working inside this package.
 - `src/router/` — filesystem route scan + compile to Bun route patterns
 - `src/render/` — React SSR (`renderToReadableStream`) + dev error overlay + island marker emission
 - `src/client/` — browser hydration runtime; scans `[data-island]` markers
-- `src/build/` — route + island scan, client/server entry generation, `Bun.build` pipeline
+- `src/build/` — route + island scan, client/server entry generation, `Bun.build` pipeline. `adapter.bun.compile` (production) runs `bun build --compile` against the generated server-entry SOURCE and embeds app/public + client chunks via `with { type: "file" }` / `Bun.embeddedFiles`; `--compile` with `--target edge` is a config-time error
+- `src/middleware/` — composition, `PattiesContext`. `request-id.ts` mints `ctx.requestId` (echoed as `X-Request-Id`, inbound junk ignored); the router finalizer folds in the cookie flush and dev-only `Server-Timing`
 - `src/dev/` — `bun --hot` / `bun --watch` integration, HMR WebSocket, `setupDevClient` (bundles islands in dev and serves `/_patties/client/*`)
 - `src/server/` — `startServer` / `createServer` around `Bun.serve`
-- `src/middleware/` — composition, `PattiesContext`
 - `src/config/` — `defineConfig`, env + secrets loading, Zod schemas. `config.agentsMd.path` (string or string[]) picks where the manifest lands; default is `CLAUDE.md`
 - `src/ai/` — optional agents / tools / jobs primitives (Anthropic SDK is an optional peer dep)
 - `src/agents-md/` — manifest generator + `writeManifestToFile` (splices into a fenced section so rules around it survive regeneration)
@@ -30,7 +30,7 @@ Declared in `package.json#exports`:
 `patties/build`, `patties/dev`, `patties/config`, `patties/middleware`,
 `patties/server`, `patties/ai`, `patties/agents-md`, `patties/plugin`.
 
-CLI at `bin/patties.ts` (`patties dev` / `patties build` / `patties start` / `patties deploy` / `patties secret` / `patties add`). `patties add <component>` stamps shadcn-compatible UI source from the `patties-ui` catalog into `app/components/ui/`; see `src/cli/commands/add.ts` and `.claude/rules/ui-catalog.md`.
+CLI at `bin/patties.ts` → `src/cli/index.ts` (`dev` / `build` / `deploy` / `secret` / `add` / `ui` / `view` / `update` / `migrate`). `patties add <component>` stamps shadcn-compatible UI source from the `patties-ui` catalog into `app/components/ui/` (it also resolves local paths, https URLs, and `@ns/<name>` namespaced registries); `ui init` scaffolds tokens + helpers, `ui build` emits a fetchable registry, `view`/`update` preview-then-stamp, and `migrate` codemods radix imports / RTL logical props. See `src/cli/commands/` and `.claude/rules/ui-catalog.md`.
 
 ## Dev mode wiring
 
