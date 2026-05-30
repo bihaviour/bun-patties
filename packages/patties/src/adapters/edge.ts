@@ -21,6 +21,12 @@ export const edgeAdapter: Adapter = {
 		// we re-emit it at `<outDir>/worker.js` so deploy plugins and ad-hoc CLIs
 		// (`wrangler deploy <file>`) can find a predictable path.
 		const workerPath = `${ctx.outDir}/worker.js`;
+		if (!input.serverEntryOut) {
+			// Edge never compiles, so stage-1 Bun.build always runs and sets this.
+			throw new Error(
+				"patties build: edge target requires a bundled server entry",
+			);
+		}
 		const bytes = await Bun.file(input.serverEntryOut).bytes();
 		await Bun.write(workerPath, bytes);
 		return {

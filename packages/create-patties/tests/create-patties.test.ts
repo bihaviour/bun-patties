@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { run } from "../src/index.ts";
 import { hasGit, probeTools } from "../src/probes.ts";
 import { applyTemplate, renderTemplatesInTree } from "../src/readme.ts";
@@ -208,6 +208,42 @@ test("git init is opt-in: no .git/ by default; --git creates one", async () => {
 		process.chdir(prev);
 	}
 });
+
+test.skipIf(!hasGit())(
+	"--git never commits to a parent repo the scaffold sits inside",
+	async () => {
+		// Outer repo with a known HEAD; scaffolding into it must not touch it.
+		const outer = await mktemp();
+		await Bun.$`git init`.cwd(outer).quiet();
+		await Bun.$`git -c user.email=t@t -c user.name=t commit --allow-empty -m base`
+			.cwd(outer)
+			.quiet();
+		const head = (await Bun.$`git rev-parse HEAD`.cwd(outer).text()).trim();
+
+		const prev = process.cwd();
+		process.chdir(outer);
+		try {
+			const code = await run(["demo", "--no-install", "--git"]);
+			expect(code).toBe(0);
+		} finally {
+			process.chdir(prev);
+		}
+
+		// Outer repo's HEAD is untouched and gained no stray scaffold commit.
+		expect((await Bun.$`git rev-parse HEAD`.cwd(outer).text()).trim()).toBe(
+			head,
+		);
+		const log = await Bun.$`git log --oneline`.cwd(outer).text();
+		expect(log).not.toContain("initial commit from create-patties");
+		// The new project is its own repo and owns the commit instead.
+		const demo = `${outer}/demo`;
+		expect(
+			(await Bun.$`git rev-parse --show-toplevel`.cwd(demo).text()).trim(),
+		).toBe(realpathSync(demo));
+		const demoLog = await Bun.$`git log --oneline`.cwd(demo).text();
+		expect(demoLog).toContain("initial commit from create-patties");
+	},
+);
 
 test("applyTemplate substitutes placeholders and keeps matching conditional blocks", () => {
 	const out = applyTemplate(

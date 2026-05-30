@@ -10,8 +10,12 @@ export interface AdapterContext {
 }
 
 export interface AdapterBuildInput {
-	/** Absolute path to the bundled server entry produced by Bun.build. */
-	serverEntryOut: string;
+	/** Absolute path to the bundled server entry produced by stage-1 Bun.build.
+	 * Undefined in bun compile mode, where stage-1 is skipped and the adapter
+	 * compiles `serverEntrySrc` directly so file/macro import attributes survive. */
+	serverEntryOut?: string;
+	/** Absolute path to the generated server-entry.ts SOURCE (for --compile). */
+	serverEntrySrc: string;
 	assets: BuiltAsset[];
 }
 

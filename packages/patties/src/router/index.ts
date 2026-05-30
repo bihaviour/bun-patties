@@ -1,4 +1,4 @@
-import { appendCookieHeaders } from "../middleware/cookies.ts";
+import { finalizeResponse, now } from "../middleware/cookies.ts";
 import { compose, type Middleware, makeContext } from "../middleware/index.ts";
 import {
 	assertPluginCompat,
@@ -171,9 +171,10 @@ export async function createCompiledRouter(
 	return {
 		routes,
 		fallback: async (req: Request) => {
+			const startMs = now();
 			const ctx = makeContext(req);
 			const res = await fallback(req, ctx);
-			return appendCookieHeaders(res, ctx.cookies);
+			return finalizeResponse(res, ctx, { startMs });
 		},
 		entries,
 	};
@@ -192,10 +193,11 @@ function attach(
 	for (const [m, h] of Object.entries(methodMap)) {
 		if (!h) continue;
 		bunWrapped[m] = (req) => {
+			const startMs = now();
 			const params = req.params ?? {};
 			const ctx = makeContext(req, params);
 			return Promise.resolve(h(req, ctx)).then((res) =>
-				appendCookieHeaders(res, ctx.cookies),
+				finalizeResponse(res, ctx, { startMs }),
 			);
 		};
 	}

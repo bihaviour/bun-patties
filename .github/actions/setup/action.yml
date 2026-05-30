@@ -20,3 +20,12 @@ runs:
     - name: Install dependencies
       shell: bash
       run: bun install --frozen-lockfile
+
+    # GitHub runners have no global git identity; the create-patties `--git`
+    # tests (and the scaffolder itself) run `git commit` in temp repos, which
+    # otherwise fails with exit 128 ("tell me who you are").
+    - name: Configure git identity
+      shell: bash
+      run: |
+        git config --global user.email "ci@patties.dev"
+        git config --global user.name "patties CI"

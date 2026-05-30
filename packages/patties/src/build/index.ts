@@ -6,6 +6,11 @@ import type { JobSummary, Plugin } from "../plugin/index.ts";
 import { scanRoutes } from "../router/filesystem.ts";
 import { type BuiltAsset, copyAssets } from "./assets.ts";
 import { generateClientEntry } from "./client-entry.ts";
+import {
+	collectClientChunks,
+	type EmbeddedEntry,
+	generateEmbeddedManifest,
+} from "./embedded.ts";
 import { type IslandEntry, scanIslands } from "./scan-islands.ts";
 import { generateServerEntry } from "./server-entry.ts";
 
@@ -54,6 +59,15 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 	const target = options.target ?? "bun";
 	const mode = options.mode ?? "production";
 	const plugins = options.plugins ?? [];
+
+	if (options.compile === true && target === "edge") {
+		throw new Error(
+			'patties build: adapter.bun.compile is only supported with target "bun" (got target "edge"). Remove --compile or set target: "bun".',
+		);
+	}
+	// Compile path: embed assets into the binary. Bun + production only.
+	const compile =
+		options.compile === true && target === "bun" && mode === "production";
 
 	for (const p of plugins) {
 		if (!p.hooks?.onBuildStart) continue;
@@ -161,41 +175,65 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 		manifestPath,
 		target,
 		port: options.port,
+		compile,
 	});
 	const serverEntryPath = `${genDir}/server-entry.ts`;
 	await Bun.write(serverEntryPath, serverEntrySource);
+
+	// In compile mode the server entry imports ./embedded-manifest.ts; generate it
+	// before the compile step so `with { type: "file" }` imports resolve. Client
+	// chunks already exist on disk (the client build ran above); public assets are
+	// enumerated without writing the dist/assets sidecar.
+	if (compile) {
+		const publicAssets = await copyAssets(appDir, outDir, { write: false });
+		const chunkEntries = await collectClientChunks(clientOutDir);
+		const embedded: EmbeddedEntry[] = [
+			...publicAssets.map((a) => ({ url: a.publicPath, src: a.src })),
+			...chunkEntries,
+		];
+		await Bun.write(
+			`${genDir}/embedded-manifest.ts`,
+			generateEmbeddedManifest(embedded),
+		);
+	}
 
 	const adapter: Adapter = target === "edge" ? edgeAdapter : bunAdapter;
 
 	// Server bundle is intentionally NOT minified: spec acceptance requires the
 	// inlined route table to be grep-verifiable in the output, and minification
 	// mangles property names on object literals.
-	const serverResult = await Bun.build({
-		entrypoints: [serverEntryPath],
-		target: adapter.buildTarget,
-		outdir: serverOutDir,
-		minify: false,
-	});
+	//
+	// Compile mode skips this stage entirely: `bun build --compile` runs against
+	// the source entry (see bunAdapter) so file/macro import attributes survive.
+	let serverEntryOut: string | undefined;
+	if (!compile) {
+		const serverResult = await Bun.build({
+			entrypoints: [serverEntryPath],
+			target: adapter.buildTarget,
+			outdir: serverOutDir,
+			minify: false,
+		});
 
-	if (!serverResult.success) {
-		const msgs = serverResult.logs
-			.map((l) => l.message ?? String(l))
-			.join("\n");
-		throw new Error(`patties build: server bundle failed\n${msgs}`);
+		if (!serverResult.success) {
+			const msgs = serverResult.logs
+				.map((l) => l.message ?? String(l))
+				.join("\n");
+			throw new Error(`patties build: server bundle failed\n${msgs}`);
+		}
+
+		const serverOutput =
+			serverResult.outputs.find((o) => o.kind === "entry-point") ??
+			serverResult.outputs[0];
+		serverEntryOut = serverOutput
+			? serverOutput.path
+			: `${serverOutDir}/server-entry.js`;
 	}
 
-	const serverOutput =
-		serverResult.outputs.find((o) => o.kind === "entry-point") ??
-		serverResult.outputs[0];
-	const serverEntryOut = serverOutput
-		? serverOutput.path
-		: `${serverOutDir}/server-entry.js`;
-
-	const assets = await copyAssets(appDir, outDir);
+	const assets = await copyAssets(appDir, outDir, { write: !compile });
 
 	const emitted = await adapter.emit(
-		{ serverEntryOut, assets },
-		{ appDir, outDir, mode, compile: options.compile === true },
+		{ serverEntryOut, serverEntrySrc: serverEntryPath, assets },
+		{ appDir, outDir, mode, compile },
 	);
 
 	const result: BuildResult = {

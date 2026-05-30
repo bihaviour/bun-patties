@@ -1,5 +1,6 @@
 import type { AiContext } from "../ai/types.ts";
-import { appendCookieHeaders } from "./cookies.ts";
+import { finalizeResponse } from "./cookies.ts";
+import { resolveRequestId } from "./request-id.ts";
 import {
 	htmlResponse,
 	jsonResponse,
@@ -8,6 +9,9 @@ import {
 
 export interface PattiesContext {
 	params: Record<string, string>;
+	// Framework-generated correlation id, populated before user middleware runs.
+	// User middleware/plugins read it; they MUST NOT re-generate it.
+	requestId: string;
 	cookies: unknown;
 	env: Record<string, string | undefined>;
 	aiContext?: AiContext;
@@ -63,6 +67,7 @@ export function makeContext(
 
 	const ctx: PattiesContext = {
 		params,
+		requestId: resolveRequestId(req),
 		get cookies() {
 			if (cookiesCache === undefined) {
 				const anyReq = req as unknown as { cookies?: unknown };
@@ -95,4 +100,4 @@ export function makeContext(
 	return ctx;
 }
 
-export { appendCookieHeaders };
+export { finalizeResponse };
