@@ -1,0 +1,10 @@
+{
+  "mode": "pre",
+  "tag": "next",
+  "initialVersions": {
+    "create-patties": "0.0.11",
+    "patties": "0.0.11",
+    "patties-ui": "0.0.2"
+  },
+  "changesets": []
+}
