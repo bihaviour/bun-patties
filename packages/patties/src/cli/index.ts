@@ -7,9 +7,11 @@ import { runMigrate } from "./commands/migrate.ts";
 import { runSecret } from "./commands/secret.ts";
 import { runUi } from "./commands/ui.ts";
 import { runUpdate } from "./commands/update.ts";
+import { runUpgrade } from "./commands/upgrade.ts";
 import { runView } from "./commands/view.ts";
 import { runDev } from "./dev.ts";
 import { EXIT, log, setVerbose } from "./log.ts";
+import { notifyUpdate } from "./update-check.ts";
 
 const FRAMEWORK_VERSION = (pkg as { version: string }).version;
 
@@ -20,6 +22,7 @@ export interface CliContext {
 }
 
 export interface GlobalFlags extends CliContext {
+	noUpdateCheck: boolean;
 	rest: string[];
 }
 
@@ -45,6 +48,9 @@ export async function main(argv: string[]): Promise<number> {
 		verbose: globals.verbose,
 	};
 
+	// Prints from cache (instant) and refreshes in the background; never blocks.
+	await notifyUpdate(FRAMEWORK_VERSION, globals.noUpdateCheck);
+
 	switch (cmd) {
 		case "dev":
 			return runDev(rest, ctx);
@@ -62,6 +68,8 @@ export async function main(argv: string[]): Promise<number> {
 			return runView(rest, ctx);
 		case "update":
 			return runUpdate(rest, ctx);
+		case "upgrade":
+			return runUpgrade(rest, ctx);
 		case "migrate":
 			return runMigrate(rest, ctx);
 		default:
@@ -76,6 +84,7 @@ function extractGlobals(argv: string[]): GlobalFlags {
 	let cwd = process.cwd();
 	let configPath: string | undefined;
 	let verbose = false;
+	let noUpdateCheck = false;
 
 	for (let i = 0; i < argv.length; i++) {
 		const a = argv[i];
@@ -92,11 +101,13 @@ function extractGlobals(argv: string[]): GlobalFlags {
 			configPath = absolutize(a.slice(9));
 		} else if (a === "--verbose") {
 			verbose = true;
+		} else if (a === "--no-update-check") {
+			noUpdateCheck = true;
 		} else {
 			rest.push(a);
 		}
 	}
-	return { cwd, configPath, verbose, rest };
+	return { cwd, configPath, verbose, noUpdateCheck, rest };
 }
 
 function absolutize(p: string): string {
@@ -118,14 +129,16 @@ Commands:
   ui       UI catalog setup (patties ui init).
   view     Print a component's source before stamping.
   update   Re-stamp components from the catalog after showing the diff.
+  upgrade  Update the project's patties dependency to the newest release.
   migrate  Codemods: radix imports / RTL logical properties.
   help     Show this message.
 
 Global flags:
-  --cwd <path>      Project root (default: process.cwd()).
-  --config <path>   Explicit config file (default: discovery in cwd).
-  --verbose         Verbose diagnostics (include stacks).
-  --version, -v     Print version.
-  --help,    -h     Show this message.
+  --cwd <path>        Project root (default: process.cwd()).
+  --config <path>     Explicit config file (default: discovery in cwd).
+  --verbose           Verbose diagnostics (include stacks).
+  --no-update-check   Skip the "update available" banner.
+  --version, -v       Print version.
+  --help,    -h       Show this message.
 `);
 }
