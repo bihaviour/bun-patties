@@ -29,6 +29,27 @@ export const UiConfigSchema = z
 
 export type UiConfig = z.infer<typeof UiConfigSchema>;
 
+// Per-task cache config for `patties run` (framework/27-task-runner-cache).
+// `.strict()` so a typo (e.g. `output` for `outputs`, or a `dependsOn` field —
+// ordering is owned by the workspace graph, not a DSL) is a config error.
+// All fields optional: a bare `{}` means "cache with default inputs (the
+// package's tracked + untracked-non-ignored files minus `outputs`) and no
+// declared outputs to restore".
+export const TaskConfigSchema = z
+	.object({
+		inputs: z.array(z.string()).optional(),
+		outputs: z.array(z.string()).optional(),
+		env: z.array(z.string()).optional(),
+		cache: z.boolean().optional(),
+	})
+	.strict();
+
+export type TaskConfig = z.infer<typeof TaskConfigSchema>;
+
+export const TasksConfigSchema = z.record(z.string(), TaskConfigSchema);
+
+export type TasksConfig = z.infer<typeof TasksConfigSchema>;
+
 export const PattiesConfigSchema = z.object({
 	target: z.enum(["bun", "edge"]).default("bun"),
 	appDir: z.string().default("./app"),
@@ -73,6 +94,9 @@ export const PattiesConfigSchema = z.object({
 		.default({ path: "CLAUDE.md" }),
 	// Optional, no default: absent must behave exactly as today (conventions only).
 	ui: UiConfigSchema.optional(),
+	// Per-task input/output declarations consumed by `patties run` (the cache
+	// layer). Absent ⇒ `patties run <task>` falls back to per-task defaults.
+	tasks: TasksConfigSchema.optional(),
 });
 
 export type PattiesConfig = z.infer<typeof PattiesConfigSchema>;

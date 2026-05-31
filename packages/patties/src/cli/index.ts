@@ -7,6 +7,7 @@ import { runSecret } from "./commands/secret.ts";
 import { runUpgrade } from "./commands/upgrade.ts";
 import { runDev } from "./dev.ts";
 import { EXIT, log, setVerbose } from "./log.ts";
+import { runRun } from "./run.ts";
 import { notifyUpdate } from "./update-check.ts";
 
 const FRAMEWORK_VERSION = (pkg as { version: string }).version;
@@ -52,6 +53,8 @@ export async function main(argv: string[]): Promise<number> {
 			return runDev(rest, ctx);
 		case "build":
 			return runBuild(rest, ctx);
+		case "run":
+			return runRun(rest, ctx);
 		case "deploy":
 			return runDeploy(rest, ctx);
 		case "secret":
@@ -129,6 +132,7 @@ Usage:
 Commands:
   dev      Start the dev server (bun --hot by default).
   build    Produce a production bundle for the configured target.
+  run      Run a workspace task with output caching + affected detection.
   deploy   Build then dispatch to an installed deploy plugin.
   secret   Manage dev-time secrets in the OS keychain.
   add      Stamp UI components from patties-ui into your project.
