@@ -1,14 +1,10 @@
 import { isAbsolute, resolve } from "node:path";
 import pkg from "../../package.json" with { type: "json" };
 import { runBuild } from "./build.ts";
-import { runAdd } from "./commands/add.ts";
 import { runDeploy } from "./commands/deploy.ts";
 import { runMigrate } from "./commands/migrate.ts";
 import { runSecret } from "./commands/secret.ts";
-import { runUi } from "./commands/ui.ts";
-import { runUpdate } from "./commands/update.ts";
 import { runUpgrade } from "./commands/upgrade.ts";
-import { runView } from "./commands/view.ts";
 import { runDev } from "./dev.ts";
 import { EXIT, log, setVerbose } from "./log.ts";
 import { notifyUpdate } from "./update-check.ts";
@@ -60,14 +56,24 @@ export async function main(argv: string[]): Promise<number> {
 			return runDeploy(rest, ctx);
 		case "secret":
 			return runSecret(rest, ctx);
-		case "add":
+		// The catalog commands pull in `patties-ui` (an optional dev-time dep).
+		// Import them lazily so `dev`/`build`/`deploy`/`secret` run without it.
+		case "add": {
+			const { runAdd } = await import("./commands/add.ts");
 			return runAdd(rest, ctx);
-		case "ui":
+		}
+		case "ui": {
+			const { runUi } = await import("./commands/ui.ts");
 			return runUi(rest, ctx);
-		case "view":
+		}
+		case "view": {
+			const { runView } = await import("./commands/view.ts");
 			return runView(rest, ctx);
-		case "update":
+		}
+		case "update": {
+			const { runUpdate } = await import("./commands/update.ts");
 			return runUpdate(rest, ctx);
+		}
 		case "upgrade":
 			return runUpgrade(rest, ctx);
 		case "migrate":

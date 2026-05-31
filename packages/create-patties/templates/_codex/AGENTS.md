@@ -15,6 +15,7 @@ Built with Patties — a Bun-native full-stack meta-framework.
 - [Build-time discovery](.codex/rules/build-time-discovery.md) — discovery happens at build time, not at request time.
 - [Optional AI dependency](.codex/rules/optional-ai.md) — keep `@anthropic-ai/sdk` import-disjoint from non-AI code paths.
 - [Patties CLI](.codex/rules/patties-cli.md) — `patties dev / build / start / deploy / secret`.
+- [Patties patterns](.codex/rules/patties-patterns.md) — add UI components and scaffold feature patterns (auth, CRM, task board, pivot, dashboard).
 
 ## Live inventory
 
