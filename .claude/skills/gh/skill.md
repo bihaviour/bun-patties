@@ -134,46 +134,127 @@ git log main..<head-branch> --oneline
 gh pr diff <n> --name-only
 ```
 
-Check for a changeset (version bump file). The check depends on the repo's release tool:
-- Look for files matching `**/changesets/*.md`, `CHANGELOG.md` edits, or `package.json` version changes in the diff.
+Establish **two independent facts** — they are separate axes and both matter:
 
-### Step 2 — ask about cleanup
+1. **Is there a changeset?** Look in the diff for files matching
+   `.changeset/*.md` (excluding `README.md`), `CHANGELOG.md` edits, or
+   `package.json` version changes. This tells you the *bump level* is already
+   decided.
+2. **What channel is the repo currently on?** Check pre mode directly — it is
+   the only thing that decides stable vs prerelease, NOT the changeset:
+   ```bash
+   test -f .changeset/pre.json && cat .changeset/pre.json   # {"mode","tag",...} if in pre mode
+   ```
+   Record whether pre mode is active and, if so, its `tag`.
 
-Single message with the following:
+### Step 2 — ask about channel, bump, and cleanup
+
+Ask all applicable questions in a **single message**.
+
+**(a) Release channel — ALWAYS ask, even when a changeset already exists.**
+A changeset records the bump level but never the channel; pre mode does. So
+confirm it every time:
+
+> **Release channel:** Should this publish to the stable `latest` tag, or as a prerelease?
+> `stable` / `prerelease`
+
+If `prerelease`, ask which pre tag in the same message: `next` / `beta` / `rc`.
+The npm `latest` tag is reserved for stable releases (see §Release tags).
+
+**(b) Version bump — ask ONLY when no changeset was detected in Step 1.**
+If a changeset already exists, skip this; its bump level stands.
+
+> **Version bump:** No changeset detected. How should this release be versioned?
+> `patch` / `minor` / `major` / `skip`
+
+**(c) Cleanup — always ask.**
 
 > **Branch + worktree cleanup:** After merging, should I delete the remote branch and remove the local worktree (if one exists)?
 > `yes` / `no`
 
-If no changeset is detected, add in the **same message**:
-
-> **Version bump:** No changeset detected. Do you want to bump the version?
-> `patch` / `minor` / `major` / `skip`
-
 Wait for answers.
+
+### Step 2a — reconcile channel vs. pre-mode state
+
+Compare the requested channel (Step 2, question a) against the actual pre-mode
+state (Step 1, fact 2). Surface any mismatch explicitly — do **not** silently
+proceed:
+
+| Requested | Pre mode now | Action in Step 3 |
+|---|---|---|
+| `stable` | inactive | none — normal stable flow |
+| `stable` | **active (`<tag>`)** | ⚠️ WARN: repo is in `<tag>` pre mode; publishing now ships under `<tag>`, not `latest`. Must `bunx changeset pre exit` first. |
+| `prerelease <tag>` | inactive | `bunx changeset pre enter <tag>` before merge |
+| `prerelease <tag>` | active, **same** tag | none — already correct |
+| `prerelease <new>` | active, **different** `<old>` | ⚠️ WARN: in `<old>` pre mode, requested `<new>`. Must `pre exit` then `pre enter <new>`. |
+
+If a changeset already exists **and** the requested channel is `prerelease`
+while pre mode is inactive, the changeset is fine as-is — you only need to enter
+pre mode. Call this out so the user knows the existing changeset is reused.
 
 ### Step 2b — confirmation prompt
 
 Call `AskUserQuestion` with a summary of what will happen:
 
 - Merge strategy: squash, PR #<n> "<title>"
-- Version bump: <patch/minor/major/skip>
+- Release channel: `stable → latest` or `prerelease → <tag>`
+- Version bump: <patch/minor/major/skip>, or "existing changeset" if one was found
+- Pre-mode reconciliation: the action from the Step 2a table (e.g. "run `changeset pre enter next`", "run `changeset pre exit` — repo is in `next` pre mode", or "none")
 - Branch cleanup: yes/no (worktree path if applicable)
 - Options: `Proceed` / `Cancel`
 
-Only continue if the user selects `Proceed`.
+If Step 2a flagged a ⚠️ mismatch, state it in the question text, not just the
+summary line. Only continue if the user selects `Proceed`.
 
-### Step 3 — version bump (if requested)
+### Step 3 — apply channel + version (if requested)
 
-Detect the version field location (`package.json` root, `packages/*/package.json`, or a dedicated version file). Apply the bump with:
+This repo versions through **changesets** — never hand-edit `package.json`
+versions, and never run `changeset version` locally (CI's Release workflow owns
+that). Do the reconciliation from Step 2a **first**, then the changeset.
+
+**3a — reconcile pre mode** (only if Step 2a flagged an action):
 
 ```bash
-# example for a single package.json
-bun x npm-version <patch|minor|major> --no-git-tag-version
-git add package.json
-git commit -m "chore: bump version to $(node -p "require('./package.json').version")"
+# stable requested but repo is in pre mode → leave pre mode:
+bunx changeset pre exit
+
+# prerelease requested but pre mode inactive → enter it:
+bunx changeset pre enter <next|beta|rc>
+
+# prerelease requested with a different tag than active → switch:
+bunx changeset pre exit && bunx changeset pre enter <new-tag>
 ```
 
-For a Bun workspace monorepo, bump each public package's `package.json` individually and commit once.
+**3b — author the changeset** (only if Step 1 found none). The interactive
+`bunx changeset` prompt isn't available here, so write the file directly:
+
+```bash
+cat > ".changeset/pr-<n>-<short-slug>.md" <<'EOF'
+---
+"patties": <patch|minor|major>
+"create-patties": <patch|minor|major>
+---
+
+<one-line summary of the change>
+EOF
+```
+
+List only the public packages actually affected, each at its chosen bump level.
+If a changeset already exists, reuse it — do not author a second one.
+
+**3c — commit** whatever 3a/3b changed:
+
+```bash
+git add .changeset
+git commit -m "chore: <changeset / enter <tag> pre mode / exit pre mode> for #<n>"
+```
+
+The bump level (3b) and the channel (3a) are independent: a release candidate is
+still a `patch`/`minor`/`major` changeset — pre mode is what routes it to the
+pre tag instead of `latest`. `scripts/check-release-tag.ts` enforces that a
+prerelease version can only publish while pre mode is active, so a stray
+prerelease can never take `latest`. When the line stabilises, `bunx changeset
+pre exit`.
 
 ### Step 4 — merge
 
@@ -316,8 +397,25 @@ Derive from the message. Common scopes for this repo:
 
 ---
 
+## Release tags
+
+The npm `latest` dist-tag must only ever point at a stable release.
+
+- Releases publish via `changeset publish` in `.github/workflows/release.yml`.
+  It tags everything `latest` **unless** the repo is in changesets pre mode
+  (`.changeset/pre.json` present), in which case it publishes under that pre tag
+  (`next` / `beta` / `rc`) and leaves `latest` alone.
+- Therefore prereleases ALWAYS go through `bunx changeset pre enter <tag>` first.
+  Never produce a prerelease version outside pre mode.
+- `scripts/check-release-tag.ts` enforces this (wired into `lint` and the publish
+  step): it fails if any public package carries a prerelease version while pre
+  mode is inactive.
+- Consumers opt into prereleases explicitly: `bun add patties@next`. Plain
+  `bun add patties` always resolves the latest stable.
+
 ## General rules
 
+- `latest` is reserved for stable. Route prereleases through `changeset pre enter`; never hand-edit a version into a prerelease (see §Release tags).
 - Never push to remote — that is always the user's decision.
 - Never merge without explicit user confirmation.
 - Always use `--assignee "@me"` on issues and PRs.
