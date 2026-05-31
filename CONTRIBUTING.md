@@ -80,8 +80,19 @@ ship in a release, add a changeset describing it:
 bun changeset
 ```
 
-Maintainers cut releases via the pipeline in `.github/workflows/release.yml`,
-which waits for CI on `master` then runs `changeset publish`.
+Commit the generated `.changeset/*.md` alongside your change and push normally —
+**there is no local version bump.** Versioning and publishing are fully owned by
+`.github/workflows/release.yml` (the [`changesets/action`](https://github.com/changesets/action)):
+
+1. When changesets land on `master`, the action opens or updates a
+   **"Version Packages" PR** that applies `changeset version` (bumps + CHANGELOG).
+2. Merging that PR runs `changeset publish` — it publishes each package whose
+   version is ahead of npm, tags the release, and opens a GitHub Release.
+
+So a release is "merge the Version Packages PR," not a manual bump. The npm
+`latest` tag is reserved for stable; prereleases go through changesets pre mode
+(`bunx changeset pre enter <next|beta|rc>`) and `scripts/check-release-tag.ts`
+enforces that a prerelease can never take `latest`.
 
 ## Reporting bugs & requesting features
 
