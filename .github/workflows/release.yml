@@ -74,11 +74,13 @@ jobs:
           # The guard refuses to publish a prerelease version unless the repo
           # is in changesets pre mode, so a stray prerelease can never take the
           # npm `latest` tag. See scripts/check-release-tag.ts.
-          # Use the full package name (@changesets/cli) — `bunx changeset`
-          # resolves the bare name ambiguously and can silently no-op (publish
-          # nothing, exit 0) when node_modules/.bin isn't intact.
-          publish: bun run scripts/check-release-tag.ts && bunx @changesets/cli publish
-          version: bunx @changesets/cli version
+          # Must be SINGLE commands: changesets/action splits these on
+          # whitespace and execs without a shell, so a top-level `&&` is NOT a
+          # shell operator — it would be passed as args to the first command
+          # and the publish half would silently never run. The `&&` guard lives
+          # inside the package.json `release` script, which bun runs via a shell.
+          publish: bun run release
+          version: bun run version
           commit: "chore: version packages"
           title: "chore: version packages"
           createGithubReleases: true
