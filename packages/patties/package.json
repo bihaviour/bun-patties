@@ -1,6 +1,6 @@
 {
 	"name": "patties",
-	"version": "0.0.11",
+	"version": "0.1.0",
 	"type": "module",
 	"description": "Bun-native full-stack meta-framework with React rendering",
 	"license": "MIT",
