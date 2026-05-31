@@ -1,5 +1,5 @@
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import pkg from "../../package.json" with { type: "json" };
 import { generateAgentsMd } from "../agents-md/generate.ts";
 import { writeManifestToFile } from "../agents-md/write.ts";
@@ -108,7 +108,9 @@ async function reexecUnderBun(args: DevArgs, ctx: CliContext): Promise<number> {
 	// project when `patties` is linked from a workspace / `bun link`. Without
 	// it, framework files realpath into the framework's own `node_modules`,
 	// loading a *second* copy of React alongside the app's — which breaks
-	// hooks during SSR ("Invalid hook call").
+	// hooks during SSR ("Invalid hook call"). Paired with `resolveReexecEntry`'s
+	// upward search, this also anchors resolution to the hoisted workspace-root
+	// copy in a Bun-workspace monorepo, where `react`/`patties` live at the root.
 	const proc = Bun.spawn(
 		["bun", "--preserve-symlinks", mode, entry, ...passthrough],
 		{
@@ -144,10 +146,82 @@ async function reexecUnderBun(args: DevArgs, ctx: CliContext): Promise<number> {
 // framework checkout. Combined with `--preserve-symlinks`, this keeps module
 // resolution anchored in the user's project so `react` / `react-dom` resolve
 // to a single copy.
-function resolveReexecEntry(cwd: string): string {
-	const candidate = `${cwd}/node_modules/patties/bin/patties.ts`;
-	if (existsSync(candidate)) return candidate;
+//
+// In a Bun-workspace monorepo, `patties` is hoisted to the workspace-root
+// `node_modules`, so `<cwd>/node_modules/patties` does not exist when `cwd` is
+// an app dir (e.g. `apps/web`). Climb parent `node_modules` directories and
+// return the nearest existing bin — the hoisted root copy — restoring the
+// app-tree anchor. In a flat app the first iteration matches, so behavior is
+// unchanged. Stop at the first hit: a nested install is intentional if present.
+export function resolveReexecEntry(cwd: string): string {
+	let dir = cwd;
+	while (true) {
+		const candidate = `${dir}/node_modules/patties/bin/patties.ts`;
+		if (existsSync(candidate)) return candidate;
+		const parent = dirname(dir);
+		if (parent === dir) break; // reached filesystem root
+		dir = parent;
+	}
 	return process.argv[1] ?? "";
+}
+
+// SSR hooks read a module-level dispatcher inside `react`; if app components and
+// the renderer (framework) resolve to *different* `react` instances, hooks crash
+// with the cryptic "Invalid hook call." The real invariant is that the `react`
+// reachable from the app equals the `react` reachable from the framework — in a
+// hoisted monorepo a nested `apps/web/node_modules/react` makes the app resolve a
+// copy the root-hoisted framework never sees. Detect that at boot and fail with
+// both paths, instead of crashing later mid-render. Return-based so a future
+// `patties doctor` can reuse it. `projectDir` is the app *package* dir (e.g.
+// `apps/web`), scanned for any extra nested copy as defense in depth.
+export function assertSingleReact(
+	projectDir: string,
+	appDir: string,
+	frameworkDir: string,
+): { ok: true } | { ok: false; message: string } {
+	// realpath → human label, deduped so a single shared copy collapses to one.
+	const copies = new Map<string, string>();
+	const add = (label: string, fromDir: string): void => {
+		try {
+			const real = realpathSync(Bun.resolveSync("react/package.json", fromDir));
+			if (!copies.has(real)) copies.set(real, label);
+		} catch {
+			// No React reachable from this anchor — a genuinely missing React
+			// surfaces elsewhere (the import itself); only duplicates concern us.
+		}
+	};
+	add(appDir, appDir);
+	add("framework", frameworkDir);
+
+	const glob = new Bun.Glob("**/node_modules/react/package.json");
+	for (const hit of glob.scanSync({ cwd: projectDir, onlyFiles: true })) {
+		try {
+			const real = realpathSync(resolve(projectDir, hit));
+			if (!copies.has(real)) copies.set(real, "nested");
+		} catch {}
+	}
+
+	if (copies.size <= 1) return { ok: true };
+
+	const lines = ["✗ Two copies of React detected — SSR hooks will crash."];
+	for (const [real, label] of copies) {
+		lines.push(`    ${label} → ${real} (${readPkgVersion(real)})`);
+	}
+	lines.push(
+		"  Align the version so Bun can hoist a single copy, then `bun install`.",
+	);
+	return { ok: false, message: lines.join("\n") };
+}
+
+function readPkgVersion(pkgJsonPath: string): string {
+	try {
+		const { version } = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as {
+			version?: string;
+		};
+		return version ?? "unknown";
+	} catch {
+		return "unknown";
+	}
 }
 
 async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
@@ -156,6 +230,14 @@ async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
 		configPath: ctx.configPath,
 	});
 	const resolved = await resolveDev(args, ctx);
+
+	// `import.meta.dir` is where framework files resolve `react` from — the same
+	// upward walk the renderer uses — so it's the right "framework" anchor.
+	const react = assertSingleReact(ctx.cwd, resolved.appDir, import.meta.dir);
+	if (!react.ok) {
+		log.error(react.message);
+		return EXIT.ERROR;
+	}
 
 	await loadSecrets(config, { cwd: ctx.cwd });
 	try {
