@@ -32,6 +32,13 @@ jobs:
   release:
     name: changesets / release
     runs-on: ubuntu-latest
+    # Disable Husky in CI: the changesets "Version Packages" commit would
+    # otherwise fire .husky/pre-commit (`bun test`), running the full
+    # integration suite inside the release job. Those server/HTTP tests fail
+    # in the sandbox and dump giant Response object graphs, blowing the run
+    # past the job timeout. Hooks have no business gating an automated commit.
+    env:
+      HUSKY: 0
     # Only run when the triggering CI workflow succeeded **and** it was the
     # push-to-master variant. PR-triggered CI runs do not publish.
     if: >-
