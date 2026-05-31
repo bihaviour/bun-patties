@@ -74,9 +74,15 @@ test("--template claude scaffolds the full _claude overlay", async () => {
 		);
 		expect(existsSync(`${root}/demo/.claude/rules/bun-native.md`)).toBe(true);
 		expect(existsSync(`${root}/demo/.claude/rules/islands.md`)).toBe(true);
-		// Old placeholder dirs should be gone.
+		// /patties skill + /patties-init command ship with the claude overlay.
+		expect(existsSync(`${root}/demo/.claude/skills/patties/SKILL.md`)).toBe(
+			true,
+		);
+		expect(existsSync(`${root}/demo/.claude/commands/patties-init.md`)).toBe(
+			true,
+		);
+		// Old placeholder dir should be gone.
 		expect(existsSync(`${root}/demo/.claude/agents`)).toBe(false);
-		expect(existsSync(`${root}/demo/.claude/commands`)).toBe(false);
 		// No codex contamination.
 		expect(existsSync(`${root}/demo/AGENTS.md`)).toBe(false);
 		expect(existsSync(`${root}/demo/.codex`)).toBe(false);
@@ -272,9 +278,12 @@ test("applyTemplate substitutes placeholders and keeps matching conditional bloc
 		{
 			name: "x",
 			agent: "claude",
+			type: "fullstack",
+			ui: "yes",
+			monorepo: "no",
 			target: "bun",
 			deploy: "none",
-			scaffold: "demo",
+			app_name: "x",
 		},
 	);
 	expect(out).toContain("# x");
@@ -282,7 +291,7 @@ test("applyTemplate substitutes placeholders and keeps matching conditional bloc
 	expect(out).not.toContain("no");
 });
 
-test("default scaffold ships the todo demo", async () => {
+test("default scaffold ships the full-stack todo demo", async () => {
 	const root = await mktemp();
 	const prev = process.cwd();
 	process.chdir(root);
@@ -290,31 +299,11 @@ test("default scaffold ships the todo demo", async () => {
 		const code = await run(["demo", "--no-install", "--no-git"]);
 		expect(code).toBe(0);
 		expect(existsSync(`${root}/demo/app/islands/TodoApp.tsx`)).toBe(true);
-		expect(existsSync(`${root}/demo/app/islands/Counter.tsx`)).toBe(false);
+		expect(existsSync(`${root}/demo/app/routes/api/health.ts`)).toBe(true);
 		const route = await Bun.file(`${root}/demo/app/routes/index.tsx`).text();
 		expect(route).toContain("TodoApp");
 		const readme = await Bun.file(`${root}/demo/README.md`).text();
-		expect(readme).toContain("Remove the demo");
 		expect(readme).toContain("bun run build");
-	} finally {
-		process.chdir(prev);
-	}
-});
-
-test("--blank scaffolds a hello-world page with no islands", async () => {
-	const root = await mktemp();
-	const prev = process.cwd();
-	process.chdir(root);
-	try {
-		const code = await run(["demo", "--no-install", "--no-git", "--blank"]);
-		expect(code).toBe(0);
-		expect(existsSync(`${root}/demo/app/islands`)).toBe(false);
-		const route = await Bun.file(`${root}/demo/app/routes/index.tsx`).text();
-		expect(route).toContain("Hello from demo");
-		expect(route).not.toContain("TodoApp");
-		const readme = await Bun.file(`${root}/demo/README.md`).text();
-		expect(readme).not.toContain("Remove the demo");
-		expect(readme).toContain("Add your first interactive feature");
 	} finally {
 		process.chdir(prev);
 	}
@@ -327,9 +316,12 @@ test("renderTemplatesInTree leaves non-templated files untouched", async () => {
 	await renderTemplatesInTree(root, {
 		name: "world",
 		agent: "none",
+		type: "fullstack",
+		ui: "no",
+		monorepo: "no",
 		target: "bun",
 		deploy: "none",
-		scaffold: "demo",
+		app_name: "world",
 	});
 	expect(await Bun.file(`${root}/plain.ts`).text()).toBe("const x = 1;\n");
 	expect(await Bun.file(`${root}/template.md`).text()).toBe("Hello world\n");

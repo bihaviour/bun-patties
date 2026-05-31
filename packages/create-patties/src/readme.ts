@@ -4,8 +4,9 @@
 //   1. Strip/keep conditional blocks delimited by:
 //        <!-- if:KEY=VALUE -->...<!-- /if -->
 //      The block is kept iff `vars[KEY] === VALUE`.
-//   2. Replace `{{name}}`, `{{agent}}`, `{{target}}`, `{{deploy}}` placeholders
-//      with the corresponding `vars` entry.
+//   2. Replace `{{name}}`, `{{agent}}`, `{{type}}`, `{{ui}}`, `{{monorepo}}`,
+//      `{{app_name}}`, `{{target}}`, `{{deploy}}` placeholders with the
+//      corresponding `vars` entry.
 //
 // `renderTemplatesInTree` walks a scaffolded project and applies the template
 // to every text file we care about (README.md, *.md, *.json, *.ts, *.tsx).
@@ -14,9 +15,12 @@
 export interface TemplateVars {
 	name: string;
 	agent: "claude" | "codex" | "none";
-	target: "bun" | "edge";
+	type: "frontend" | "backend" | "fullstack";
+	ui: "yes" | "no";
+	monorepo: "yes" | "no";
+	target: "bun" | "edge" | "container";
 	deploy: "cloudflare" | "vercel" | "deno" | "netlify" | "bun" | "none";
-	scaffold: "demo" | "blank";
+	app_name: string;
 }
 
 const CONDITIONAL_RE =
@@ -37,9 +41,12 @@ export function applyTemplate(source: string, vars: TemplateVars): string {
 		stripped
 			.replaceAll("{{name}}", vars.name)
 			.replaceAll("{{agent}}", vars.agent)
+			.replaceAll("{{type}}", vars.type)
+			.replaceAll("{{ui}}", vars.ui)
+			.replaceAll("{{monorepo}}", vars.monorepo)
+			.replaceAll("{{app_name}}", vars.app_name)
 			.replaceAll("{{target}}", vars.target)
 			.replaceAll("{{deploy}}", vars.deploy)
-			.replaceAll("{{scaffold}}", vars.scaffold)
 			// Legacy placeholders from earlier overlay revisions — kept so existing
 			// CLAUDE.md / AGENTS.md template text keeps interpolating.
 			.replaceAll("{{PROJECT_NAME}}", vars.name)

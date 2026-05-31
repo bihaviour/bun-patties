@@ -208,6 +208,8 @@ jobs:
       - uses: ./.github/actions/setup
       - run: bun --filter patties generate:agents-md
       - run: git diff --exit-code packages/patties/CLAUDE.md
+      - run: bun --filter create-patties generate:patties-skill
+      - run: git diff --exit-code packages/create-patties/templates/_claude/.claude/skills/patties/SKILL.md packages/create-patties/templates/_codex/.codex/rules/patties-patterns.md
 
   docs-link-check:
     name: docs / link-check

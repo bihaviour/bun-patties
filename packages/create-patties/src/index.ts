@@ -3,14 +3,21 @@ import { dirname, isAbsolute, resolve } from "node:path";
 import { hasGit, probeTools } from "./probes.ts";
 import {
 	type AgentTemplate,
+	type Deploy,
 	isInteractive,
+	type ProjectType,
 	promptAgent,
 	promptDeploy,
+	promptMonorepo,
 	promptName,
-	promptScaffold,
 	promptTarget,
+	promptType,
+	promptUi,
+	type Target,
+	type Theme,
 } from "./prompts.ts";
 import { renderTemplatesInTree } from "./readme.ts";
+import { applyUiStarter, UI_DEPS, UI_DEV_DEPS } from "./ui.ts";
 
 // Step logger — visible progress so the user can see what scaffolding does.
 // Honors NO_COLOR; degrades gracefully on non-TTY streams.
@@ -42,20 +49,27 @@ interface Args {
 	name?: string;
 	template: AgentTemplate;
 	templateExplicit: boolean;
-	target: "bun" | "edge";
+	type: ProjectType;
+	typeExplicit: boolean;
+	ui: boolean;
+	uiExplicit: boolean;
+	monorepo: boolean;
+	monorepoExplicit: boolean;
+	target: Target;
 	targetExplicit: boolean;
-	deploy: "cloudflare" | "vercel" | "deno" | "netlify" | "bun" | "none";
+	theme: Theme;
+	deploy: Deploy;
 	deployExplicit: boolean;
 	install: boolean;
 	git: boolean;
 	yes: boolean;
-	scaffold: "demo" | "blank";
-	scaffoldExplicit: boolean;
 }
 
 const TEMPLATES_ROOT = resolve(dirname(import.meta.dir), "templates");
 const BASE_TEMPLATE = "default";
 const VALID_TEMPLATES: AgentTemplate[] = ["claude", "codex", "none"];
+const VALID_TYPES: ProjectType[] = ["frontend", "backend", "fullstack"];
+const VALID_THEMES: Theme[] = ["neutral", "slate", "stone", "zinc"];
 
 export async function run(argv: string[]): Promise<number> {
 	const args = parseArgs(argv);
@@ -81,8 +95,17 @@ export async function run(argv: string[]): Promise<number> {
 
 	if (interactive) {
 		if (!args.templateExplicit) args.template = promptAgent();
-		if (!args.scaffoldExplicit) args.scaffold = promptScaffold();
-		if (!args.targetExplicit) args.target = promptTarget();
+		if (!args.typeExplicit) args.type = promptType();
+		if (
+			(args.type === "frontend" || args.type === "fullstack") &&
+			!args.uiExplicit
+		) {
+			args.ui = promptUi();
+		}
+		if (args.type === "fullstack" && !args.monorepoExplicit) {
+			args.monorepo = promptMonorepo();
+		}
+		if (!args.targetExplicit) args.target = promptTarget(args.type);
 		if (args.target === "edge" && !args.deployExplicit) {
 			args.deploy = promptDeploy();
 		}
@@ -90,14 +113,33 @@ export async function run(argv: string[]): Promise<number> {
 
 	if (!VALID_TEMPLATES.includes(args.template)) {
 		stderr(
-			`✗ unknown --template "${args.template}" (expected: ${VALID_TEMPLATES.join(", ")})`,
+			`✗ unknown --agent "${args.template}" (expected: ${VALID_TEMPLATES.join(", ")})`,
+		);
+		return 2;
+	}
+	if (!VALID_TYPES.includes(args.type)) {
+		stderr(
+			`✗ unknown --type "${args.type}" (expected: ${VALID_TYPES.join(", ")})`,
 		);
 		return 2;
 	}
 
+	// Gating (spec 18 §Behavior): backend has no UI surface; only full-stack
+	// projects can be a monorepo or use the container target.
+	if (args.type === "backend") args.ui = false;
+	if (args.type !== "fullstack") {
+		args.monorepo = false;
+		if (args.target === "container") {
+			stderr("✗ --target container is only available for --type fullstack");
+			return 2;
+		}
+	}
+
+	const appName = args.name;
 	const targetDir = isAbsolute(args.name)
 		? args.name
 		: resolve(process.cwd(), args.name);
+	const appRoot = args.monorepo ? `${targetDir}/apps/${appName}` : targetDir;
 
 	if (existsSync(targetDir) && readdirSync(targetDir).length > 0) {
 		stderr(`✗ directory not empty: ${targetDir}`);
@@ -114,17 +156,29 @@ export async function run(argv: string[]): Promise<number> {
 
 	header(`create-patties — scaffolding ${c.bold(args.name)}`);
 
-	await Bun.$`mkdir -p ${targetDir}`.quiet();
-	step(`created directory ${c.dim(targetDir)}`);
+	await Bun.$`mkdir -p ${appRoot}`.quiet();
+	await Bun.$`cp -R ${baseDir}/. ${appRoot}`.quiet();
+	step(`copied base template ${c.dim(`(${args.type})`)}`);
 
-	await Bun.$`cp -R ${baseDir}/. ${targetDir}`.quiet();
-	step(`copied base template ${c.dim("(default)")}`);
-
+	// README + .gitignore live at the project root; in a monorepo that's above
+	// the app dir, so lift them out before renaming.
+	if (args.monorepo) {
+		for (const f of ["README-template.md", "gitignore"]) {
+			if (existsSync(`${appRoot}/${f}`)) {
+				await Bun.$`mv ${appRoot}/${f} ${targetDir}/${f}`.quiet();
+			}
+		}
+	}
 	await renameTemplateFiles(targetDir);
-	await writePackageJson(targetDir, args.name);
-	step(`wrote package.json ${c.dim(`(name: ${args.name})`)}`);
-	await patchPattiesConfig(targetDir, args);
-	step(`patched patties.config.ts ${c.dim(`(target: ${args.target})`)}`);
+
+	await applyProjectType(appRoot, args.type);
+	step(`applied project type ${c.dim(`(${args.type})`)}`);
+
+	await writeAppPackageJson(appRoot, appName, args);
+	await patchPattiesConfig(appRoot, args);
+	step(
+		`wrote package.json + patties.config.ts ${c.dim(`(target: ${args.target})`)}`,
+	);
 
 	if (args.template !== "none") {
 		const overlay = resolve(TEMPLATES_ROOT, `_${args.template}`);
@@ -134,27 +188,36 @@ export async function run(argv: string[]): Promise<number> {
 		}
 	}
 
-	if (args.scaffold === "blank") {
-		await applyBlankScaffold(targetDir);
-		step("applied blank scaffold (no demo)");
-	} else {
-		step("included interactive todo demo");
+	if (args.monorepo) {
+		await setupMonorepoRoot(targetDir, appName);
+		step(`set up Bun workspace ${c.dim(`(apps/${appName})`)}`);
+	}
+
+	if (args.ui) {
+		await applyUiStarter(
+			appRoot,
+			args.theme,
+			resolve(TEMPLATES_ROOT, "ui-starter"),
+		);
+		step(`stamped Patties UI starter ${c.dim(`(theme: ${args.theme})`)}`);
+	}
+
+	if (args.target === "container") {
+		await applyContainer(appRoot, args.name);
+		step("emitted Dockerfile + .dockerignore");
 	}
 
 	await renderTemplatesInTree(targetDir, {
 		name: args.name,
 		agent: args.template,
+		type: args.type,
+		ui: args.ui ? "yes" : "no",
+		monorepo: args.monorepo ? "yes" : "no",
 		target: args.target,
 		deploy: args.deploy,
-		scaffold: args.scaffold,
+		app_name: appName,
 	});
-	const manifestName =
-		args.template === "codex"
-			? "AGENTS.md"
-			: args.template === "claude"
-				? "CLAUDE.md"
-				: "manifest";
-	step(`rendered template variables (README, ${manifestName}, …)`);
+	step("rendered template variables (README, app files, …)");
 
 	if (args.install) {
 		pending("installing dependencies (bun install)…");
@@ -172,69 +235,15 @@ export async function run(argv: string[]): Promise<number> {
 		step(`skipped ${c.dim("`bun install`")} (--no-install)`);
 	}
 
-	let gitSkippedReason: string | undefined;
-	if (args.git) {
-		if (hasGit()) {
-			// Strip git hook env vars so these commands resolve relative to targetDir
-			// rather than inheriting GIT_DIR/GIT_INDEX_FILE from a running commit hook.
-			const gitEnv: NodeJS.ProcessEnv = { ...process.env };
-			for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"]) {
-				delete gitEnv[key];
-			}
-			const init = await Bun.$`git init`
-				.cwd(targetDir)
-				.env(gitEnv)
-				.quiet()
-				.nothrow();
-			// Only stage/commit once `targetDir` is itself the git top-level. If
-			// `git init` failed, or the scaffold landed inside an existing repo (e.g.
-			// a git worktree), git resolves `.git` to a parent and `git add`/`commit`
-			// would clobber that outer repo. Compare the resolved top-level to be sure.
-			const top = await Bun.$`git rev-parse --show-toplevel`
-				.cwd(targetDir)
-				.env(gitEnv)
-				.quiet()
-				.nothrow();
-			// `git rev-parse` reports a symlink-resolved path; resolve `targetDir` the
-			// same way so the comparison holds on macOS (/var → /private/var).
-			const ownsRepo =
-				init.exitCode === 0 &&
-				top.exitCode === 0 &&
-				top.stdout.toString().trim() === realpathSync(targetDir);
-			if (ownsRepo) {
-				await Bun.$`git add -A`.cwd(targetDir).env(gitEnv).quiet().nothrow();
-				await Bun.$`git commit -m ${"chore: initial commit from create-patties"}`
-					.cwd(targetDir)
-					.env(gitEnv)
-					.quiet()
-					.nothrow();
-				step("initialized git and committed");
-			} else {
-				gitSkippedReason = "git-init-failed";
-			}
-		} else {
-			gitSkippedReason = "git-missing";
-		}
-	}
+	const gitSkippedReason = args.git ? await initGit(targetDir) : undefined;
+	if (args.git && !gitSkippedReason) step("initialized git and committed");
 
-	const nextSteps = args.git
-		? `\n  cd ${args.name}\n  bunx patties dev\n`
-		: `\n  cd ${args.name}\n  bunx patties dev\n\n  # when you're ready to track this in git:\n  git init && git add -A && git commit -m "initial commit"\n`;
-	process.stdout.write(`\n✓ created ${args.name}\n${nextSteps}`);
+	printNextSteps(args, appName);
 	if (gitSkippedReason === "git-missing") {
 		stderr("create-patties: `git` not found — skipping `git init`.");
 	}
 	if (gitSkippedReason === "git-init-failed") {
 		stderr("create-patties: `git init` failed — skipping the initial commit.");
-	}
-	if (args.template === "claude") {
-		process.stdout.write(
-			"\nClaude Code is configured (CLAUDE.md). Run `claude` in the project to start a session.\n",
-		);
-	} else if (args.template === "codex") {
-		process.stdout.write(
-			"\nCodex is configured (AGENTS.md). Run `codex` in the project to start a session.\n",
-		);
 	}
 	return 0;
 }
@@ -243,63 +252,87 @@ function parseArgs(argv: string[]): Args {
 	const out: Args = {
 		template: "claude",
 		templateExplicit: false,
+		type: "fullstack",
+		typeExplicit: false,
+		ui: true,
+		uiExplicit: false,
+		monorepo: false,
+		monorepoExplicit: false,
 		target: "bun",
 		targetExplicit: false,
+		theme: "neutral",
 		deploy: "none",
 		deployExplicit: false,
 		install: true,
 		git: false,
 		yes: false,
-		scaffold: "demo",
-		scaffoldExplicit: false,
 	};
 	const setTemplate = (raw: string) => {
 		out.template = aliasTemplate(raw);
 		out.templateExplicit = true;
 	};
+	const setType = (raw: string) => {
+		out.type = raw as ProjectType;
+		out.typeExplicit = true;
+	};
+	const setTarget = (raw: string) => {
+		out.target = raw as Target;
+		out.targetExplicit = true;
+	};
+	const setDeploy = (raw: string) => {
+		out.deploy = raw as Deploy;
+		out.deployExplicit = true;
+	};
 	for (let i = 0; i < argv.length; i++) {
 		const a = argv[i];
 		if (a === undefined) continue;
-		if (a === "--template") setTemplate(next(argv, ++i));
+		// --agent is the spec-18 name; --template is the spec-05/09 alias.
+		if (a === "--template" || a === "--agent") setTemplate(next(argv, ++i));
 		else if (a.startsWith("--template=")) setTemplate(a.slice(11));
-		// --agent: spec-05 alias kept for backwards compatibility.
-		else if (a === "--agent") setTemplate(next(argv, ++i));
 		else if (a.startsWith("--agent=")) setTemplate(a.slice(8));
-		else if (a === "--target") {
-			out.target = next(argv, ++i) as Args["target"];
-			out.targetExplicit = true;
-		} else if (a.startsWith("--target=")) {
-			out.target = a.slice(9) as Args["target"];
-			out.targetExplicit = true;
-		} else if (a === "--deploy") {
-			out.deploy = next(argv, ++i) as Args["deploy"];
-			out.deployExplicit = true;
-		} else if (a.startsWith("--deploy=")) {
-			out.deploy = a.slice(9) as Args["deploy"];
-			out.deployExplicit = true;
-		} else if (a === "--no-install") out.install = false;
+		else if (a === "--type") setType(next(argv, ++i));
+		else if (a.startsWith("--type=")) setType(a.slice(7));
+		else if (a === "--ui") {
+			out.ui = true;
+			out.uiExplicit = true;
+		} else if (a === "--no-ui") {
+			out.ui = false;
+			out.uiExplicit = true;
+		} else if (a === "--monorepo") {
+			out.monorepo = true;
+			out.monorepoExplicit = true;
+		} else if (a === "--no-monorepo") {
+			out.monorepo = false;
+			out.monorepoExplicit = true;
+		} else if (a === "--target") setTarget(next(argv, ++i));
+		else if (a.startsWith("--target=")) setTarget(a.slice(9));
+		else if (a === "--theme") out.theme = aliasTheme(next(argv, ++i));
+		else if (a.startsWith("--theme=")) out.theme = aliasTheme(a.slice(8));
+		else if (a === "--deploy") setDeploy(next(argv, ++i));
+		else if (a.startsWith("--deploy=")) setDeploy(a.slice(9));
+		else if (a === "--no-install") out.install = false;
 		else if (a === "--git") out.git = true;
-		// --no-git: kept as a no-op for back-compat. Git is now opt-in
-		// (default off) so most users don't need either flag.
+		// --no-git: kept as a no-op for back-compat. Git is opt-in (default off).
 		else if (a === "--no-git") out.git = false;
 		else if (a === "--yes" || a === "-y") out.yes = true;
-		else if (a === "--blank" || a === "--empty") {
-			out.scaffold = "blank";
-			out.scaffoldExplicit = true;
-		} else if (a === "--demo") {
-			out.scaffold = "demo";
-			out.scaffoldExplicit = true;
-		} else if (!out.name && !a.startsWith("-")) out.name = a;
+		// --blank / --demo: spec-09 scaffold flags, superseded by --type. Accepted
+		// as no-ops so old invocations don't error.
+		else if (a === "--blank" || a === "--empty" || a === "--demo") continue;
+		else if (!out.name && !a.startsWith("-")) out.name = a;
 	}
 	return out;
 }
 
-// Translate spec-05 --agent values (claude-code/none) and current --template
+// Translate spec-05 --agent values (claude-code/none) and current --agent
 // values (claude/codex/none) into the unified AgentTemplate type.
 function aliasTemplate(raw: string): AgentTemplate {
 	if (raw === "claude-code") return "claude";
 	if (raw === "claude" || raw === "codex" || raw === "none") return raw;
 	return raw as AgentTemplate;
+}
+
+function aliasTheme(raw: string): Theme {
+	return (VALID_THEMES as string[]).includes(raw) ? (raw as Theme) : "neutral";
 }
 
 function next(argv: string[], i: number): string {
@@ -326,53 +359,116 @@ async function renameTemplateFiles(dir: string): Promise<void> {
 	}
 }
 
-// --blank scaffold: drop the interactive demo and ship a single hello page.
-// We start from the same default template and prune so we keep exactly one
-// source-of-truth for things like patties.config.ts / tsconfig.json.
-async function applyBlankScaffold(dir: string): Promise<void> {
-	await Bun.$`rm -rf ${dir}/app/islands`.quiet();
-	await Bun.write(
-		`${dir}/app/routes/index.tsx`,
-		`export default function Index(): JSX.Element {
-	return (
-		<main>
-			<h1>Hello from {{name}}</h1>
-			<p>
-				This page is server-rendered by Patties. Add more files under{" "}
-				<code>app/routes/</code> to grow your app.
-			</p>
-		</main>
-	);
-}
-`,
-	);
+// Shape the base (full-stack) template for the chosen project type. We prune
+// from one source rather than keep three near-identical trees.
+async function applyProjectType(
+	appRoot: string,
+	type: ProjectType,
+): Promise<void> {
+	if (type === "frontend") {
+		// No API surface.
+		await Bun.$`rm -rf ${appRoot}/app/routes/api`.quiet();
+	} else if (type === "backend") {
+		// API only — drop the page + island, add a sample resource.
+		await Bun.$`rm -rf ${appRoot}/app/islands`.quiet();
+		await Bun.$`rm -f ${appRoot}/app/routes/index.tsx`.quiet();
+		const overlay = resolve(TEMPLATES_ROOT, "_backend");
+		if (existsSync(overlay)) {
+			await Bun.$`cp -R ${overlay}/. ${appRoot}`.quiet();
+		}
+	}
 }
 
-async function writePackageJson(dir: string, name: string): Promise<void> {
+function pkgScripts(): Record<string, string> {
+	return { dev: "patties dev", build: "patties build", start: "patties start" };
+}
+
+async function writeAppPackageJson(
+	dir: string,
+	name: string,
+	args: Args,
+): Promise<void> {
+	const dependencies: Record<string, string> = {
+		patties: "latest",
+		react: "^19.0.0",
+		"react-dom": "^19.0.0",
+	};
+	const devDependencies: Record<string, string> = {
+		"@types/react": "^19.0.0",
+		"@types/react-dom": "^19.0.0",
+		"bun-types": "latest",
+		typescript: "^5.5.0",
+	};
+	if (args.ui) {
+		Object.assign(dependencies, UI_DEPS);
+		Object.assign(devDependencies, UI_DEV_DEPS);
+	}
 	const pkg = {
 		name,
 		version: "0.1.0",
 		private: true,
 		type: "module",
-		scripts: {
-			dev: "patties dev",
-			build: "patties build",
-			start: "patties start",
-		},
-		dependencies: sorted({
-			patties: "latest",
-			react: "^19.0.0",
-			"react-dom": "^19.0.0",
-		}),
-		devDependencies: sorted({
-			"@types/react": "^19.0.0",
-			"@types/react-dom": "^19.0.0",
-			"bun-types": "latest",
-			typescript: "^5.5.0",
-		}),
+		scripts: pkgScripts(),
+		dependencies: sorted(dependencies),
+		devDependencies: sorted(devDependencies),
 		engines: { bun: ">=1.3.0" },
 	};
 	await Bun.write(`${dir}/package.json`, `${JSON.stringify(pkg, null, 2)}\n`);
+}
+
+// Root workspace manifest + skeleton (spec 18 §Monorepo layout).
+async function setupMonorepoRoot(
+	targetDir: string,
+	appName: string,
+): Promise<void> {
+	const root = {
+		name: `${appName}-monorepo`,
+		version: "0.1.0",
+		private: true,
+		type: "module",
+		workspaces: ["apps/*", "packages/*"],
+		engines: { bun: ">=1.3.0" },
+	};
+	await Bun.write(
+		`${targetDir}/package.json`,
+		`${JSON.stringify(root, null, 2)}\n`,
+	);
+	// biome.json is written here rather than shipped as a template file: a
+	// committed nested biome.json would be discovered as a conflicting root
+	// config by this repo's own Biome.
+	await Bun.write(`${targetDir}/biome.json`, `${MONOREPO_BIOME}\n`);
+	const skeleton = resolve(TEMPLATES_ROOT, "_monorepo");
+	if (existsSync(skeleton)) {
+		await Bun.$`cp -R ${skeleton}/. ${targetDir}`.quiet();
+	}
+}
+
+const MONOREPO_BIOME = JSON.stringify(
+	{
+		$schema: "https://biomejs.dev/schemas/2.4.15/schema.json",
+		vcs: { enabled: true, clientKind: "git", useIgnoreFile: true },
+		formatter: { enabled: true, indentStyle: "tab" },
+		linter: { enabled: true, rules: { recommended: true } },
+		javascript: { formatter: { quoteStyle: "double" } },
+		assist: {
+			enabled: true,
+			actions: { source: { organizeImports: "on" } },
+		},
+	},
+	null,
+	2,
+);
+
+async function applyContainer(appRoot: string, name: string): Promise<void> {
+	const overlay = resolve(TEMPLATES_ROOT, "_container");
+	if (!existsSync(overlay)) return;
+	await Bun.$`cp -R ${overlay}/. ${appRoot}`.quiet();
+	// Dockerfile has no rendered extension, so interpolate {{name}} here.
+	const dockerfile = `${appRoot}/Dockerfile`;
+	if (await Bun.file(dockerfile).exists()) {
+		const text = await Bun.file(dockerfile).text();
+		await Bun.write(dockerfile, text.replaceAll("{{name}}", name));
+	}
 }
 
 function sorted(deps: Record<string, string>): Record<string, string> {
@@ -381,23 +477,102 @@ function sorted(deps: Record<string, string>): Record<string, string> {
 	return out;
 }
 
+// container packages the bun adapter, so patties.config keeps target "bun".
+function configTarget(target: Target): "bun" | "edge" {
+	return target === "edge" ? "edge" : "bun";
+}
+
 async function patchPattiesConfig(dir: string, args: Args): Promise<void> {
 	const path = `${dir}/patties.config.ts`;
 	if (!(await Bun.file(path).exists())) return;
 	const current = await Bun.file(path).text();
-	let next = current.replace(
+	let nextText = current.replace(
 		/target:\s*"(bun|edge)"/,
-		`target: "${args.target}"`,
+		`target: "${configTarget(args.target)}"`,
 	);
 	// Point the agent manifest at the file the chosen agent already reads.
 	// Default (claude / none) leaves the framework default ("CLAUDE.md").
-	if (args.template === "codex" && !/agentsMd:/.test(next)) {
-		next = next.replace(
+	if (args.template === "codex" && !/agentsMd:/.test(nextText)) {
+		nextText = nextText.replace(
 			/target:\s*"(bun|edge)",?\n/,
 			(m) => `${m.replace(/,?\n$/, ",\n")}\tagentsMd: { path: "AGENTS.md" },\n`,
 		);
 	}
-	if (next !== current) await Bun.write(path, next);
+	if (nextText !== current) await Bun.write(path, nextText);
+}
+
+async function initGit(targetDir: string): Promise<string | undefined> {
+	if (!hasGit()) return "git-missing";
+	// Strip git hook env vars so these commands resolve relative to targetDir
+	// rather than inheriting GIT_DIR/GIT_INDEX_FILE from a running commit hook.
+	const gitEnv: NodeJS.ProcessEnv = { ...process.env };
+	for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"]) {
+		delete gitEnv[key];
+	}
+	const init = await Bun.$`git init`
+		.cwd(targetDir)
+		.env(gitEnv)
+		.quiet()
+		.nothrow();
+	// Only stage/commit once `targetDir` is itself the git top-level. If
+	// `git init` failed, or the scaffold landed inside an existing repo (e.g.
+	// a git worktree), git resolves `.git` to a parent and `git add`/`commit`
+	// would clobber that outer repo. Compare the resolved top-level to be sure.
+	const top = await Bun.$`git rev-parse --show-toplevel`
+		.cwd(targetDir)
+		.env(gitEnv)
+		.quiet()
+		.nothrow();
+	// `git rev-parse` reports a symlink-resolved path; resolve `targetDir` the
+	// same way so the comparison holds on macOS (/var → /private/var).
+	const ownsRepo =
+		init.exitCode === 0 &&
+		top.exitCode === 0 &&
+		top.stdout.toString().trim() === realpathSync(targetDir);
+	if (!ownsRepo) return "git-init-failed";
+	await Bun.$`git add -A`.cwd(targetDir).env(gitEnv).quiet().nothrow();
+	await Bun.$`git commit -m ${"chore: initial commit from create-patties"}`
+		.cwd(targetDir)
+		.env(gitEnv)
+		.quiet()
+		.nothrow();
+	return undefined;
+}
+
+function printNextSteps(args: Args, appName: string): void {
+	const out = (s: string) => process.stdout.write(s);
+	const devCmd = args.monorepo
+		? `bun --filter ${appName} dev`
+		: "bunx patties dev";
+	out(`\n✓ created ${args.name}\n\n`);
+	out(`  cd ${args.name}\n`);
+	if (!args.install) out("  bun install\n");
+	out(
+		`  ${devCmd}            → http://localhost:3000  (start the dev server)\n`,
+	);
+	if (args.ui) {
+		out("\nPatties UI is set up — components live in app/components/ui/.\n");
+	}
+	if (args.template === "claude") {
+		out(
+			"\nWant to scaffold features (auth, CRM, task board, dashboard, …)?\n" +
+				"Open a NEW terminal in this project and run:\n\n" +
+				'  claude --permission-mode plan "/patties-init"\n\n' +
+				"That starts an interactive, plan-mode session that designs and\n" +
+				"scaffolds your project with you before writing any files.\n",
+		);
+	} else if (args.template === "codex") {
+		out(
+			"\nWant to scaffold features (auth, CRM, task board, dashboard, …)?\n" +
+				"Open Codex in this project and ask it to scaffold a pattern — it reads\n" +
+				".codex/rules/patties-patterns.md for the recipes.\n",
+		);
+	} else {
+		out(
+			"\nAdd UI components with `patties add <component>`. Feature patterns are\n" +
+				"agent-driven — re-scaffold with --agent claude or codex to get /patties.\n",
+		);
+	}
 }
 
 function stderr(msg: string): void {
@@ -411,19 +586,22 @@ Usage:
   bunx create-patties@latest <name> [options]
 
 Options:
-  --template <claude|codex|none>    Agent platform (default: claude)
-  --target   <bun|edge>             Runtime target (default: bun)
-  --deploy   <cloudflare|vercel|deno|netlify|bun|none>
-  --no-install                      Skip 'bun install'
-  --git                             Run 'git init' + initial commit (opt-in)
-  --yes, -y                         Accept all defaults, skip prompts
-  --blank, --empty                  Scaffold a hello-world page only (no demo)
-  --demo                            Scaffold the interactive todo demo (default)
+  --agent      claude | codex | none                 (default claude)
+  --type       frontend | backend | fullstack        (default fullstack)
+  --ui | --no-ui                                      (frontend/fullstack; default yes)
+  --monorepo | --no-monorepo                          (fullstack only; default no)
+  --target     bun | edge | container                (container = fullstack only; default bun)
+  --deploy     cloudflare | vercel | deno | netlify | none   (edge only)
+  --theme      neutral | slate | stone | zinc         (ui only, default neutral)
+  --yes, -y                                           (accept all defaults)
+  --no-install                                        (skip 'bun install')
+  --git                                               (run 'git init' + initial commit)
 
 Examples:
   bunx create-patties@latest my-app
-  bunx create-patties@latest my-app --template codex
-  bunx create-patties@latest my-app --template none
-  bunx create-patties@latest my-app --git           # opt-in git init
+  bunx create-patties@latest my-app --type backend
+  bunx create-patties@latest my-app --type fullstack --monorepo --ui --theme slate
+  bunx create-patties@latest my-app --agent codex
+  bunx create-patties@latest my-app --agent none
 `);
 }

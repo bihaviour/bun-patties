@@ -32,6 +32,13 @@ jobs:
   release:
     name: changesets / release
     runs-on: ubuntu-latest
+    # Disable Husky in CI: the changesets "Version Packages" commit would
+    # otherwise fire .husky/pre-commit (`bun test`), running the full
+    # integration suite inside the release job. Those server/HTTP tests fail
+    # in the sandbox and dump giant Response object graphs, blowing the run
+    # past the job timeout. Hooks have no business gating an automated commit.
+    env:
+      HUSKY: 0
     # Only run when the triggering CI workflow succeeded **and** it was the
     # push-to-master variant. PR-triggered CI runs do not publish.
     if: >-
@@ -64,8 +71,16 @@ jobs:
         id: changesets
         uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
         with:
-          publish: bunx changeset publish
-          version: bunx changeset version
+          # The guard refuses to publish a prerelease version unless the repo
+          # is in changesets pre mode, so a stray prerelease can never take the
+          # npm `latest` tag. See scripts/check-release-tag.ts.
+          # Must be SINGLE commands: changesets/action splits these on
+          # whitespace and execs without a shell, so a top-level `&&` is NOT a
+          # shell operator — it would be passed as args to the first command
+          # and the publish half would silently never run. The `&&` guard lives
+          # inside the package.json `release` script, which bun runs via a shell.
+          publish: bun run release
+          version: bun run version
           commit: "chore: version packages"
           title: "chore: version packages"
           createGithubReleases: true
