@@ -1,12 +1,44 @@
+<p align="center">
+  <img src="./bun+patties-banner.png" alt="Bun + Patties" />
+</p>
+
 # Bun + Patties
 
 Monorepo for the Patties framework and its scaffolder.
 
+## Why Patties?
+
+Most full-stack frameworks were designed in the Node era and carry its
+accumulated tooling tax: a bundler bolted on (Webpack/Vite), a separate
+file watcher (`chokidar`), a glob library (`fast-glob`/`globby`), and an
+HTTP layer wrapped around `node:http`. Each is a dependency to install,
+configure, keep in sync, and debug.
+
+Bun changed the baseline. The runtime now ships an HTTP server
+(`Bun.serve`), a bundler (`Bun.build`), filesystem globbing (`Bun.Glob`),
+a test runner (`bun test`), and hot reload (`bun --hot`) — all native, all
+fast, all already there. **Patties started from a simple question: what
+does a full-stack framework look like if you build it on those primitives
+instead of re-importing the Node-era stack on top of them?**
+
+The result is a meta-framework with far less to install and far less to go
+wrong. Discovery (routes + islands) happens once at build time and is
+inlined into the production bundle, so the server never re-scans the disk
+at runtime. UI is React 19 over `renderToReadableStream`. Handlers receive
+a standard `Request` and return a standard `Response` — the only added
+affordance is a thin `PattiesContext`. Deployment targets (`bun`, `edge`)
+live behind adapters, not vendor lock-in.
+
+In short: fewer dependencies, web-standard boundaries, and the speed of
+doing the expensive work at build time.
+
 ## Packages
 
-- [`packages/patties`](packages/patties) — Bun-native full-stack meta-framework. React 19 SSR + filesystem routing on `Bun.serve`. [npm](https://www.npmjs.com/package/patties)
-- [`packages/create-patties`](packages/create-patties) — the official scaffolder. [npm](https://www.npmjs.com/package/create-patties)
-- [`packages/patties-ui`](packages/patties-ui) — optional shadcn-compatible, copy-in component catalog (60 components). Stamped into your project by `patties add`. [npm](https://www.npmjs.com/package/patties-ui)
+| Package | What it is | npm |
+| --- | --- | --- |
+| [`patties`](packages/patties) | Bun-native full-stack meta-framework — React 19 SSR + filesystem routing on `Bun.serve`. | [npm](https://www.npmjs.com/package/patties) |
+| [`create-patties`](packages/create-patties) | The official scaffolder — `bunx create-patties my-app`. | [npm](https://www.npmjs.com/package/create-patties) |
+| [`patties-ui`](packages/patties-ui) | Optional shadcn-compatible, **copy-in** component catalog (60 components). Stamped into your project by `patties add`. | [npm](https://www.npmjs.com/package/patties-ui) |
 
 ## Quick start
 
