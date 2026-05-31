@@ -74,8 +74,11 @@ jobs:
           # The guard refuses to publish a prerelease version unless the repo
           # is in changesets pre mode, so a stray prerelease can never take the
           # npm `latest` tag. See scripts/check-release-tag.ts.
-          publish: bun run scripts/check-release-tag.ts && bunx changeset publish
-          version: bunx changeset version
+          # Use the full package name (@changesets/cli) — `bunx changeset`
+          # resolves the bare name ambiguously and can silently no-op (publish
+          # nothing, exit 0) when node_modules/.bin isn't intact.
+          publish: bun run scripts/check-release-tag.ts && bunx @changesets/cli publish
+          version: bunx @changesets/cli version
           commit: "chore: version packages"
           title: "chore: version packages"
           createGithubReleases: true
