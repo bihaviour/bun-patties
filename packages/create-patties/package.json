@@ -1,6 +1,6 @@
 {
 	"name": "create-patties",
-	"version": "0.0.12",
+	"version": "0.0.13",
 	"type": "module",
 	"description": "Scaffolder for new Patties projects.",
 	"license": "MIT",
