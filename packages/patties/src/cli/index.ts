@@ -6,6 +6,7 @@ import { runMigrate } from "./commands/migrate.ts";
 import { runSecret } from "./commands/secret.ts";
 import { runUpgrade } from "./commands/upgrade.ts";
 import { runDev } from "./dev.ts";
+import { runDoctor } from "./doctor.ts";
 import { EXIT, log, setVerbose } from "./log.ts";
 import { runRun } from "./run.ts";
 import { notifyUpdate } from "./update-check.ts";
@@ -59,6 +60,8 @@ export async function main(argv: string[]): Promise<number> {
 			return runDeploy(rest, ctx);
 		case "secret":
 			return runSecret(rest, ctx);
+		case "doctor":
+			return runDoctor(rest, ctx);
 		// The catalog commands pull in `patties-ui` (an optional dev-time dep).
 		// Import them lazily so `dev`/`build`/`deploy`/`secret` run without it.
 		case "add": {
@@ -135,6 +138,7 @@ Commands:
   run      Run a workspace task with output caching + affected detection.
   deploy   Build then dispatch to an installed deploy plugin.
   secret   Manage dev-time secrets in the OS keychain.
+  doctor   Run project hygiene checks (deps, config, monorepo).
   add      Stamp UI components from patties-ui into your project.
   ui       UI catalog setup (patties ui init).
   view     Print a component's source before stamping.

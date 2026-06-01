@@ -39,6 +39,18 @@ function paint(stream: NodeJS.WriteStream, code: string, msg: string): string {
 	return colorEnabled(stream) ? `${code}${msg}${C.reset}` : msg;
 }
 
+export type Color = "green" | "yellow" | "red" | "dim" | "cyan";
+
+// Single source of truth for the CLI palette, so `patties doctor` and any other
+// formatted report tint with the same TTY/NO_COLOR-gated codes as `log`.
+export function colorize(
+	stream: NodeJS.WriteStream,
+	color: Color,
+	msg: string,
+): string {
+	return paint(stream, C[color], msg);
+}
+
 export const log = {
 	info(msg: string): void {
 		process.stdout.write(`${msg}\n`);
