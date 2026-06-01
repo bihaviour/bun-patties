@@ -102,12 +102,67 @@ test("--ui stamps the starter set + tokens + patties-ui dep, themed", async () =
 	const pkg = (await Bun.file(`${dir}/package.json`).json()) as {
 		devDependencies: Record<string, string>;
 		dependencies: Record<string, string>;
+		scripts: Record<string, string>;
 	};
 	expect(pkg.devDependencies["patties-ui"]).toBeDefined();
 	expect(pkg.dependencies.clsx).toBeDefined();
 	// slate theme carries its signature hue; neutral would be chroma 0.
 	const tokens = await Bun.file(`${dir}/app/styles/tokens.css`).text();
 	expect(tokens).toContain("264.695");
+});
+
+test("--ui wires the Tailwind compile + stylesheet serving", async () => {
+	const { dir, code } = await scaffold("uicss", [
+		"--type",
+		"fullstack",
+		"--ui",
+	]);
+	expect(code).toBe(0);
+	// The shared head() + the route that serves the compiled sheet.
+	expect(existsSync(`${dir}/app/components/_head.tsx`)).toBe(true);
+	expect(existsSync(`${dir}/app/routes/api/styles.ts`)).toBe(true);
+	// Placeholder so the route's `type: "text"` import resolves pre-compile.
+	expect(existsSync(`${dir}/app/styles/app.generated.css`)).toBe(true);
+	const pkg = (await Bun.file(`${dir}/package.json`).json()) as {
+		devDependencies: Record<string, string>;
+		scripts: Record<string, string>;
+	};
+	expect(pkg.devDependencies["@tailwindcss/cli"]).toBeDefined();
+	expect(pkg.scripts.css).toContain("tailwindcss");
+	// dev/build compile the sheet first so the app is styled on boot.
+	expect(pkg.scripts.dev).toContain("bun run css");
+	expect(pkg.scripts.build).toContain("bun run css");
+	// The demo page opts into styling by re-exporting head.
+	const index = await Bun.file(`${dir}/app/routes/index.tsx`).text();
+	expect(index).toContain('export { head } from "../components/_head.tsx"');
+	// Generated output is gitignored, not committed.
+	const gitignore = await Bun.file(`${dir}/.gitignore`).text();
+	expect(gitignore).toContain("app/styles/app.generated.css");
+});
+
+test("scaffold is shaped to typecheck cleanly (tsconfig + no global JSX)", async () => {
+	const { dir, code } = await scaffold("tsok", ["--yes"]);
+	expect(code).toBe(0);
+	const tsconfig = (await Bun.file(`${dir}/tsconfig.json`).json()) as {
+		compilerOptions: Record<string, unknown>;
+	};
+	// Sources import with .ts/.tsx extensions (Bun resolution) — tsc needs these
+	// or every file errors TS5097.
+	expect(tsconfig.compilerOptions.allowImportingTsExtensions).toBe(true);
+	expect(tsconfig.compilerOptions.noEmit).toBe(true);
+	// React 19 dropped the global `JSX` namespace; templates must not use it.
+	const index = await Bun.file(`${dir}/app/routes/index.tsx`).text();
+	expect(index).not.toContain("JSX.Element");
+	const todo = await Bun.file(`${dir}/app/islands/TodoApp.tsx`).text();
+	expect(todo).not.toContain("JSX.Element");
+	// Build-generated dirs are ignored; UI projects carry the css module type.
+	const gitignore = await Bun.file(`${dir}/.gitignore`).text();
+	expect(gitignore).toContain("patties-gen");
+	expect(existsSync(`${dir}/app/styles/css.d.ts`)).toBe(true);
+	const pkg = (await Bun.file(`${dir}/package.json`).json()) as {
+		scripts: Record<string, string>;
+	};
+	expect(pkg.scripts.typecheck).toBe("tsc --noEmit");
 });
 
 test("--no-ui leaves no components and no patties-ui dep", async () => {

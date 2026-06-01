@@ -1,6 +1,8 @@
 node_modules
 .patties
+patties-gen
 dist
+app/styles/app.generated.css
 .env
 .env.local
 *.log

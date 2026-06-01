@@ -42,7 +42,7 @@ the user's stated domain (e.g. "a CRM for veterinary clinics").
 
 | Pattern | Goal | `patties add` components | Generated files (under `app/`) |
 |---|---|---|---|
-| **auth-rbac** | Login / logout + role-gated route | `form`, `input`, `label`, `button`, `card` | `routes/login.tsx`, `routes/logout.ts`, `routes/admin.tsx` (role-gated), `lib/auth.ts` (cookie session over mock users), `lib/rbac.ts` (role guard), `lib/mock-users.ts` |
+| **auth-rbac** | Login / logout + role-gated route | `input`, `label`, `button`, `card` | `routes/login.tsx` (native POST form), `routes/api/login.ts`, `routes/api/logout.ts`, `routes/admin.tsx` (gated by middleware), `app/middleware.ts` (gates `/admin`), `lib/auth.ts` (cookie session over mock users), `lib/rbac.ts` (role guard), `lib/mock-users.ts` |
 | **crm** | Contacts list + detail / edit | `data-table`, `dialog`, `form`, `input`, `button`, `badge` | `routes/contacts/index.tsx` (table), `routes/contacts/[id].tsx` (detail), `islands/ContactForm.tsx`, `lib/mock-contacts.ts` |
 | **task** | Task board / list | `card`, `checkbox`, `badge`, `dialog`, `button` | `routes/tasks.tsx`, `islands/TaskBoard.tsx` (columns + toggle), `lib/mock-tasks.ts` |
 | **pivot** | Group-by / pivot over rows | `table`, `select`, `card` | `routes/pivot.tsx`, `islands/PivotTable.tsx` (pick row/col/measure), `lib/mock-rows.ts` |
@@ -50,8 +50,12 @@ the user's stated domain (e.g. "a CRM for veterinary clinics").
 
 Per-pattern recipes:
 
-- **auth-rbac** — sessions are a signed cookie over the mock user list; the RBAC
-  guard is a small helper the protected route calls in its handler. Make the
+- **auth-rbac** — sessions are a signed cookie over the mock user list. Because
+  pages can't read cookies or redirect (see Conventions), the gate lives in
+  `app/middleware.ts`: it checks the session + role and redirects unauthenticated
+  `/admin` hits to `/login`. The login page is a native `<form method="post"
+  action="/api/login">` (no `form` component) posting to `routes/api/login.ts`,
+  which sets the cookie and redirects; `routes/api/logout.ts` clears it. Make the
   mock-only nature loud: a banner on the login page and a TODO at the top of the
   auth module. Real auth needs persistence (a future DB spec).
 - **crm** — the list uses `data-table` over `mock-contacts`; create / edit
@@ -92,9 +96,20 @@ from this skill — that is deferred to a future spec.
 
 - Pages live under `app/routes/*.tsx` (default-export a React component); API
   handlers under `app/routes/api/*.ts` (named `GET`/`POST`/… returning a
-  `Response`, e.g. via `ctx.json()`). Dynamic segments use `[id]`.
+  `Response`, e.g. via `ctx.json()`). Dynamic segments use `[id]`. A `.ts` route
+  **must** be under `app/routes/api/` — anywhere else is a build error.
+- **Pages get only `ctx.params`** — they can't read cookies, set headers, or
+  redirect. Push that work to an API route or to `app/middleware.ts` (the single
+  global `Middleware (req, ctx, next)`, the only place to gate a page). Mutation
+  forms use a native `<form method="post" action="/api/…">` posting to a `.ts`
+  handler.
 - Islands (interactive client components) live under `app/islands/` and are
   wrapped at the use site in `<Island name="…">…</Island>` from `patties/render`.
+  `chart` and `form` are islands (they pull `recharts` / `react-hook-form`).
+- **Styling is opt-in per page.** If `app/components/_head.tsx` exists, every new
+  page route must re-export it (`export { head } from "../components/_head.tsx";`)
+  or it renders unstyled. Run `bun run css` (or `bun run css:watch`) after adding
+  classNames; `dev`/`build` compile it for you.
 - Mock data lives in `app/lib/mock-<entity>.ts`, typed, with the TODO marker.
 - Never re-author component source — stamp from the catalog and import.
 

@@ -8,12 +8,16 @@ import {
 } from "../components/ui/card.tsx";
 import TodoApp from "../islands/TodoApp.tsx";
 
+// Links the compiled Tailwind sheet (served by app/routes/api/styles.ts). Every
+// page route re-exports this so it renders styled — keep it on new pages too.
+export { head } from "../components/_head.tsx";
+
 export const meta = {
 	title: "Welcome to Patties",
 	description: "A Bun-native full-stack meta-framework.",
 };
 
-export default function Index(): JSX.Element {
+export default function Index() {
 	return (
 		<main className="mx-auto max-w-2xl p-8">
 			<Card>

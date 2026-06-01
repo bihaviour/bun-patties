@@ -10,7 +10,7 @@ interface Todo {
 	done: boolean;
 }
 
-export default function TodoApp(): JSX.Element {
+export default function TodoApp() {
 	const [todos, setTodos] = useState<Todo[]>([
 		{ id: 1, text: "edit app/routes/index.tsx", done: false },
 		{ id: 2, text: "edit app/islands/TodoApp.tsx", done: false },

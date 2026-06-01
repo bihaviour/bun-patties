@@ -21,7 +21,7 @@ parts of a page that need browser-side interactivity (`useState`,
   import { Island } from "patties/render";
   import TodoApp from "../islands/TodoApp.tsx";
 
-  export default function Index(): JSX.Element {
+  export default function Index() {
     return (
       <main>
         <Island name="TodoApp">

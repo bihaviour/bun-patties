@@ -53,12 +53,20 @@ the agent section below.
 
 ### Styling
 
-Patties does not bundle Tailwind for you. `app/styles/app.css` is pre-wired
-(`@import "tailwindcss"` + the token mapping). Compile it with the Tailwind v4
-CLI and include the output from your page `<head>`:
+Patties bundles no CSS, so the starter wires Tailwind for you:
+
+- `app/styles/app.css` is pre-wired (`@import "tailwindcss"` + the token mapping).
+- `bun run css` compiles it to `app/styles/app.generated.css` (gitignored).
+  `bun run dev` and `bun run build` run this first, so the app is styled on boot.
+- `app/routes/api/styles.ts` serves the compiled sheet and `app/components/_head.tsx`
+  links it. Each page re-exports that `head` —
+  `export { head } from "../components/_head.tsx";` — so add the line to new pages.
+
+While iterating on classNames, run the watcher in a second terminal so the sheet
+rebuilds as you save:
 
 ```sh
-bunx @tailwindcss/cli -i app/styles/app.css -o app/styles/out.css --watch
+bun run css:watch
 ```
 <!-- /if -->
 
