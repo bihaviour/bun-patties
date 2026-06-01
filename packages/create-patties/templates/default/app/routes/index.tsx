@@ -6,7 +6,7 @@ export const meta = {
 	description: "A Bun-native full-stack meta-framework.",
 };
 
-export default function Index(): JSX.Element {
+export default function Index() {
 	return (
 		<main>
 			<h1>Welcome to Patties</h1>
@@ -20,8 +20,8 @@ export default function Index(): JSX.Element {
 			<hr />
 			<p>
 				<small>
-					When you're ready to start your real app, see the "Remove the demo"
-					section of <code>README.md</code>.
+					When you're ready, replace this page — or run{" "}
+					<code>/patties-init</code> to scaffold your first real feature.
 				</small>
 			</p>
 		</main>

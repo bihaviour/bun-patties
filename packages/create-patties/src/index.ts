@@ -379,8 +379,28 @@ async function applyProjectType(
 	}
 }
 
-function pkgScripts(): Record<string, string> {
-	return { dev: "patties dev", build: "patties build", start: "patties start" };
+function pkgScripts(ui: boolean): Record<string, string> {
+	if (!ui) {
+		return {
+			dev: "patties dev",
+			build: "patties build",
+			start: "patties start",
+			typecheck: "tsc --noEmit",
+		};
+	}
+	// UI projects compile Tailwind themselves (Patties bundles no CSS). `css`
+	// emits the sheet the styles route serves; `dev`/`build` run it first so the
+	// app is styled on boot. `css:watch` rebuilds on className changes in dev.
+	const css =
+		"tailwindcss -i app/styles/app.css -o app/styles/app.generated.css";
+	return {
+		dev: "bun run css && patties dev",
+		build: "bun run css && patties build",
+		start: "patties start",
+		typecheck: "tsc --noEmit",
+		css,
+		"css:watch": `${css} --watch`,
+	};
 }
 
 async function writeAppPackageJson(
@@ -408,7 +428,7 @@ async function writeAppPackageJson(
 		version: "0.1.0",
 		private: true,
 		type: "module",
-		scripts: pkgScripts(),
+		scripts: pkgScripts(args.ui),
 		dependencies: sorted(dependencies),
 		devDependencies: sorted(devDependencies),
 		engines: { bun: ">=1.3.0" },
