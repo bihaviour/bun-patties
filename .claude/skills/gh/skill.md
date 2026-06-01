@@ -126,156 +126,120 @@ EOF
 
 ## 2. `pr-merge` — Merge a Pull Request
 
-> **Release model (read first).** This repo publishes through the changesets
-> **Version Packages PR** flow (`changesets/action` in `release.yml`). Merging a
-> *feature* PR does **not** publish — it only lands the feature's changeset on
-> `master`. The action then opens/updates a single standing **"Version Packages"
-> PR**; merging *that* PR is what runs `changeset publish` → npm + GitHub
-> Release. So `pr-merge`'s job is: make sure the feature carries a changeset at
-> the right level (or none, for a CI-only change), set the channel via pre mode
-> if needed, merge, and clean up. It never bumps versions or publishes itself,
-> and it never merges the Version Packages PR.
+> **Release model (read first).** This repo is **stable-only** — every release
+> goes to the npm `latest` tag. There is no prerelease/pre-mode flow. Publishing
+> goes through the changesets **Version Packages PR** (`changesets/action` in
+> `release.yml`): merging a *feature* PR does **not** publish — it only lands the
+> feature's changeset on `master`. The action then opens/updates a single
+> standing **"Version Packages" PR**; merging *that* PR is what runs
+> `changeset publish` → npm `latest` + GitHub Release. So `pr-merge`'s only
+> release job is: make sure the feature carries a changeset at the right bump
+> level (or none, for a release-neutral change), merge, and clean up. It never
+> bumps versions, never enters/exits pre mode, never publishes, and never merges
+> the Version Packages PR. **"Ship as latest, or not?" reduces to "has a
+> changeset, or not?"**
 
 ### Step 1 — gather context
 
 ```bash
-gh pr view <n> --json title,state,mergeable,labels,headRefName,body
-git log main..<head-branch> --oneline
+gh pr view <n> --json title,state,mergeable,isDraft,labels,headRefName,body
+git log master..<head-branch> --oneline
 gh pr diff <n> --name-only
 ```
 
-Establish **two independent facts** — they are separate axes and both matter:
+Establish one fact: **is there a changeset?** Look in the diff for a
+`.changeset/*.md` file (excluding `README.md`). If present, the bump level is
+already decided and rides into `master` with the merge. If absent, you'll ask
+for one (Step 2). There is no channel/pre-mode axis to check anymore.
 
-1. **Is there a changeset?** Look in the diff for files matching
-   `.changeset/*.md` (excluding `README.md`), `CHANGELOG.md` edits, or
-   `package.json` version changes. This tells you the *bump level* is already
-   decided.
-2. **What channel is the repo currently on?** Check pre mode directly — it is
-   the only thing that decides stable vs prerelease, NOT the changeset:
-   ```bash
-   test -f .changeset/pre.json && cat .changeset/pre.json   # {"mode","tag",...} if in pre mode
-   ```
-   Record whether pre mode is active and, if so, its `tag`.
+### Step 2 — ask about bump and cleanup
 
-### Step 2 — ask about channel, bump, and cleanup
+Ask both applicable questions in a **single message**.
 
-Ask all applicable questions in a **single message**.
-
-**(a) Release channel — ALWAYS ask, even when a changeset already exists.**
-A changeset records the bump level but never the channel; pre mode does. So
-confirm it every time:
-
-> **Release channel:** When this ships (via the next Version Packages PR), should it go to the stable `latest` tag, or as a prerelease?
-> `stable` / `prerelease`
-
-If `prerelease`, ask which pre tag in the same message: `next` / `beta` / `rc`.
-The npm `latest` tag is reserved for stable releases (see §Release tags).
-
-**(b) Version bump — ask ONLY when no changeset was detected in Step 1.**
+**(a) Version bump — ask ONLY when no changeset was detected in Step 1.**
 If a changeset already exists, skip this; its bump level stands.
 
-> **Version bump:** No changeset detected. How should this release be versioned?
+> **Version bump:** No changeset detected. How should this be versioned?
 > `patch` / `minor` / `major` / `skip`
 
 `skip` authors no changeset — the merge is **release-neutral**: CI runs, nothing
-publishes, and the Version Packages PR is untouched. This is the correct choice
-for setup / CI / tooling / docs PRs that should not ship a new version.
+publishes, the Version Packages PR is untouched. Correct for setup / CI /
+tooling / docs PRs that should not ship a new version. Anything else authors a
+changeset, so the change will be part of the next `latest` release.
 
-**(c) Cleanup — always ask.**
+**(b) Cleanup — always ask.**
 
 > **Branch + worktree cleanup:** After merging, should I delete the remote branch and remove the local worktree (if one exists)?
 > `yes` / `no`
 
 Wait for answers.
 
-### Step 2a — reconcile channel vs. pre-mode state
-
-Compare the requested channel (Step 2, question a) against the actual pre-mode
-state (Step 1, fact 2). Surface any mismatch explicitly — do **not** silently
-proceed:
-
-| Requested | Pre mode now | Action in Step 3 |
-|---|---|---|
-| `stable` | inactive | none — normal stable flow |
-| `stable` | **active (`<tag>`)** | ⚠️ WARN: repo is in `<tag>` pre mode; publishing now ships under `<tag>`, not `latest`. Must `bunx changeset pre exit` first. |
-| `prerelease <tag>` | inactive | `bunx changeset pre enter <tag>` before merge |
-| `prerelease <tag>` | active, **same** tag | none — already correct |
-| `prerelease <new>` | active, **different** `<old>` | ⚠️ WARN: in `<old>` pre mode, requested `<new>`. Must `pre exit` then `pre enter <new>`. |
-
-If a changeset already exists **and** the requested channel is `prerelease`
-while pre mode is inactive, the changeset is fine as-is — you only need to enter
-pre mode. Call this out so the user knows the existing changeset is reused.
-
-### Step 2b — confirmation prompt
+### Step 2a — confirmation prompt
 
 Call `AskUserQuestion` with a summary of what will happen:
 
 - Merge strategy: squash, PR #<n> "<title>"
-- Release channel: `stable → latest` or `prerelease → <tag>`
-- Version bump: <patch/minor/major/skip>, or "existing changeset" if one was found
-- Pre-mode reconciliation: the action from the Step 2a table (e.g. "run `changeset pre enter next`", "run `changeset pre exit` — repo is in `next` pre mode", or "none")
+- Version bump: <patch/minor/major/skip>, or "existing changeset" if one was found → ships to `latest` on the next Version Packages release (or "no release" for `skip`)
 - Branch cleanup: yes/no (worktree path if applicable)
 - Options: `Proceed` / `Cancel`
 
-If Step 2a flagged a ⚠️ mismatch, state it in the question text, not just the
-summary line. Only continue if the user selects `Proceed`.
+Only continue if the user selects `Proceed`.
 
-### Step 3 — apply channel + ensure changeset (if requested)
+### Step 3 — ensure a changeset (only if Step 2 chose a bump)
 
 This repo versions through **changesets** — never hand-edit `package.json`
 versions, and never run `changeset version` locally (the Version Packages PR
 owns that, in CI). The bump level is expressed purely as a changeset that rides
-to `master` with the merge; the actual version bump happens later, by the
-action, inside the Version Packages PR. Do the reconciliation from Step 2a
-**first**, then the changeset.
+to `master` with the merge.
 
-**3a — reconcile pre mode** (only if Step 2a flagged an action):
-
-```bash
-# stable requested but repo is in pre mode → leave pre mode:
-bunx changeset pre exit
-
-# prerelease requested but pre mode inactive → enter it:
-bunx changeset pre enter <next|beta|rc>
-
-# prerelease requested with a different tag than active → switch:
-bunx changeset pre exit && bunx changeset pre enter <new-tag>
-```
-
-**3b — author the changeset** (only if Step 1 found none). The interactive
-`bunx changeset` prompt isn't available here, so write the file directly:
+**3a — author the changeset** (only if Step 1 found none and the user didn't
+pick `skip`). The interactive `bunx changeset` prompt isn't available here, so
+write the file directly:
 
 ```bash
 cat > ".changeset/pr-<n>-<short-slug>.md" <<'EOF'
 ---
 "patties": <patch|minor|major>
-"create-patties": <patch|minor|major>
+EOF
+# add more lines like   "create-patties": <patch|minor|major>   for each
+# additional public package this PR actually changes, then close the front
+# matter and add the summary:
+cat >> ".changeset/pr-<n>-<short-slug>.md" <<'EOF'
 ---
 
 <one-line summary of the change>
 EOF
 ```
 
-List only the public packages actually affected, each at its chosen bump level.
-If a changeset already exists, reuse it — do not author a second one.
+List only the public packages actually affected (`patties`, `create-patties`,
+`patties-ui`), each at its chosen bump level. If a changeset already exists,
+reuse it — do not author a second one.
 
-**3c — commit** whatever 3a/3b changed:
+**3b — commit** the changeset to the PR branch:
 
 ```bash
 git add .changeset
-git commit -m "chore: <changeset / enter <tag> pre mode / exit pre mode> for #<n>"
+git commit -m "chore: add changeset for #<n>"
 ```
 
-The bump level (3b) and the channel (3a) are independent: a release candidate is
-still a `patch`/`minor`/`major` changeset — pre mode is what routes it to the
-pre tag instead of `latest`. `scripts/check-release-tag.ts` enforces that a
-prerelease version can only publish while pre mode is active, so a stray
-prerelease can never take `latest`. When the line stabilises, `bunx changeset
-pre exit`.
+**3c — push the changeset to the PR branch.** `gh pr merge` squashes the
+**remote** branch, so a locally-committed changeset is invisible to the merge
+unless it's pushed first. Pushing is the user's call (see §General rules) —
+confirm, then:
+
+```bash
+git push origin <head-branch>
+```
+
+If the user declines the push, stop: merging now would ship the feature with
+**no changeset**, so it would never reach `latest`. Say so plainly.
 
 ### Step 4 — merge
 
+If the PR is a draft (`isDraft: true` from Step 1), mark it ready first:
+
 ```bash
+gh pr ready <n>
 gh pr merge <n> \
   --squash \
   --subject "<PR title>" \
@@ -286,8 +250,9 @@ gh pr merge <n> \
 ### Step 5 — worktree cleanup (if requested)
 
 ```bash
-# detect worktree path from branch name
-git worktree list --porcelain | grep -A1 "<head-branch>"
+# detect worktree path from branch name — wt-<n> dir names do NOT always match
+# their branch, so verify with the plain listing before removing.
+git worktree list
 git worktree remove <path> --force
 ```
 
@@ -300,13 +265,13 @@ or imply a publish from this merge:
 
 - **If a changeset landed:** once it reaches `master` and CI passes, the
   changesets action opens or updates the **Version Packages PR**. Releasing is a
-  separate, deliberate step: the user merges *that* PR to publish
-  `<pkg>@<next version>` to `<latest|the pre tag>`. Never merge the Version
-  Packages PR yourself as part of `pr-merge`.
+  separate, deliberate step the user takes: they merge *that* PR to publish
+  `<pkg>@<next version>` to `latest`. Never merge the Version Packages PR
+  yourself as part of `pr-merge`. ⚠️ The Version Packages PR is committed by
+  `github-actions[bot]`, so merging it does **not** reliably trigger the Release
+  workflow. If a publish doesn't appear within a couple of minutes, the user
+  (or you, on request) runs the **manual Release fallback** — see §Release tags.
 - **If `skip` (no changeset):** no release — only CI runs, nothing publishes.
-
-If pre mode was just entered/exited in Step 3, note that the channel change only
-takes effect on the next Version Packages PR publish.
 
 ---
 
@@ -431,29 +396,48 @@ Derive from the message. Common scopes for this repo:
 
 ## Release tags
 
-The npm `latest` dist-tag must only ever point at a stable release.
+This repo is **stable-only**: every release publishes to the npm `latest` tag.
+There is no prerelease channel and no changesets pre mode — do not run
+`changeset pre enter` / `pre exit`, and never hand-write a prerelease (`-next`,
+`-beta`, …) version. `scripts/check-release-tag.ts` (wired into `lint` + the
+publish step) backstops this: it fails if any public package carries a
+prerelease version, since nothing should ever produce one.
 
-- Publishing is gated by the **Version Packages PR**: `release.yml` runs after CI
-  succeeds on `master`, and the changesets action opens/updates that PR while
-  changesets are pending. `changeset publish` only fires once that PR is merged
-  (i.e. when no `.changeset/*.md` remain). Merging feature PRs never publishes.
-- Releases publish via `changeset publish` in `.github/workflows/release.yml`.
-  It tags everything `latest` **unless** the repo is in changesets pre mode
-  (`.changeset/pre.json` present), in which case it publishes under that pre tag
-  (`.changeset/pre.json` present), in which case it publishes under that pre tag
-  (`next` / `beta` / `rc`) and leaves `latest` alone.
-- Therefore prereleases ALWAYS go through `bunx changeset pre enter <tag>` first.
-  Never produce a prerelease version outside pre mode.
-- `scripts/check-release-tag.ts` enforces this (wired into `lint` and the publish
-  step): it fails if any public package carries a prerelease version while pre
-  mode is inactive.
-- Consumers opt into prereleases explicitly: `bun add patties@next`. Plain
-  `bun add patties` always resolves the latest stable.
+**How a release happens:**
+
+1. Feature PRs merge with a changeset (via `pr-merge`). Merging them never
+   publishes.
+2. The changesets action keeps a single **Version Packages PR** open that bumps
+   versions + rewrites `CHANGELOG.md` from the pending changesets.
+3. **The user merges the Version Packages PR** to release. That's the one
+   button: it runs `changeset publish` → npm `latest` + git tags + GitHub
+   Releases.
+
+**Manual Release fallback (important).** The Version Packages PR is committed by
+`github-actions[bot]`, and GitHub does not reliably spawn a downstream `push` CI
+run for a bot-authored merge — so the auto `workflow_run`-triggered Release can
+silently never fire. `release.yml` therefore also accepts a **manual trigger**.
+If a publish doesn't show up shortly after merging the Version Packages PR, run:
+
+```bash
+gh workflow run Release --ref master
+```
+
+Then watch it and verify on the registry (a green run is not proof of publish):
+
+```bash
+gh run list --workflow Release --limit 1
+npm view patties dist-tags          # latest should be the new version
+```
+
+`changeset publish` is idempotent — it only publishes packages whose version is
+ahead of npm — so a manual run with nothing to release is a safe no-op.
 
 ## General rules
 
-- `latest` is reserved for stable. Route prereleases through `changeset pre enter`; never hand-edit a version into a prerelease (see §Release tags).
-- Never push to remote — that is always the user's decision.
+- `latest` is the only tag this repo publishes; there are no prereleases (see §Release tags).
+- Never push to remote on your own initiative — that is always the user's decision. The one place `pr-merge` needs a push (a changeset commit onto the PR branch, Step 3c) is gated behind an explicit confirmation.
+- A **green CI / Release run is not proof of a publish.** Always verify the new version directly on `registry.npmjs.org` (`npm view <pkg> dist-tags`) after a release.
 - Never merge without explicit user confirmation.
 - Always use `--assignee "@me"` on issues and PRs.
 - Keep commit messages that accompany version bumps in `chore:` conventional-commit form.

@@ -89,10 +89,24 @@ Commit the generated `.changeset/*.md` alongside your change and push normally �
 2. Merging that PR runs `changeset publish` — it publishes each package whose
    version is ahead of npm, tags the release, and opens a GitHub Release.
 
-So a release is "merge the Version Packages PR," not a manual bump. The npm
-`latest` tag is reserved for stable; prereleases go through changesets pre mode
-(`bunx changeset pre enter <next|beta|rc>`) and `scripts/check-release-tag.ts`
-enforces that a prerelease can never take `latest`.
+So a release is "merge the Version Packages PR," not a manual bump. This repo is
+**stable-only**: every release publishes to the npm `latest` tag. There is no
+prerelease channel and no changesets pre mode — `scripts/check-release-tag.ts`
+backstops this by failing if any package ever carries a prerelease version.
+
+**Manual release fallback.** The Version Packages PR is committed by
+`github-actions[bot]`, and GitHub does not reliably trigger the downstream
+Release workflow for a bot-authored merge. If a publish doesn't appear shortly
+after you merge that PR, trigger it by hand (the Release workflow also accepts a
+manual dispatch) and verify on the registry:
+
+```sh
+gh workflow run Release --ref master
+npm view patties dist-tags   # latest should be the new version
+```
+
+`changeset publish` is idempotent, so a manual run with nothing new to release
+is a safe no-op.
 
 ## Reporting bugs & requesting features
 
