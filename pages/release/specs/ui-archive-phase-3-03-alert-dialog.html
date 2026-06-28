@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alert Dialog · Patties specs</title>
+<meta name="description" content="Modal confirmation dialog — destructive-action confirmation pattern. Mirrors shadcn AlertDialog. Built on @radix-ui/react-alert-dialog.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/03-alert-dialog.md</span></div>
+<h1>Alert Dialog</h1>
+<p class="lede">Modal confirmation dialog — destructive-action confirmation pattern. Mirrors shadcn AlertDialog. Built on @radix-ui/react-alert-dialog.</p>
+</header>
+<h2>Purpose</h2>
+<p>Modal confirmation dialog — destructive-action confirmation pattern. Mirrors shadcn <code>AlertDialog</code>. Built on <code>@radix-ui/react-alert-dialog</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Open-state lives on the client; Radix portals the overlay to <code>document.body</code>.</p>
+<p>The entire dialog tree (<code>Root</code>, <code>Trigger</code>, <code>Portal</code>, <code>Overlay</code>, <code>Content</code>, <code>Title</code>, <code>Description</code>, <code>Action</code>, <code>Cancel</code>) is one island. The trigger must live inside the island so that the click handler is bound.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-alert-dialog@^1.1</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export const AlertDialog: typeof Primitive.Root
+export const AlertDialogTrigger: typeof Primitive.Trigger
+export const AlertDialogPortal: typeof Primitive.Portal
+export function AlertDialogOverlay(props: Primitive.AlertDialogOverlayProps &amp; { className?: string }): JSX.Element
+export function AlertDialogContent(props: Primitive.AlertDialogContentProps &amp; { className?: string }): JSX.Element
+export function AlertDialogHeader(props: { className?: string; children?: React.ReactNode }): JSX.Element
+export function AlertDialogFooter(props: { className?: string; children?: React.ReactNode }): JSX.Element
+export function AlertDialogTitle(props: Primitive.AlertDialogTitleProps): JSX.Element
+export function AlertDialogDescription(props: Primitive.AlertDialogDescriptionProps): JSX.Element
+export const AlertDialogAction: typeof Primitive.Action
+export const AlertDialogCancel: typeof Primitive.Cancel
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>The portal target defaults to <code>document.body</code> on the client; on the server it is a no-op (Radix already handles this).</li><li><code>onOpenChange</code> is in-island only; never crosses the SSR boundary.</li><li>Removes <code>forwardRef</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Initial SSR HTML contains the trigger only; the dialog content is absent (closed).</li><li>After hydration, clicking the trigger opens the dialog and focus moves to the destructive action (or cancel, per <code>autoFocus</code>).</li><li><code>Esc</code> and overlay click are intercepted by Radix and do NOT close the dialog (alert-dialog semantics).</li><li>Inert background tree: <code>aria-hidden</code> is applied to siblings when open.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

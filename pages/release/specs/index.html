@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design specifications · Patties specs</title>
+<meta name="description" content="The complete agent_specs archive behind Patties.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<h1>Design specifications</h1>
+<p class="lede">The complete <code>agent_specs/</code> archive — 161 documents across framework, CLI, UI, RFCs, and research. These are the design source of truth behind Patties; the <a href="../index.html">Release page</a> tracks the status of the live ones.</p>
+</header>
+<section>
+<h2>Framework · draft <span class="badge badge-id">2</span></h2>
+<div class="xref-grid">
+<a href="framework-draft-26-monorepo-react-resolution.html"><span class="xref-title">Monorepo React single-copy resolution</span><span class="xref-desc">The --monorepo scaffold option ([[cli/18-create-patties-redesign]]) puts each</span></a>
+<a href="framework-draft-27-task-runner-cache.html"><span class="xref-title">Task runner + output cache (patties run)</span><span class="xref-desc">Give Bun-workspace monorepos ([[cli/18-create-patties-redesign]]) the one thing</span></a>
+</div>
+</section>
+<section>
+<h2>Framework · archive <span class="badge badge-id">27</span></h2>
+<div class="xref-grid">
+<a href="framework-archive-00-overview.html"><span class="xref-title">Patties Framework — Overview</span><span class="xref-desc">Patties is a Bun-native full-stack meta-framework with React for UI and Bun's own Bun.serve for HTTP, in a single bun dev command, deployable to the edge wit…</span></a>
+<a href="framework-archive-13-conventions.html"><span class="xref-title">Conventions &amp; Critical Rules</span><span class="xref-desc">These are the bright lines. An agent violating any of them is wrong, regardless of how reasonable the change looks.</span></a>
+<a href="framework-archive-16-ci-pipeline.html"><span class="xref-title">CI Pipeline</span><span class="xref-desc">Patties is Bun-native and edge-first (00-overview, pillars 1 and 4). The CI pipeline must defend both: it runs entirely on Bun (no Node toolchain in the inst…</span></a>
+<a href="framework-archive-17-dev-island-bundler.html"><span class="xref-title">Dev-time island bundling — design decision</span><span class="xref-desc">This spec exists to decide how Patties produces hydrated islands during</span></a>
+<a href="framework-archive-18-dev-island-bundler-impl.html"><span class="xref-title">Dev island bundler — implementation</span><span class="xref-desc">Implements the design decided in spec 17:</span></a>
+<a href="framework-archive-19-request-id.html"><span class="xref-title">Request IDs — ctx.requestId + X-Request-Id echo</span><span class="xref-desc">This spec encodes [[rfc-bun-random-uuidv7]]. It supersedes the relevant</span></a>
+<a href="framework-archive-20-server-timing.html"><span class="xref-title">Server-Timing — dev-only response duration header</span><span class="xref-desc">This spec encodes [[rfc-bun-nanoseconds]]. It extends the response</span></a>
+<a href="framework-archive-21-embedded-files.html"><span class="xref-title">Embedded files — single-binary deploy with embedded static assets</span><span class="xref-desc">This spec encodes [[rfc-bun-embedded-files]]. It extends the build</span></a>
+<a href="framework-archive-22-image-pipeline.html"><span class="xref-title">Image pipeline — build-time variants + runtime endpoint + signed cache</span><span class="xref-desc">This spec encodes [[rfc-bun-image]]. It introduces a next/image-class</span></a>
+<a href="framework-archive-23-markdown-pages.html"><span class="xref-title">Markdown pages — .md/.mdx routes with islands-in-markdown</span><span class="xref-desc">This spec encodes [[rfc-bun-markdown]]. Mount .md and .mdx files</span></a>
+<a href="framework-archive-24-bun-builtin-policy.html"><span class="xref-title">Bun-builtin policy — Archive, ANSI helpers, one-shot hashing</span><span class="xref-desc">This spec encodes three RFCs at once — [[rfc-bun-archive]],</span></a>
+<a href="framework-archive-25-ui-config-block.html"><span class="xref-title">patties.config.ts — optional `ui` block</span><span class="xref-desc">shadcn centralizes UI scaffolding config in components.json. patties replaces</span></a>
+<a href="framework-archive-phase-0-01-server.html"><span class="xref-title">Server</span><span class="xref-desc">Boot the HTTP server that hosts the user's Patties app. The framework wraps Bun.serve() and uses its native routes: map (introduced in Bun 1.2) as the dispat…</span></a>
+<a href="framework-archive-phase-0-02-router.html"><span class="xref-title">Router</span><span class="xref-desc">Compile the user's app/routes/ directory into the routes: object consumed by 01-server. This spec is the integration point between the filesystem layout and …</span></a>
+<a href="framework-archive-phase-0-02b-filesystem-router.html"><span class="xref-title">Filesystem Router</span><span class="xref-desc">Scan app/routes/ with Bun.Glob and produce a sorted, deterministic list of RouteEntry records consumed by 02-router.</span></a>
+<a href="framework-archive-phase-0-03-render.html"><span class="xref-title">Server Render</span><span class="xref-desc">Render page route modules to HTML using React (react-dom/server). Stream the response by default; the renderer always returns a ReadableStream-backed Response.</span></a>
+<a href="framework-archive-phase-0-15-claude-code-scaffold.html"><span class="xref-title">Claude Code Scaffold (CLAUDE.md + .claude/)</span><span class="xref-desc">Invoked by create-patties --agent claude-code (CLI 05).</span></a>
+<a href="framework-archive-phase-1-04-build.html"><span class="xref-title">Build</span><span class="xref-desc">Produce the client JavaScript bundle for islands and the deployable server bundle for the configured target. The only bundler is Bun.build.</span></a>
+<a href="framework-archive-phase-1-05-dev-hmr.html"><span class="xref-title">Dev / HMR</span><span class="xref-desc">Provide the dev-time feedback loop: reload changed modules in place and tell connected browsers to refresh. The dev runner is bun --hot by default (state-pre…</span></a>
+<a href="framework-archive-phase-1-06-client-islands.html"><span class="xref-title">Client Islands</span><span class="xref-desc">Hydrate interactive components in the browser using React (react-dom/client). Pages are static SSR HTML; islands are the only interactive units. Each island …</span></a>
+<a href="framework-archive-phase-1-07-middleware.html"><span class="xref-title">Middleware</span><span class="xref-desc">Allow users to wire one global middleware in front of every route. This is also the answer to "where do I do auth / logging / headers?" — replacing Next-styl…</span></a>
+<a href="framework-archive-phase-1-14-testing.html"><span class="xref-title">Testing (Fixture-Driven)</span><span class="xref-desc">Every framework feature is verified by a real Patties app that exercises it. Fixtures are the source of truth — unit tests support them, they do not replace …</span></a>
+<a href="framework-archive-phase-2-08-config.html"><span class="xref-title">Config</span><span class="xref-desc">Single configuration file for a Patties project. Optional — sensible defaults must work without it.</span></a>
+<a href="framework-archive-phase-2-12-edge-adapters.html"><span class="xref-title">Edge Adapters</span><span class="xref-desc">Translate the framework's built server bundle into a form the target runtime can execute. The framework ships two built-in adapters — bun and edge — and stay…</span></a>
+<a href="framework-archive-phase-3-10-agents-and-tools.html"><span class="xref-title">Agents &amp; Tools (AI-Native Layer)</span><span class="xref-desc">This is the layer that separates Patties from HonoX. Agents and tools are first-class filesystem entries — not configuration, not plugins. The framework wire…</span></a>
+<a href="framework-archive-phase-3-11-agents-md-generator.html"><span class="xref-title">AGENTS.md Generator</span><span class="xref-desc">Emit AGENTS.md at the project root on every build. The file tells any AI agent (Claude Code, etc.) exactly how this specific app is structured, so it can add…</span></a>
+<a href="framework-archive-phase-4-09-plugins.html"><span class="xref-title">Plugins</span><span class="xref-desc">Allow third parties to extend Patties without forking. The contract is small on purpose: plugins receive a small route-registration API and a set of hooks; t…</span></a>
+</div>
+</section>
+<section>
+<h2>CLI · draft <span class="badge badge-id">3</span></h2>
+<div class="xref-grid">
+<a href="cli-draft-18-create-patties-redesign.html"><span class="xref-title">create-patties redesign — guided scaffold + agent handoff</span><span class="xref-desc">Spec 09 turned the scaffolder into a real interactive prompt with a working</span></a>
+<a href="cli-draft-19-patties-agent-skill.html"><span class="xref-title">/patties skill + /patties-init flow — components &amp; pattern modules</span><span class="xref-desc">The redesigned scaffolder (spec 18) stops</span></a>
+<a href="cli-draft-20-doctor.html"><span class="xref-title">patties doctor — project hygiene checks</span><span class="xref-desc">Give a patties project a single "is this project healthy?" command. The scaffold</span></a>
+</div>
+</section>
+<section>
+<h2>CLI · archive <span class="badge badge-id">17</span></h2>
+<div class="xref-grid">
+<a href="cli-archive-00-overview.html"><span class="xref-title">Patties CLI — Overview</span><span class="xref-desc">patties is the single command-line entry point developers use to work with a Patties project. Three verbs cover the daily loop — dev, build, deploy — plus a …</span></a>
+<a href="cli-archive-01-entry.html"><span class="xref-title">Entry &amp; Dispatch</span><span class="xref-desc">The shebang'd executable that package.json#bin points at. Parses argv, picks a command handler, and exits with the handler's return code.</span></a>
+<a href="cli-archive-02-dev-command.html"><span class="xref-title">patties dev</span><span class="xref-desc">Start the local development server with hot reload, ready to use in one command.</span></a>
+<a href="cli-archive-03-build-command.html"><span class="xref-title">patties build</span><span class="xref-desc">Produce a production artifact in outDir (default .patties/ → dist/ for the deploy adapter), tailored to the configured target.</span></a>
+<a href="cli-archive-04-deploy-command.html"><span class="xref-title">patties deploy</span><span class="xref-desc">Take a built Patties app and push it to the configured host. The framework core is vendor-neutral — the actual deploy step is owned by an installed deploy pl…</span></a>
+<a href="cli-archive-05-create-patties.html"><span class="xref-title">create-patties Scaffolder</span><span class="xref-desc">bunx create-patties my-app produces a new Patties project that runs immediately with bun dev. This is the developer's first impression of the framework; it m…</span></a>
+<a href="cli-archive-06-config-loading.html"><span class="xref-title">Config Loading</span><span class="xref-desc">A single shared routine every CLI command calls to find, load, and validate patties.config.ts. The framework spec 08-config defines the file's shape; this sp…</span></a>
+<a href="cli-archive-07-logging-errors.html"><span class="xref-title">Logging, Errors, Exit Codes</span><span class="xref-desc">Make the CLI's output predictable and useful — for humans, for CI logs, and for agents reading transcripts.</span></a>
+<a href="cli-archive-08-secret-command.html"><span class="xref-title">patties secret</span><span class="xref-desc">Manage dev-time secrets stored in the OS keychain via Bun.secrets. This is the developer-facing companion to the secrets: config field in framework 08-config…</span></a>
+<a href="cli-archive-09-create-patties-dx.html"><span class="xref-title">create-patties DX overhaul</span><span class="xref-desc">The Phase-0 scaffolder (spec 05) gets users a project directory. It does not</span></a>
+<a href="cli-archive-10-scaffold-probes.html"><span class="xref-title">Scaffold tool probes — bun (fail) + git (warn) via Bun.which</span><span class="xref-desc">This spec encodes [[rfc-bun-which]]. It extends the create-patties</span></a>
+<a href="cli-archive-11-ui-init.html"><span class="xref-title">patties ui init</span><span class="xref-desc">shadcn's init bootstraps components.json, installs base deps, writes CSS</span></a>
+<a href="cli-archive-12-add-update-diff.html"><span class="xref-title">patties add --diff / patties update</span><span class="xref-desc">The copy-in model's single biggest weakness is upstream drift: once a</span></a>
+<a href="cli-archive-13-add-view.html"><span class="xref-title">patties add --view / patties view</span><span class="xref-desc">shadcn lets you preview a registry item's source before installing (view /</span></a>
+<a href="cli-archive-14-add-path.html"><span class="xref-title">patties add --path</span><span class="xref-desc">The destination for patties add is hard-coded to app/components/ui/. shadcn's</span></a>
+<a href="cli-archive-15-registry-distribution.html"><span class="xref-title">Registry distribution — remote/URL/namespaced installs + patties ui build</span><span class="xref-desc">shadcn resolves components from a built registry.json that can live at an</span></a>
+<a href="cli-archive-17-migrate-codemods.html"><span class="xref-title">patties migrate (rtl, radix)</span><span class="xref-desc">shadcn ships migrate rtl (rewrite physical CSS props → logical props) and</span></a>
+</div>
+</section>
+<section>
+<h2>UI · archive <span class="badge badge-id">63</span></h2>
+<div class="xref-grid">
+<a href="ui-archive-00-overview.html"><span class="xref-title">Patties UI — shadcn-compatible component library</span><span class="xref-desc">Rebuild the full shadcn/ui catalog as Patties-native components: copy-in source (no runtime package), Bun-buildable, edge-safe, and SSR-first with explicit c…</span></a>
+<a href="ui-archive-62-theming-presets.html"><span class="xref-title">Theming — base-color presets, @theme inline wiring, zero-JS dark mode</span><span class="xref-desc">This spec consolidates the theming-row parity items the matrix §5 leaves open:</span></a>
+<a href="ui-archive-phase-0-00-cli-add.html"><span class="xref-title">`bun patties add` — UI component stamper</span><span class="xref-desc">Ship the foundation that every UI component spec in phase-1 through phase-4 depends on: a patties add subcommand that copies the canonical source for a compo…</span></a>
+<a href="ui-archive-phase-1-02-alert.html"><span class="xref-title">Alert</span><span class="xref-desc">A static callout — info / warning / destructive. Mirrors shadcn Alert. No interactivity, no dismiss button by default.</span></a>
+<a href="ui-archive-phase-1-04-aspect-ratio.html"><span class="xref-title">Aspect Ratio</span><span class="xref-desc">Holds a child at a fixed width:height ratio. Mirrors shadcn AspectRatio. Upstream uses @radix-ui/react-aspect-ratio; Patties ships a tiny CSS-only equivalent…</span></a>
+<a href="ui-archive-phase-1-06-badge.html"><span class="xref-title">Badge</span><span class="xref-desc">Small status pill. Mirrors shadcn Badge.</span></a>
+<a href="ui-archive-phase-1-07-breadcrumb.html"><span class="xref-title">Breadcrumb</span><span class="xref-desc">Hierarchical navigation trail. Mirrors shadcn Breadcrumb.</span></a>
+<a href="ui-archive-phase-1-09-button-group.html"><span class="xref-title">Button Group</span><span class="xref-desc">Horizontal cluster of buttons that share borders. Mirrors shadcn ButtonGroup.</span></a>
+<a href="ui-archive-phase-1-11-card.html"><span class="xref-title">Card</span><span class="xref-desc">Container with header, content, footer slots. Mirrors shadcn Card.</span></a>
+<a href="ui-archive-phase-1-22-direction.html"><span class="xref-title">Direction Provider</span><span class="xref-desc">LTR/RTL provider that Radix components read. Mirrors shadcn Direction (which simply re-exports Radix's DirectionProvider).</span></a>
+<a href="ui-archive-phase-1-25-empty.html"><span class="xref-title">Empty</span><span class="xref-desc">Empty-state placeholder. Mirrors shadcn Empty.</span></a>
+<a href="ui-archive-phase-1-30-input-group.html"><span class="xref-title">Input Group</span><span class="xref-desc">Input flanked by addons (leading/trailing icons or buttons). Mirrors shadcn InputGroup.</span></a>
+<a href="ui-archive-phase-1-32-item.html"><span class="xref-title">Item</span><span class="xref-desc">Generic list/row primitive — icon + content + action layout. Mirrors shadcn Item.</span></a>
+<a href="ui-archive-phase-1-33-kbd.html"><span class="xref-title">Kbd</span><span class="xref-desc">Inline keyboard-shortcut badge — e.g. ⌘ K. Mirrors shadcn Kbd.</span></a>
+<a href="ui-archive-phase-1-34-label.html"><span class="xref-title">Label</span><span class="xref-desc">Form label that pairs with htmlFor. Mirrors shadcn Label. Built on @radix-ui/react-label.</span></a>
+<a href="ui-archive-phase-1-38-pagination.html"><span class="xref-title">Pagination</span><span class="xref-desc">Link-based page navigation. Mirrors shadcn Pagination.</span></a>
+<a href="ui-archive-phase-1-45-separator.html"><span class="xref-title">Separator</span><span class="xref-desc">Visual or semantic divider. Mirrors shadcn Separator. Built on @radix-ui/react-separator.</span></a>
+<a href="ui-archive-phase-1-48-skeleton.html"><span class="xref-title">Skeleton</span><span class="xref-desc">Loading placeholder shape. Mirrors shadcn Skeleton.</span></a>
+<a href="ui-archive-phase-1-51-spinner.html"><span class="xref-title">Spinner</span><span class="xref-desc">Inline loading spinner. Mirrors shadcn Spinner.</span></a>
+<a href="ui-archive-phase-1-53-table.html"><span class="xref-title">Table</span><span class="xref-desc">Styled HTML &lt;table&gt; primitives. Mirrors shadcn Table.</span></a>
+<a href="ui-archive-phase-1-60-typography.html"><span class="xref-title">Typography</span><span class="xref-desc">Prose primitives — H1/H2/H3/H4, P, Blockquote, InlineCode, Lead, Large, Small, Muted, List. Mirrors shadcn Typography (which is itself a set of recipes, not …</span></a>
+<a href="ui-archive-phase-2-08-button.html"><span class="xref-title">Button</span><span class="xref-desc">The canonical button. Mirrors shadcn Button. The single most-used component — its island story matters.</span></a>
+<a href="ui-archive-phase-2-14-checkbox.html"><span class="xref-title">Checkbox</span><span class="xref-desc">Tri-state checkbox. Mirrors shadcn Checkbox. Built on @radix-ui/react-checkbox.</span></a>
+<a href="ui-archive-phase-2-26-field.html"><span class="xref-title">Field</span><span class="xref-desc">Form-field wrapper combining label + control + description + error. Mirrors shadcn Field (the modern replacement for Form).</span></a>
+<a href="ui-archive-phase-2-27-form.html"><span class="xref-title">Form</span><span class="xref-desc">react-hook-form + Zod adapter for the 26-field primitives. Mirrors shadcn Form (the older RHF-flavored recipe; still ships for parity).</span></a>
+<a href="ui-archive-phase-2-29-input.html"><span class="xref-title">Input</span><span class="xref-desc">Styled &lt;input&gt;. Mirrors shadcn Input.</span></a>
+<a href="ui-archive-phase-2-36-native-select.html"><span class="xref-title">Native Select</span><span class="xref-desc">Styled native &lt;select&gt; element — accessible and tiny. Mirrors shadcn NativeSelect.</span></a>
+<a href="ui-archive-phase-2-40-progress.html"><span class="xref-title">Progress</span><span class="xref-desc">Linear progress bar. Mirrors shadcn Progress. Built on @radix-ui/react-progress.</span></a>
+<a href="ui-archive-phase-2-41-radio-group.html"><span class="xref-title">Radio Group</span><span class="xref-desc">Mutually-exclusive option group. Mirrors shadcn RadioGroup. Built on @radix-ui/react-radio-group.</span></a>
+<a href="ui-archive-phase-2-49-slider.html"><span class="xref-title">Slider</span><span class="xref-desc">Range slider with one or more thumbs. Mirrors shadcn Slider. Built on @radix-ui/react-slider.</span></a>
+<a href="ui-archive-phase-2-52-switch.html"><span class="xref-title">Switch</span><span class="xref-desc">On/off toggle. Mirrors shadcn Switch. Built on @radix-ui/react-switch.</span></a>
+<a href="ui-archive-phase-2-55-textarea.html"><span class="xref-title">Textarea</span><span class="xref-desc">Styled &lt;textarea&gt;. Mirrors shadcn Textarea.</span></a>
+<a href="ui-archive-phase-2-57-toggle.html"><span class="xref-title">Toggle</span><span class="xref-desc">Two-state button (pressed / unpressed). Mirrors shadcn Toggle. Built on @radix-ui/react-toggle.</span></a>
+<a href="ui-archive-phase-3-01-accordion.html"><span class="xref-title">Accordion</span><span class="xref-desc">Vertically stacked, expandable sections — mirrors shadcn Accordion. Built on @radix-ui/react-accordion.</span></a>
+<a href="ui-archive-phase-3-03-alert-dialog.html"><span class="xref-title">Alert Dialog</span><span class="xref-desc">Modal confirmation dialog — destructive-action confirmation pattern. Mirrors shadcn AlertDialog. Built on @radix-ui/react-alert-dialog.</span></a>
+<a href="ui-archive-phase-3-05-avatar.html"><span class="xref-title">Avatar</span><span class="xref-desc">User avatar with image + fallback initials. Mirrors shadcn Avatar. Built on @radix-ui/react-avatar.</span></a>
+<a href="ui-archive-phase-3-15-collapsible.html"><span class="xref-title">Collapsible</span><span class="xref-desc">Single show/hide region — lower-level than Accordion. Mirrors shadcn Collapsible. Built on @radix-ui/react-collapsible.</span></a>
+<a href="ui-archive-phase-3-18-context-menu.html"><span class="xref-title">Context Menu</span><span class="xref-desc">Right-click contextual menu. Mirrors shadcn ContextMenu. Built on @radix-ui/react-context-menu.</span></a>
+<a href="ui-archive-phase-3-21-dialog.html"><span class="xref-title">Dialog</span><span class="xref-desc">Modal dialog. Mirrors shadcn Dialog. Built on @radix-ui/react-dialog.</span></a>
+<a href="ui-archive-phase-3-23-drawer.html"><span class="xref-title">Drawer</span><span class="xref-desc">Bottom-sheet (mobile-friendly) modal. Mirrors shadcn Drawer. Built on vaul.</span></a>
+<a href="ui-archive-phase-3-24-dropdown-menu.html"><span class="xref-title">Dropdown Menu</span><span class="xref-desc">Popover-style menu triggered by a button. Mirrors shadcn DropdownMenu. Built on @radix-ui/react-dropdown-menu.</span></a>
+<a href="ui-archive-phase-3-28-hover-card.html"><span class="xref-title">Hover Card</span><span class="xref-desc">Lazy popover on hover/focus — for previews. Mirrors shadcn HoverCard. Built on @radix-ui/react-hover-card.</span></a>
+<a href="ui-archive-phase-3-31-input-otp.html"><span class="xref-title">Input OTP</span><span class="xref-desc">One-time-passcode segmented input. Mirrors shadcn InputOTP. Built on input-otp.</span></a>
+<a href="ui-archive-phase-3-35-menubar.html"><span class="xref-title">Menubar</span><span class="xref-desc">Application-style top menubar (File / Edit / View …). Mirrors shadcn Menubar. Built on @radix-ui/react-menubar.</span></a>
+<a href="ui-archive-phase-3-37-navigation-menu.html"><span class="xref-title">Navigation Menu</span><span class="xref-desc">Top-bar nav with hoverable mega-menu panels. Mirrors shadcn NavigationMenu. Built on @radix-ui/react-navigation-menu.</span></a>
+<a href="ui-archive-phase-3-39-popover.html"><span class="xref-title">Popover</span><span class="xref-desc">Floating panel anchored to a trigger. Mirrors shadcn Popover. Built on @radix-ui/react-popover.</span></a>
+<a href="ui-archive-phase-3-43-scroll-area.html"><span class="xref-title">Scroll Area</span><span class="xref-desc">Cross-platform custom scrollbars over an overflow:auto region. Mirrors shadcn ScrollArea. Built on @radix-ui/react-scroll-area.</span></a>
+<a href="ui-archive-phase-3-44-select.html"><span class="xref-title">Select</span><span class="xref-desc">Custom-rendered single-select. Mirrors shadcn Select. Built on @radix-ui/react-select.</span></a>
+<a href="ui-archive-phase-3-46-sheet.html"><span class="xref-title">Sheet</span><span class="xref-desc">Side-anchored dialog (left/right/top/bottom). Mirrors shadcn Sheet. Built on @radix-ui/react-dialog with a sliding-content variant.</span></a>
+<a href="ui-archive-phase-3-50-sonner.html"><span class="xref-title">Sonner</span><span class="xref-desc">Toast notifications via sonner. Mirrors shadcn Sonner. Recommended over 56-toast.</span></a>
+<a href="ui-archive-phase-3-54-tabs.html"><span class="xref-title">Tabs</span><span class="xref-desc">Tabbed panels. Mirrors shadcn Tabs. Built on @radix-ui/react-tabs.</span></a>
+<a href="ui-archive-phase-3-56-toast.html"><span class="xref-title">Toast (deprecated; prefer Sonner)</span><span class="xref-desc">Radix-based toast primitives. Mirrors shadcn Toast. Marked deprecated by upstream in favor of 50-sonner; kept for parity and for users who want first-party R…</span></a>
+<a href="ui-archive-phase-3-58-toggle-group.html"><span class="xref-title">Toggle Group</span><span class="xref-desc">A group of toggles in single- or multi-select mode. Mirrors shadcn ToggleGroup. Built on @radix-ui/react-toggle-group.</span></a>
+<a href="ui-archive-phase-3-59-tooltip.html"><span class="xref-title">Tooltip</span><span class="xref-desc">Hover/focus tooltip. Mirrors shadcn Tooltip. Built on @radix-ui/react-tooltip.</span></a>
+<a href="ui-archive-phase-4-10-calendar.html"><span class="xref-title">Calendar</span><span class="xref-desc">Month-grid date picker primitive. Mirrors shadcn Calendar. Built on react-day-picker.</span></a>
+<a href="ui-archive-phase-4-12-carousel.html"><span class="xref-title">Carousel</span><span class="xref-desc">Swipeable item track with prev/next controls. Mirrors shadcn Carousel. Built on embla-carousel-react.</span></a>
+<a href="ui-archive-phase-4-13-chart.html"><span class="xref-title">Chart</span><span class="xref-desc">Themed charting wrapper around recharts. Mirrors shadcn Chart. Provides a config-driven theme + tooltip + legend that align with the Patties token system.</span></a>
+<a href="ui-archive-phase-4-16-combobox.html"><span class="xref-title">Combobox</span><span class="xref-desc">Searchable single-select — Popover + Command + List. Mirrors shadcn Combobox (composed pattern, not a single primitive).</span></a>
+<a href="ui-archive-phase-4-17-command.html"><span class="xref-title">Command</span><span class="xref-desc">Command palette / fuzzy menu. Mirrors shadcn Command. Built on cmdk.</span></a>
+<a href="ui-archive-phase-4-19-data-table.html"><span class="xref-title">Data Table</span><span class="xref-desc">Composed table pattern (sort, filter, paginate, row-select) built on @tanstack/react-table and 53-table. Mirrors shadcn Data Table recipe.</span></a>
+<a href="ui-archive-phase-4-20-date-picker.html"><span class="xref-title">Date Picker</span><span class="xref-desc">Input + Popover + Calendar composed pattern. Mirrors shadcn Date Picker.</span></a>
+<a href="ui-archive-phase-4-42-resizable.html"><span class="xref-title">Resizable</span><span class="xref-desc">Drag-to-resize panel splitter. Mirrors shadcn Resizable. Built on react-resizable-panels.</span></a>
+<a href="ui-archive-phase-4-47-sidebar.html"><span class="xref-title">Sidebar</span><span class="xref-desc">App-shell sidebar with collapsible/icon mode, mobile sheet fallback, and persistence. Mirrors shadcn Sidebar (the multi-piece recipe).</span></a>
+</div>
+</section>
+<section>
+<h2>RFCS · accepted <span class="badge badge-id">27</span></h2>
+<div class="xref-grid">
+<a href="rfcs-accepted-rfc-bun-archive.html"><span class="xref-title">Bun.Archive — tar/zip packaging for deploy plugins</span><span class="xref-desc">Accept as a policy adoption — not a standalone spec feature.</span></a>
+<a href="rfcs-accepted-rfc-bun-cli-ansi.html"><span class="xref-title">Bun.stringWidth / stripANSI / wrapAnsi — terminal output utilities</span><span class="xref-desc">Accept as a policy adoption. Patties' CLI surface</span></a>
+<a href="rfcs-accepted-rfc-bun-cookies.html"><span class="xref-title">Bun.Cookie / Bun.CookieMap — adopt native cookie API in middleware</span><span class="xref-desc">Accept. Closes the auth-shaped hole in spec 07. With Hono removed, the cookie story gets simpler — ctx.cookies is a thin pass-through to Bun.CookieMap rather…</span></a>
+<a href="rfcs-accepted-rfc-bun-cron.html"><span class="xref-title">Bun.cron — first-class scheduled jobs convention</span><span class="xref-desc">Accept. app/jobs/ is the natural parallel to app/agents/ and app/tools/ — closes the gap where spec 10 mentions cron callers without defining them.</span></a>
+<a href="rfcs-accepted-rfc-bun-csrf.html"><span class="xref-title">Bun.CSRF — native CSRF token generation/verification in middleware</span><span class="xref-desc">Accept, depends on [[rfc-bun-cookies]] and (for renderer auto-injection) [[rfc-bun-htmlrewriter]].</span></a>
+<a href="rfcs-accepted-rfc-bun-embedded-files.html"><span class="xref-title">Bun.embeddedFiles — single-binary deploy with embedded static assets</span><span class="xref-desc">Accept. This is the only acceptance in the bucket-A pass that</span></a>
+<a href="rfcs-accepted-rfc-bun-hash.html"><span class="xref-title">Bun.hash / Bun.sha — one-shot hash helpers</span><span class="xref-desc">Accept as a policy adoption — and an active complement to</span></a>
+<a href="rfcs-accepted-rfc-bun-hot-reload.html"><span class="xref-title">bun --hot — state-preserving reload as alternative to --watch</span><span class="xref-desc">Accept. The most important RFC in this batch — spec 05 was designed around --watch's teardown problem, and --hot eliminates the problem rather than working a…</span></a>
+<a href="rfcs-accepted-rfc-bun-htmlrewriter.html"><span class="xref-title">HTMLRewriter — streaming HTML transforms for SSR + edge</span><span class="xref-desc">Accept, Phase 2 — not blocking Phase 0/1. Architecturally correct (same API on Bun and Workers). The "unlocks streaming SSR" framing in the summary is overst…</span></a>
+<a href="rfcs-accepted-rfc-bun-image.html"><span class="xref-title">Bun.Image — in-process image transforms for static assets</span><span class="xref-desc">Accept. Image optimization is one of next/image's most-loved</span></a>
+<a href="rfcs-accepted-rfc-bun-import-attributes.html"><span class="xref-title">Import attributes — macros, text, toml, file imports as first-class</span><span class="xref-desc">Accept with scoped policy. Spec 00 promises Bun macros; this RFC redeems that promise.</span></a>
+<a href="rfcs-accepted-rfc-bun-markdown.html"><span class="xref-title">Bun.markdown — built-in MD parser for content pages</span><span class="xref-desc">Accept. Content pages (blog, docs, marketing) are a recurring</span></a>
+<a href="rfcs-accepted-rfc-bun-nanoseconds.html"><span class="xref-title">Bun.nanoseconds — high-resolution clock for Server-Timing</span><span class="xref-desc">Accept. The response finalizer introduced in spec 19 already</span></a>
+<a href="rfcs-accepted-rfc-bun-package-hygiene.html"><span class="xref-title">bun patch / audit / outdated — project hygiene CLI</span><span class="xref-desc">Accept — encoded as [[cli/20-doctor]]. Pulled forward from post-1.0 to the</span></a>
+<a href="rfcs-accepted-rfc-bun-random-uuidv7.html"><span class="xref-title">Bun.randomUUIDv7 — time-ordered request IDs in middleware</span><span class="xref-desc">Accept. Closes the "where does the request id come from?" gap that spec</span></a>
+<a href="rfcs-accepted-rfc-bun-secrets.html"><span class="xref-title">Bun.secrets — OS keychain-backed dev secrets</span><span class="xref-desc">Accept, scoped tightly to dev. Resolves the "where do my dev secrets live" gap in spec 08.</span></a>
+<a href="rfcs-accepted-rfc-bun-serve-routes.html"><span class="xref-title">Bun.serve routes — adopt native routes map (Hono removed)</span><span class="xref-desc">Accept — and promote to the primary routing mechanism. Originally rejected because Hono's middleware model would diverge from Bun.serve({ routes }). With the…</span></a>
+<a href="rfcs-accepted-rfc-bun-task-cache.html"><span class="xref-title">Bun-native task-output cache + affected detection (monorepo runner)</span><span class="xref-desc">Accept, encoded as framework spec 27</span></a>
+<a href="rfcs-accepted-rfc-bun-which.html"><span class="xref-title">Bun.which — scaffold tool probes (bun + git)</span><span class="xref-desc">Accept. Smallest possible scope: two probes, no new flags, no</span></a>
+<a href="rfcs-accepted-rfc-patties-ui-add-path.html"><span class="xref-title">patties add --path — per-invocation stamp destination</span><span class="xref-desc">Accept. The only hard-coded convention shadcn users hit immediately. --path</span></a>
+<a href="rfcs-accepted-rfc-patties-ui-config-block.html"><span class="xref-title">Optional `ui` block in patties.config.ts — redirectable stamp paths</span><span class="xref-desc">Accept — narrowly. patties' "config = convention" stance is a legitimate</span></a>
+<a href="rfcs-accepted-rfc-patties-ui-init.html"><span class="xref-title">patties ui init — front-load theming + helper setup</span><span class="xref-desc">Accept — as an optional convenience, not a prerequisite. Today tokens.css +</span></a>
+<a href="rfcs-accepted-rfc-patties-ui-migrate.html"><span class="xref-title">patties migrate (rtl, radix) — codemods for user-authored UI code</span><span class="xref-desc">Accept, scoped to user-authored code. First-party stamped components already use</span></a>
+<a href="rfcs-accepted-rfc-patties-ui-registries.html"><span class="xref-title">Remote / URL / namespaced registries + patties ui build</span><span class="xref-desc">Accept — promoted from backlog. Previously parked as the lowest-priority parity</span></a>
+<a href="rfcs-accepted-rfc-patties-ui-theming.html"><span class="xref-title">Theming — @theme inline wiring + base-color token presets</span><span class="xref-desc">Accept the two buildable theming slices; the live editor is split out as deferred</span></a>
+<a href="rfcs-accepted-rfc-patties-ui-update-diff.html"><span class="xref-title">patties add --diff / patties update — reconcile copy-in drift</span><span class="xref-desc">Accept — highest-leverage parity work now the catalog is shipped. The copy-in</span></a>
+<a href="rfcs-accepted-rfc-patties-ui-view.html"><span class="xref-title">patties add --view / patties view — pre-install source preview</span><span class="xref-desc">Accept — cheap win. --dry-run already shows the file/dep plan; --view adds</span></a>
+</div>
+</section>
+<section>
+<h2>RFCS · backlog <span class="badge badge-id">7</span></h2>
+<div class="xref-grid">
+<a href="rfcs-backlog-rfc-bun-alt-compression.html"><span class="xref-title">Bun.deflateSync / Bun.zstdCompress — alternate asset compression</span><span class="xref-desc">Bun.deflateSync (raw deflate / zlib), Bun.zstdCompress (zstd, sync + streaming). Adds alternate algorithms to the build's asset pre-compression step. Note: b…</span></a>
+<a href="rfcs-backlog-rfc-bun-arraybuffersink.html"><span class="xref-title">Bun.ArrayBufferSink — streaming buffer builder for SSR</span><span class="xref-desc">Bun.ArrayBufferSink lets you accumulate bytes from many writes into a single ArrayBuffer or stream them out, with fewer intermediate allocations than Uint8Ar…</span></a>
+<a href="rfcs-backlog-rfc-bun-bytecode.html"><span class="xref-title">--bytecode flag — pre-compile JS to JSC bytecode at build</span><span class="xref-desc">bun build --bytecode pre-compiles JS to JavaScriptCore bytecode and embeds it in the bundle. Cuts parse time at startup.</span></a>
+<a href="rfcs-backlog-rfc-bun-pm.html"><span class="xref-title">bun pm — catalogs / workspaces for monorepos</span><span class="xref-desc">Moved deferred → backlog — the named trigger fired. The 2026-05-27 deferral</span></a>
+<a href="rfcs-backlog-rfc-bun-resolve-sync.html"><span class="xref-title">Bun.resolveSync — module resolution outside the build context</span><span class="xref-desc">Bun.resolveSync(specifier, parent) resolves a module specifier to an absolute path using Bun's resolver. Useful outside of Bun.build's native resolution.</span></a>
+<a href="rfcs-backlog-rfc-bun-smol.html"><span class="xref-title">--smol flag — memory-constrained runtime mode</span><span class="xref-desc">bun --smol runs Bun with a smaller initial allocator footprint. Trades throughput for memory headroom.</span></a>
+<a href="rfcs-backlog-rfc-bun-transpiler.html"><span class="xref-title">Bun.Transpiler — on-demand single-file TS/TSX transpile</span><span class="xref-desc">Bun.Transpiler returns a transpiler instance that runs TS→JS / JSX→JS per file without wrapping into a build graph. Faster than SWC for many workloads; sync …</span></a>
+</div>
+</section>
+<section>
+<h2>RFCS · deferred <span class="badge badge-id">3</span></h2>
+<div class="xref-grid">
+<a href="rfcs-deferred-rfc-bun-config-formats.html"><span class="xref-title">Bun.YAML / Bun.TOML / Bun.JSON5 (and JSONL) — non-TS config formats</span><span class="xref-desc">Confirmed deferred, with the pickup trigger retargeted to the plugin system:</span></a>
+<a href="rfcs-deferred-rfc-bun-cookie-signing.html"><span class="xref-title">Bun.Cookie signing — HMAC-signed cookies for sessions / auth</span><span class="xref-desc">Stays deferred — not promoted, not dismissed. The blessed auth story is</span></a>
+<a href="rfcs-deferred-rfc-bun-html-imports.html"><span class="xref-title">Bun fullstack HTML imports — evaluate as alternative build path</span><span class="xref-desc">Reject for v1; keep as future-work RFC. The RFC itself frames the right question — "is there any phase 0–4 use case that needs this?" — and answers it correc…</span></a>
+</div>
+</section>
+<section>
+<h2>RFCS · out-of-scope <span class="badge badge-id">7</span></h2>
+<div class="xref-grid">
+<a href="rfcs-out-of-scope-rfc-bun-color.html"><span class="xref-title">Bun.color — color parsing / conversion utility</span><span class="xref-desc">Moved deferred → out-of-scope. Re-checked against the now-shipped Patties UI</span></a>
+<a href="rfcs-out-of-scope-rfc-bun-path-url.html"><span class="xref-title">Bun.fileURLToPath / Bun.pathToFileURL — file URL ↔ path</span><span class="xref-desc">Moved backlog → out-of-scope. Identical surface to node:url with no</span></a>
+<a href="rfcs-out-of-scope-rfc-bun-peek.html"><span class="xref-title">Bun.peek — synchronously introspect a Promise's settled state</span><span class="xref-desc">Moved backlog → out-of-scope. An internals-only microtask optimization with</span></a>
+<a href="rfcs-out-of-scope-rfc-bun-sleep.html"><span class="xref-title">Bun.sleep / Bun.sleepSync — delay helpers</span><span class="xref-desc">Moved deferred → out-of-scope. There is no realistic future in which</span></a>
+<a href="rfcs-out-of-scope-rfc-bun-tcp.html"><span class="xref-title">Bun.connect / Bun.listen — raw TCP</span><span class="xref-desc">Moved backlog → out-of-scope. Raw TCP sits one rung below where a</span></a>
+<a href="rfcs-out-of-scope-rfc-bun-udp.html"><span class="xref-title">Bun.udpSocket — UDP sockets</span><span class="xref-desc">Moved backlog → out-of-scope alongside [[rfc-bun-tcp]] (same reasoning —</span></a>
+<a href="rfcs-out-of-scope-rfc-patties-ui-theme-editor.html"><span class="xref-title">Live theme editor / shareable preset codes</span><span class="xref-desc">Moved deferred → out-of-scope. Re-surveyed the shadcn ecosystem: the visual</span></a>
+</div>
+</section>
+<section>
+<h2>Research <span class="badge badge-id">5</span></h2>
+<div class="xref-grid">
+<a href="research-_bun-cli.txt"><span class="xref-title">Bun cli</span><span class="xref-desc">Raw research capture (plain text).</span></a>
+<a href="research-_bun-globals.txt"><span class="xref-title">Bun globals</span><span class="xref-desc">Raw research capture (plain text).</span></a>
+<a href="research-_bun-modules.txt"><span class="xref-title">Bun modules</span><span class="xref-desc">Raw research capture (plain text).</span></a>
+<a href="research-bun-coverage-matrix.html"><span class="xref-title">Bun API Coverage Matrix — Patties Framework</span><span class="xref-desc">The catalogue covers every Bun. global, every bun: built-in module, the notable bun CLI verbs/flags, and Bun-specific language features (import attribute typ…</span></a>
+<a href="research-patties-ui-parity-matrix.html"><span class="xref-title">shadcn/ui → patties-ui Parity Matrix</span><span class="xref-desc">This catalogue covers every shadcn CLI command, every add flag, the components.json config keys, the registry/distribution model, the theming surface, and th…</span></a>
+</div>
+</section>
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

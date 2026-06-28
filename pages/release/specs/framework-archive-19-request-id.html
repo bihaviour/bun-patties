@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request IDs — ctx.requestId + X-Request-Id echo · Patties specs</title>
+<meta name="description" content="This spec encodes [[rfc-bun-random-uuidv7]]. It supersedes the relevant">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/19-request-id.md</span></div>
+<h1>Request IDs — ctx.requestId + X-Request-Id echo</h1>
+<p class="lede">This spec encodes [[rfc-bun-random-uuidv7]]. It supersedes the relevant</p>
+</header>
+<p>This spec encodes [[rfc-bun-random-uuidv7]]. It supersedes the relevant slices of the archived phase-1 middleware spec and phase-3 agents spec — specifically the <code>PattiesContext</code> shape and the <code>AiContext.requestId</code> source. Everything else in those archived specs remains the spec of record.</p>
+<h2>Goal</h2>
+<p>Give every request a single, framework-generated correlation id that:</p>
+<ol><li>User middleware, route handlers, plugins, and the AI subsystem can all read (instead of each minting their own).</li><li>Propagates across an upstream proxy via <code>X-Request-Id</code> when a well-shaped one is supplied.</li><li>Sorts chronologically as a plain string (UUIDv7 on Bun, UUIDv4 on non-Bun targets — best-effort).</li></ol>
+<h2>Surface</h2>
+<h3><code>PattiesContext.requestId</code></h3>
+<pre data-lang="ts"><code>export interface PattiesContext {
+  // ...all existing fields from framework/archive/phase-1/07-middleware
+  requestId: string
+}
+</code></pre>
+<p>Populated by the outer composer — the same place that already builds <code>ctx.url</code>, <code>ctx.cookies</code>, <code>ctx.json/html/redirect</code> — <em>before</em> user middleware runs. User middleware and plugins MUST NOT re-generate it.</p>
+<h3><code>AiContext.requestId</code></h3>
+<p><code>AiContext.requestId: string</code> is unchanged on the type level. The in-request framework middleware that builds <code>ctx.aiContext</code> now reads <code>pctx.requestId</code> instead of calling <code>crypto.randomUUID()</code>. The programmatic example in <code>framework/archive/phase-3/10-agents-and-tools</code> becomes:</p>
+<pre data-lang="ts"><code>const ctx = createAiContext({ requestId: Bun.randomUUIDv7() })
+</code></pre>
+<h2>Framework behaviour</h2>
+<h3>Generation</h3>
+<p>In the Bun adapter (<code>src/adapters/bun/</code>):</p>
+<pre data-lang="ts"><code>const inbound = req.headers.get("x-request-id")
+const requestId = inbound &amp;&amp; /^[A-Za-z0-9._-]{8,128}$/.test(inbound)
+  ? inbound
+  : Bun.randomUUIDv7()
+</code></pre>
+<p>In the edge adapter (<code>src/adapters/edge/</code>): same logic, but <code>crypto.randomUUID()</code> replaces <code>Bun.randomUUIDv7()</code> (W3C-edge platforms don't expose a v7 helper). The id is still a string; time-ordering is best-effort across targets.</p>
+<p>Inbound header values that don't match the regex are ignored (not echoed back); a fresh id is generated instead. This stops control characters and oversize payloads from reaching log lines.</p>
+<blockquote><p><strong>Implementation note (shipped 91848f2).</strong> Generation was centralized in the unified composer rather than duplicated per adapter: <code>makeContext</code> calls <code>resolveRequestId(req)</code> (<code>src/middleware/request-id.ts</code>), whose <code>generateRequestId()</code> feature-detects the runtime — <code>Bun.randomUUIDv7()</code> when <code>globalThis.Bun</code> exposes it, else <code>crypto.randomUUID()</code> (UUIDv4) on edge/workerd. Both <code>bun</code> and <code>edge</code> targets share the <code>makeContext</code> + router-finalizer path, so the behaviour is identical to the per-adapter sketch above; the edge UUIDv4 path is covered by <code>tests/adapters/edge.test.ts</code>.</p>
+</blockquote>
+<h3>Response echo</h3>
+<p>The response finalizer — the same code path that flushes <code>Set-Cookie</code> headers — sets <code>X-Request-Id: &lt;ctx.requestId&gt;</code> on the outgoing <code>Response</code>, including the 404 fallback and error responses, <strong>unless</strong> the handler/middleware already set the header. We never overwrite.</p>
+<h3>Boot-time use</h3>
+<p><code>ctx.requestId</code> is request-scope only. Boot code (<code>app/server.ts</code> top-level) has no request and must mint its own id if it needs one (<code>Bun.randomUUIDv7()</code> directly).</p>
+<h2>User contract</h2>
+<p>Logging middleware can use the id directly:</p>
+<pre data-lang="ts"><code>export default defineMiddleware(async (req, ctx, next) =&gt; {
+  const start = performance.now()
+  const res = await next()
+  console.log(ctx.requestId, req.method, ctx.url.pathname, res.status,
+    `${(performance.now() - start) | 0}ms`)
+  return res
+})
+</code></pre>
+<p>Handlers that want to set their own <code>X-Request-Id</code> (e.g. proxying to a downstream service that requires a specific format) simply set it on the returned <code>Response</code> — the finalizer leaves it alone.</p>
+<h2>Non-goals</h2>
+<ul><li><strong>W3C <code>traceparent</code> / OTel propagation.</strong> Out of scope; the request id is a single opaque string, not a trace context. A future observability RFC may add propagation.</li><li><strong>Signing / HMAC.</strong> The id is informational, not a security primitive.</li><li><strong>Per-route override of generation strategy.</strong> One generator per adapter. Apps that need their own scheme can read inbound headers themselves in user middleware and stash on <code>ctx.vars</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>A request with no inbound <code>X-Request-Id</code> populates <code>ctx.requestId</code> with a UUIDv7 (on Bun) and the response carries the same value in its <code>X-Request-Id</code> header.</li><li>A request with an inbound <code>X-Request-Id</code> matching the allowlist regex causes <code>ctx.requestId</code> to equal that value; the response echoes it.</li><li>A request with an inbound <code>X-Request-Id</code> <em>not</em> matching the regex is treated as if no header was present.</li><li>A handler that sets its own <code>X-Request-Id</code> on the response sees the framework leave it unchanged.</li><li>On the edge adapter, <code>ctx.requestId</code> is a <code>crypto.randomUUID()</code> (UUIDv4) string when no inbound header is present.</li><li>When agents are present, <code>ctx.aiContext.requestId === ctx.requestId</code> for the same request.</li><li>Removing the entire <code>app/middleware.ts</code> does not change any of the above — generation happens in the outer composer, not in user middleware.</li></ul>
+<h2>Test plan</h2>
+<ul><li>Unit: outer composer fed a <code>Request</code> with no header → assert <code>ctx.requestId</code> matches a UUIDv7 regex and response has matching header.</li><li>Unit: same, but with inbound <code>X-Request-Id: 0123abcd</code> → assert passthrough on both sides.</li><li>Unit: inbound <code>X-Request-Id: &lt;bad chars&gt;</code> → assert generated id, inbound value not echoed.</li><li>Unit: handler that returns a <code>Response</code> with its own <code>X-Request-Id</code> → assert finalizer preserves it.</li><li>Integration: agent fixture asserts <code>ctx.aiContext.requestId === ctx.requestId</code>.</li><li>Adapter parity: edge adapter test asserts the same surface using <code>crypto.randomUUID()</code>.</li></ul>
+<h2>Out of this spec</h2>
+<p>The CLI side (<code>patties dev</code> log formatting that may want to prefix lines with the request id) is unchanged by this spec and remains in <code>cli/archive/07-logging-errors.md</code>.</p>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

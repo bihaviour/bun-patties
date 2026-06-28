@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epic 1 — Module convention &amp; the public-API boundary check · Patties</title>
+<meta name="description" content="Define what a module is — a folder under app/ with a public index.ts and a routes.ts — and build the static check that a module may only import another module's index.ts.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Roadmap</span></div>
+<h1>Epic 1 — Module convention &amp; the public-API boundary check</h1>
+<p class="lede">Define what a module is — a folder under <code>app/</code> with a public <code>index.ts</code> and a <code>routes.ts</code> — and build the static check that a module may only import another module's <code>index.ts</code>. This is the foundation everything else assumes. Specified in <a href="features.html#modules">Modules &amp; boundaries</a>.</p>
+</header>
+
+<div class="callout note">
+<p class="callout-title">Goal</p>
+<p>The convention is documented and the build fails with <code>file:line</code> when one module deep-imports another's internals — with no DI, no decorators, no runtime cost.</p>
+</div>
+
+<section>
+<h2>Definition of done</h2>
+<ul>
+<li>A written spec for the module convention: <code>app/&lt;name&gt;/index.ts</code> (public API), <code>routes.ts</code> (HTTP surface), everything else private.</li>
+<li>A build-time check that classifies each import: core/npm/same-module (allow), another module's <code>index.ts</code> (allow), any deeper path into another module (error).</li>
+<li>Errors carry <code>file:line</code> and a fix hint ("reach it through <code>../billing</code> or export it from its index").</li>
+<li>Correct resolution of relative paths and configured path aliases; re-export barrels don't create false negatives.</li>
+<li>Zero runtime footprint — the check runs at build only.</li>
+</ul>
+</section>
+
+<section>
+<h2>The convention</h2>
+<p><strong>Decision to settle here:</strong> the module root (<code>app/*</code> by default) and whether nested feature trees are allowed. Documented as a draft spec under <code>framework/draft</code>.</p>
+<pre data-lang="text"><code>app/
+  billing/
+    index.ts            # public API — the only legal cross-module import target
+    routes.ts           # export const routes = { ... }  (Bun.serve shape)
+    invoice.service.ts  # private
+  _platform/
+    index.ts            # shared infra (db, scheduler) via its own public API</code></pre>
+</section>
+
+<section>
+<h2>The boundary check</h2>
+<p><strong>New:</strong> a build pass (run inside, or alongside, the discovery macro) that reads import specifiers and applies one rule. No metadata, no annotations — derived from folder layout + the import graph.</p>
+<pre data-lang="ts"><code>// pseudo-rule
+for (const imp of file.imports) {
+  const target = resolve(imp, file);
+  const owner = moduleOf(target);          // which app/&lt;name&gt;/ owns it, if any
+  if (owner &amp;&amp; owner !== moduleOf(file) &amp;&amp; !isIndexOf(target, owner))
+    error(`${file}:${imp.line} — deep import into module '${owner}'.`);
+}</code></pre>
+</section>
+
+<section>
+<h2>Verify</h2>
+<pre data-lang="bash"><code>bun --filter patties test boundary   # allow public-index import; reject deep import; aliases resolve</code></pre>
+</section>
+
+<section>
+<h2>Dependencies</h2>
+<div class="feature-grid">
+<div class="feature"><h3>Blocked by</h3><p>Nothing — this is the foundation.</p></div>
+<div class="feature"><h3>Blocks</h3><p><a href="epic-02.html">E2</a> (the route macro runs the same discovery + check) and <a href="epic-03.html">E3</a> (the starter ships modules that obey the rule).</p></div>
+</div>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="roadmap.html">Delivery tracker</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

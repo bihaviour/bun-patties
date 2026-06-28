@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties add --view / patties view — pre-install source preview · Patties specs</title>
+<meta name="description" content="Accept — cheap win. --dry-run already shows the file/dep plan; --view adds">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-patties-ui-view.md</span></div>
+<h1>patties add --view / patties view — pre-install source preview</h1>
+<p class="lede">Accept — cheap win. --dry-run already shows the file/dep plan; --view adds</p>
+</header>
+<h2>Review verdict (2026-05-28)</h2>
+<p><strong>Accept — cheap win.</strong> <code>--dry-run</code> already shows the file/dep <em>plan</em>; <code>--view</code> adds the actual source that would be stamped, closing the "see before you stamp" gap. Read-only; never writes.</p>
+<p>Scope pins:</p>
+<ul><li>Strict superset of <code>--dry-run</code>'s info: metadata header + full template source per file, fenced by destination path.</li><li>Syntax-styled on a TTY, plain when piped (so <code>patties view button &gt; button.tsx</code> is a usable escape hatch).</li><li>Pairs with [[rfc-patties-ui-update-diff]]: <code>--view</code> = "what will I get?", <code>--diff</code> = "how did mine drift?".</li></ul>
+<p>Encoded into <code>cli/13-add-view</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p>A read-only preview that prints a component's metadata and full template source before stamping.</p>
+<h2>Motivation</h2>
+<p>Users currently can't inspect catalog source without stamping it (or reading the <code>patties-ui</code> package). shadcn offers <code>view</code>.</p>
+<h2>Proposal</h2>
+<p><code>add --view &lt;name&gt;</code> (alias <code>patties view &lt;name&gt;</code>): reuse <code>resolveNames</code>, print the metadata header (phase, kind, island, status, peerDeps, helpers, tokens) + each file's source. No <code>package.json</code> / token / helper writes.</p>
+<h2>Trade-offs</h2>
+<ul><li>None significant; it's a print path over data already loaded for <code>--dry-run</code>.</li></ul>
+<h2>Open questions</h2>
+<ul><li>None.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

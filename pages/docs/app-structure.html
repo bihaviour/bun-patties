@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App structure · Patties</title>
+<meta name="description" content="Recommended project layout and how Patties discovers features.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>App structure</h1>
+<p class="lede">Patties discovers framework features from a small set of conventional app directories, so the layout you write is the layout it understands.</p>
+</header>
+<section>
+<h2>Typical layout</h2>
+<pre data-lang="text"><code>app/
+  routes/
+    index.tsx
+    api/
+  islands/
+  agents/
+  tools/
+  jobs/
+  middleware.ts
+  server.ts</code></pre>
+</section>
+<section>
+<h2>Directory roles</h2>
+<ul>
+<li><code>app/routes/</code> contains pages and API handlers</li>
+<li><code>app/islands/</code> contains client-hydrated interactive components</li>
+<li><code>app/agents/</code> contains AI agent definitions</li>
+<li><code>app/tools/</code> contains tool definitions for agents</li>
+<li><code>app/jobs/</code> contains scheduled jobs</li>
+<li><code>app/middleware.ts</code> adds request middleware</li>
+<li><code>app/server.ts</code> is the optional app entry used by <code>patties dev</code></li>
+</ul>
+</section>
+<section>
+<h2>Discovery rules</h2>
+<p>Patties ignores:</p>
+<ul>
+<li>files starting with <code>_</code></li>
+<li>test files such as <code>*.test.ts</code> and <code>*.test.tsx</code></li>
+</ul>
+<p>Missing directories are treated as empty rather than as hard failures, which keeps the default app shape minimal.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

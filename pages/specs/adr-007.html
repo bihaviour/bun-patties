@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-007 — Shared state has an explicit owner and a frozen mutation window · Patties</title>
+<meta name="description" content="Every shared structure has one owner, one mutation window, and one freeze point.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">ADR</span> <span class="pill blue">draft</span></div>
+<h1>ADR-007 — Shared state has an explicit owner and a frozen mutation window</h1>
+<p class="lede">Every shared structure has one owner, one mutation window, and one freeze point.</p>
+</header>
+<section>
+<h2>Context</h2>
+<p><code>ClientManifest</code> is created by <code>build/</code>, then implicitly mutated by <code>dev/</code>, then consumed by <code>render/</code> — with no documented ownership or mutation contract. Agent and tool registries are similarly shared without defined ownership. This makes it impossible to reason about correctness across module boundaries, and quietly allows races in dev mode.</p>
+</section>
+<section>
+<h2>Decision</h2>
+<p>Every shared data structure has exactly one owner, one mutation window, and one freeze point. After the freeze, any write throws in strict mode (<code>Object.freeze</code>). When a structure must change (e.g. dev island rebuild), the owner creates a new instance and atomically replaces the reference — never mutating the currently-serving frozen instance. See <a href="features.html#ownership">data ownership</a> for the full table.</p>
+</section>
+<section>
+<h2>Consequences</h2>
+<p>State transitions are visible in the type system: consumers receive <code>Readonly&lt;ClientManifest&gt;</code>; the freeze is structural, not just documented. Swap-on-change means request handlers always see a consistent snapshot, not a partially-updated manifest. Cost: <code>dev/</code> must build a full new manifest on each island rebuild rather than patching the old one — acceptable given that manifests are small.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="decisions.html">All decisions</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

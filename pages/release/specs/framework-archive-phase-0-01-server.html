@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Server · Patties specs</title>
+<meta name="description" content="Boot the HTTP server that hosts the user's Patties app. The framework wraps Bun.serve() and uses its native routes: map (introduced in Bun 1.2) as the dispat…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-0/01-server.md</span></div>
+<h1>Server</h1>
+<p class="lede">Boot the HTTP server that hosts the user's Patties app. The framework wraps Bun.serve() and uses its native routes: map (introduced in Bun 1.2) as the dispat…</p>
+</header>
+<h2>Purpose</h2>
+<p>Boot the HTTP server that hosts the user's Patties app. The framework wraps <code>Bun.serve()</code> and uses its native <code>routes:</code> map (introduced in Bun 1.2) as the dispatcher. There is no third-party HTTP framework — request matching, param parsing, and static-route handling all run in Bun's C++ path.</p>
+<h2>Public surface</h2>
+<pre data-lang="ts"><code>export function createServer(options: ServerOptions): { fetch: (req: Request) =&gt; Response | Promise&lt;Response&gt;, port: number }
+export function startServer(options: ServerOptions): Bun.Server
+</code></pre>
+<p><code>ServerOptions</code>:</p>
+<ul><li><code>port?: number</code> — default <code>3000</code>.</li><li><code>hostname?: string</code> — default <code>0.0.0.0</code>.</li><li><code>unix?: string</code> — optional Unix socket path. When set, <code>port</code>/<code>hostname</code> are ignored. Useful for self-hosted deploys behind nginx / Caddy.</li><li><code>reusePort?: boolean</code> — passed through to <code>Bun.serve</code>. Enables <code>SO_REUSEPORT</code> so multiple processes can bind the same port for horizontal scaling (<code>bun</code> adapter, multi-core hosts).</li><li><code>routes: BunRoutes</code> — the compiled route map from <a href="framework-archive-phase-0-02-router.html">02-router</a>. Each key is a Bun pattern (e.g. <code>/hotels/:city</code>); each value is a <code>Response</code> (precomputed) or a method-keyed object whose handlers are already wrapped by the user middleware composer.</li><li><code>fallback: (req: Request) =&gt; Response | Promise&lt;Response&gt;</code> — the <code>fetch:</code> handler. Wraps a 404 handler in the user middleware so unmatched paths still flow through middleware.</li><li><code>dev?: boolean</code> — when true, mounts the HMR WebSocket from <a href="framework-archive-phase-1-05-dev-hmr.html">05-dev-hmr</a>.</li><li><code>staticRoutes?: Record&lt;string, Response&gt;</code> — prebuilt <code>Response</code> objects for <code>/_patties/client/*</code> chunks and (in the <code>bun</code> adapter) <code>/app/public/*</code> files. Bun.serve matches these <em>before</em> JS runs, so they never enter a handler.</li></ul>
+<h2>Behavior</h2>
+<ol><li>Validate <code>options</code> (<code>routes</code> required; <code>port</code>/<code>hostname</code> and <code>unix</code> are mutually exclusive).</li><li>Construct <code>Bun.serve({ port, hostname, unix, reusePort, routes, fetch: fallback, websocket?, static: staticRoutes })</code>.</li><li>If <code>dev: true</code>, register the HMR upgrade handler on path <code>/__patties_hmr</code> via the <code>websocket</code> option and a routes entry that calls <code>server.upgrade(req)</code>.</li><li>Log the bound URL on startup (or socket path when <code>unix</code> is set).</li><li>Forward unhandled errors to a single error formatter; never let <code>Bun.serve</code> crash silently.</li></ol>
+<h2>Why native routes (not a userland router)</h2>
+<p><code>Bun.serve({ routes })</code> matches paths in C++ before any JS runs, populates <code>req.params</code> natively, and short-circuits static responses without a JS round-trip. For the <code>bun</code> target the gain is real; more importantly, it removes a whole layer of abstraction (Hono <code>app.use</code>, <code>c.req.param</code>, etc.) and lets the framework expose plain <code>Request</code>/<code>Response</code>. The edge adapter (<a href="framework-archive-phase-2-12-edge-adapters.html">12</a>) compiles the same route table into a small JS matcher for vendors that don't accept <code>routes:</code> natively — same handlers, same <code>ctx</code>, different entrypoint shape.</p>
+<h2>Dependencies</h2>
+<ul><li><code>Bun.serve</code> only — no Node <code>http</code>, <code>https</code>, or <code>net</code>. No HTTP framework.</li></ul>
+<h2>Non-goals</h2>
+<ul><li>TLS termination (delegate to the edge / reverse proxy). <code>Bun.serve</code> supports <code>tls:</code>; users opting into a non-proxied deploy may configure it through <code>patties.config.ts</code> <code>server.tls</code>.</li><li>Process supervision, clustering, graceful shutdown choreography beyond <code>server.stop()</code>.</li><li><code>Bun.serve({ routes })</code> alternatives. The framework does not maintain a hand-written matcher on the Bun target.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>createServer({ routes, fallback })</code> returns an object whose <code>fetch</code> resolves end-to-end.</li><li>A GET to <code>/</code> on a one-route fixture returns <code>200</code> and HTML.</li><li>A POST to <code>/api/users/:id</code> resolves <code>req.params.id</code> via Bun's native parser; the handler receives the framework <code>ctx</code> populated by the middleware composer.</li><li>Importing this module never pulls in <code>node:http</code> or <code>hono</code> (verified by a build-time check).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entry &amp; Dispatch · Patties specs</title>
+<meta name="description" content="The shebang'd executable that package.json#bin points at. Parses argv, picks a command handler, and exits with the handler's return code.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/01-entry.md</span></div>
+<h1>Entry &amp; Dispatch</h1>
+<p class="lede">The shebang'd executable that package.json#bin points at. Parses argv, picks a command handler, and exits with the handler's return code.</p>
+</header>
+<h2>Purpose</h2>
+<p>The shebang'd executable that <code>package.json#bin</code> points at. Parses <code>argv</code>, picks a command handler, and exits with the handler's return code.</p>
+<h2>Shape</h2>
+<pre data-lang="ts"><code>#!/usr/bin/env bun
+
+import { run } from "../cli/index.ts"
+
+run(Bun.argv.slice(2)).then(
+  (code) =&gt; process.exit(code ?? 0),
+  (err) =&gt; { /* see 07-logging-errors.md */ process.exit(1) }
+)
+</code></pre>
+<h2>Dispatch table</h2>
+<div class="table-wrap"><table><thead><tr><th>Argument</th><th>Handler</th></tr></thead><tbody><tr><td><code>dev</code></td><td><code>cli/commands/dev.ts</code></td></tr><tr><td><code>build</code></td><td><code>cli/commands/build.ts</code></td></tr><tr><td><code>deploy</code></td><td><code>cli/commands/deploy.ts</code></td></tr><tr><td><code>secret</code></td><td><code>cli/commands/secret.ts</code></td></tr><tr><td><code>--version</code>, <code>-v</code></td><td>print version from <code>package.json</code>, exit 0</td></tr><tr><td><code>--help</code>, <code>-h</code>, <code>help</code>, no args</td><td>print usage, exit 0</td></tr><tr><td>unknown</td><td>print usage + the unknown token, exit 2</td></tr></tbody></table></div>
+<h2>Flag parsing</h2>
+<ul><li>Use a tiny hand-rolled parser. No <code>commander</code>, no <code>yargs</code>.</li><li>Global flags: <code>--cwd &lt;path&gt;</code> (default <code>process.cwd()</code>), <code>--config &lt;path&gt;</code> (overrides discovery), <code>--verbose</code>.</li><li>Command-specific flags live in each command's spec.</li></ul>
+<h2>Cwd handling</h2>
+<p>Resolve <code>--cwd</code> to an absolute path early. All later file lookups (config, app dir, output) treat that path as the root. Never read from <code>process.cwd()</code> after this point.</p>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties</code> with no args prints usage and exits 0.</li><li><code>patties --version</code> prints the version on stdout.</li><li><code>patties frobnicate</code> exits 2 with "unknown command: frobnicate" plus usage.</li><li><code>patties dev --cwd /tmp/app</code> operates on <code>/tmp/app</code>, ignoring <code>process.cwd()</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -3,7 +3,8 @@
 	"ignoreExportsUsedInFile": true,
 	"workspaces": {
 		".": {
-			"entry": ["scripts/*.ts"]
+			"entry": ["scripts/*.ts"],
+			"ignore": ["pages/**"]
 		},
 		"packages/patties": {
 			"ignore": [

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image pipeline — build-time variants + runtime endpoint + signed cache · Patties specs</title>
+<meta name="description" content="This spec encodes [[rfc-bun-image]]. It introduces a next/image-class">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">framework/archive/22-image-pipeline.md</span></div>
+<h1>Image pipeline — build-time variants + runtime endpoint + signed cache</h1>
+<p class="lede">This spec encodes [[rfc-bun-image]]. It introduces a next/image-class</p>
+</header>
+<p>This spec encodes [[rfc-bun-image]]. It introduces a <code>next/image</code>-class image pipeline built on Bun.Image: build-time variant generation for known assets, a <code>&lt;Image&gt;</code> React component, a signed runtime endpoint for on-demand transforms, and an on-disk LRU cache shared between both paths.</p>
+<p>The patties value: <strong>same capability <code>next/image</code> ships, without the 30+MB Sharp native addon.</strong> Bun ships image decode/encode in core.</p>
+<h2>Goal</h2>
+<p><code>&lt;Image&gt;</code> is the boring default for serving images. It produces responsive AVIF/WebP/JPEG srcsets, lazy-loads by default, and works without a config file. Static assets get pre-generated variants at build time; user-uploaded or dynamic URLs go through a signed runtime endpoint that resizes on demand and caches to disk.</p>
+<h2>Surface</h2>
+<h3><code>&lt;Image&gt;</code> component</h3>
+<pre data-lang="tsx"><code>import { Image } from "patties/render"
+
+&lt;Image
+  src="/photo.jpg"           // static asset path OR external URL
+  alt="Cat in a box"
+  width={800}                // intrinsic
+  height={600}               // intrinsic
+  sizes="(max-width: 768px) 100vw, 50vw"
+  priority={false}           // skip lazy-load
+  quality={80}               // 1–100; default 75
+  formats={["avif", "webp"]} // optional; default platform-tuned
+/&gt;
+</code></pre>
+<p>Renders to:</p>
+<pre data-lang="html"><code>&lt;img
+  src="/_patties/images/photo.&lt;hash&gt;.640.jpeg"
+  srcset="...320.avif 320w, ...640.avif 640w, ...1280.avif 1280w"
+  sizes="..."
+  loading="lazy"
+  decoding="async"
+  width="800" height="600"
+  alt="Cat in a box"
+/&gt;
+</code></pre>
+<p>For static assets known to the build, all URLs in the srcset point to pre-generated files in <code>.patties/images/</code>. For unknown URLs (e.g. a user-uploaded path like <code>/uploads/123.jpg</code>), srcset URLs point at the signed runtime endpoint.</p>
+<h3>Runtime endpoint</h3>
+<pre><code>GET /_patties/image?src=&lt;path&gt;&amp;w=&lt;width&gt;&amp;fmt=&lt;format&gt;&amp;q=&lt;quality&gt;&amp;sig=&lt;hmac&gt;
+</code></pre>
+<ul><li><code>src</code> — URL-encoded path. Allowed sources: project-relative paths (<code>/uploads/...</code>), trusted external origins (configured allowlist), or build-known paths.</li><li><code>w</code> — target width.</li><li><code>fmt</code> — output format (<code>avif</code> / <code>webp</code> / <code>jpeg</code> / <code>png</code>).</li><li><code>q</code> — quality (1–100; clamped).</li><li><code>sig</code> — base64url HMAC-SHA256 of <code>${src}|${w}|${fmt}|${q}</code> using the configured signing secret.</li></ul>
+<p>Unsigned or bad-signature requests return 400 immediately. This defends against the cache-stampede / disk-fill attack vector where a caller enumerates a billion (src, w) combos to exhaust the cache.</p>
+<h2>Configuration</h2>
+<pre data-lang="ts"><code>// patties.config.ts
+export default defineConfig({
+  images: {
+    domains: ["cdn.example.com"],     // external origin allowlist
+    formats: ["avif", "webp"],         // preferred output formats
+    qualities: [50, 75, 90],           // allowed q values
+    widths: [320, 640, 1280, 2560],    // srcset breakpoints
+    cacheDir: ".patties/image-cache",  // disk cache location
+    cacheMaxBytes: 1024 * 1024 * 1024, // 1 GiB default
+    signingSecret: undefined,          // resolved from Bun.secrets → env → here
+  },
+})
+</code></pre>
+<p>All fields optional; defaults shown.</p>
+<h2>Build behaviour</h2>
+<h3>Scan + pre-generate</h3>
+<p>When <code>mode === "production"</code> (or always-on in dev — see Dev mode below), the build (<code>src/build/images.ts</code>) walks <code>app/public/**/*.{png,jpg,jpeg,webp,avif}</code>. For each image:</p>
+<ol><li>Decode via <code>Bun.Image.from(file)</code> to get intrinsic dimensions.</li><li>For each <code>(width, format)</code> pair from config, encode a variant.</li><li>Hash the source bytes via <code>Bun.CryptoHasher("xxh64")</code>.</li><li>Write to <code>.patties/images/&lt;basename&gt;.&lt;hash&gt;.&lt;w&gt;.&lt;fmt&gt;</code>.</li><li>Record in <code>IMAGE_MANIFEST</code>.</li></ol>
+<pre data-lang="ts"><code>// .patties/image-manifest.ts (generated, inlined via macro per spec 04)
+export const IMAGE_MANIFEST: Record&lt;string, ImageManifestEntry&gt; = {
+  "/photo.jpg": {
+    intrinsic: { width: 2560, height: 1920 },
+    variants: [
+      { w: 320,  fmt: "avif", url: "/_patties/images/photo.abc123.320.avif"  },
+      { w: 640,  fmt: "avif", url: "/_patties/images/photo.abc123.640.avif"  },
+      // ...
+    ],
+    contentType: "image/jpeg",
+  },
+}
+</code></pre>
+<h3>Manifest inlining</h3>
+<p><code>IMAGE_MANIFEST</code> rides the existing Bun-macro pattern (spec 04 § Server bundle): the server entry imports it <code>with { type: "macro" }</code> so the manifest is inlined into the production bundle. No runtime <code>Bun.Glob</code> of <code>.patties/images/</code>.</p>
+<h2>Runtime behaviour</h2>
+<h3><code>&lt;Image&gt;</code> render</h3>
+<p>For a <code>src</code> present in <code>IMAGE_MANIFEST</code>, render <code>&lt;img srcset&gt;</code> pointing at the pre-generated variants. The <code>src</code> attribute is the mid-range JPEG fallback for browsers that don't support srcset.</p>
+<p>For a <code>src</code> <em>not</em> in the manifest:</p>
+<ul><li>If the path is project-relative or matches <code>images.domains</code>, render <code>&lt;img srcset&gt;</code> pointing at the signed runtime endpoint (one URL per width × preferred format).</li><li>Otherwise, fail at build time (typecheck) with a clear error.</li></ul>
+<h3>Endpoint flow</h3>
+<pre data-lang="ts"><code>// src/server/image-endpoint.ts
+async function serveImage(req: Request): Promise&lt;Response&gt; {
+  const url = new URL(req.url)
+  const params = parseImageParams(url.searchParams)
+  if (!verifyHmac(params, getSigningSecret())) return new Response(null, { status: 400 })
+
+  const cacheKey = `${params.src}|${params.w}|${params.fmt}|${params.q}`
+  const cachePath = `${config.images.cacheDir}/${hashCacheKey(cacheKey)}.${params.fmt}`
+
+  const cached = Bun.file(cachePath)
+  if (await cached.exists()) {
+    touchAtime(cachePath)             // for LRU
+    return new Response(cached, headers(params.fmt))
+  }
+
+  const sourceBytes = await resolveSource(params.src)
+  const transformed = await Bun.Image.from(sourceBytes)
+    .resize({ width: params.w })
+    .encode(params.fmt, { quality: params.q })
+
+  await Bun.write(cachePath, transformed)
+  await maybeEvict(config.images.cacheDir, config.images.cacheMaxBytes)
+  return new Response(transformed, headers(params.fmt))
+}
+</code></pre>
+<p>The endpoint is mounted at <code>/_patties/image</code> by the framework — it's a framework route, not user middleware.</p>
+<h3>Cache eviction</h3>
+<p><code>maybeEvict</code> is called after every cache write. Implementation:</p>
+<ol><li>Tally cache-dir size (cheap on Bun via <code>Bun.file(...).size</code>).</li><li>If over <code>cacheMaxBytes</code>, list files sorted by <code>atime</code> ascending, delete oldest until under the limit minus a 10% margin.</li></ol>
+<p>This is a basic disk-LRU. Workers / edge deploys (which don't have a writable filesystem) disable the runtime endpoint entirely — see Adapter behaviour below.</p>
+<h2>Signing secret</h2>
+<p>Source precedence (first non-empty wins):</p>
+<ol><li><code>Bun.secrets.get("patties.images.signing")</code> (Bun adapter only).</li><li><code>process.env.PATTIES_IMAGE_SIGNING_SECRET</code>.</li><li><code>images.signingSecret</code> in <code>patties.config.ts</code>.</li></ol>
+<p>If none found, the framework derives one at boot from a hash of <code>(projectName, buildHash)</code> and warns once per process. This keeps dev frictionless but makes the warning visible enough that users add a real secret before deploying.</p>
+<p>Secret rotation: an array <code>signingSecrets: [current, ...old]</code> accepts all values for verify and uses index 0 for signing. Same pattern as [[rfc-bun-cookie-signing]] proposes for cookies (deferred).</p>
+<h2>Adapter behaviour</h2>
+<h3><code>bun</code> adapter</h3>
+<p>Full support: build-time variants + runtime endpoint + disk cache. The endpoint mounts on <code>Bun.serve</code> alongside framework routes.</p>
+<h3><code>edge</code> adapter</h3>
+<p>Build-time variants only. The runtime endpoint is <strong>disabled</strong> — WinterCG runtimes can't reliably write to disk, and per-request image transform on a CPU-limited Worker is the wrong shape. The edge adapter falls back to "all srcset URLs must be in the manifest" — if <code>&lt;Image&gt;</code> is asked to render a non-manifest src, it logs a warning and renders the source <code>src</code> directly.</p>
+<p>Deploy plugins for vendor image CDNs (Cloudflare Image Resizing, Vercel Image Optimization) can override this by registering an <code>image-url</code> hook that rewrites srcset URLs to vendor endpoints — spec'd as part of the deploy-plugin contract in [[framework/archive/phase-2/12-edge-adapters|spec 12]].</p>
+<h2>Dev mode</h2>
+<ul><li>Build-time variants run during <code>patties dev</code> boot and on file change (via <code>bun --watch</code> triggering the build).</li><li>Runtime endpoint is enabled with a dev-only signing secret derived from a stable hash of the project path — no env var needed for first-run.</li><li>Cache writes happen in <code>.patties/image-cache/</code> exactly as in prod, so refreshes are fast after the first render.</li></ul>
+<h2>Non-goals</h2>
+<ul><li><strong>Vendor CDN integration.</strong> Cloudflare Image Resizing / Vercel Image Optimization belong in deploy plugins, not core.</li><li><strong>GIF / animated image support.</strong> Bun.Image's animation story is not landed; out of scope until it is.</li><li><strong>SVG transforms.</strong> SVG is rendered as-is via <code>&lt;img src&gt;</code>; no resize / encode pipeline. Use raster sources for srcsets.</li><li><strong>Background-image / CSS pipeline.</strong> This spec only covers <code>&lt;img&gt;</code> tags. CSS image refs are unchanged.</li><li><strong><code>fill</code> / <code>intrinsic</code> layout modes.</strong> v1 ships <code>width</code> + <code>height</code> (intrinsic), no layout-mode prop. Add later if needed.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>A project with <code>app/public/photo.jpg</code> and <code>&lt;Image src="/photo.jpg" /&gt;</code> produces a build that emits AVIF + WebP + JPEG variants at the configured widths into <code>.patties/images/</code>.</li><li>The rendered <code>&lt;img&gt;</code> has a <code>srcset</code> with all variant URLs and <code>loading="lazy"</code> (unless <code>priority</code>).</li><li><code>GET /_patties/image?src=/uploads/x.jpg&amp;w=640&amp;fmt=webp&amp;sig=&lt;correct&gt;</code> returns a 640px WebP variant cached at <code>.patties/image-cache/&lt;hash&gt;.webp</code>.</li><li>Same request with a bad <code>sig</code> returns 400.</li><li>Cache grows up to <code>cacheMaxBytes</code> then evicts oldest by atime.</li><li>On the edge adapter, the runtime endpoint route returns 404 and <code>&lt;Image&gt;</code> for an unknown src renders the source URL directly with a console warning in dev.</li></ul>
+<h2>Test plan</h2>
+<ul><li>Unit: <code>IMAGE_MANIFEST</code> generation for a fixture with one image → assert N variants written + manifest entry shape.</li><li>Unit: <code>signImageUrl</code> + <code>verifyImageUrl</code> round-trip; bad sig rejected.</li><li>Unit: cache eviction — fill past limit, assert oldest files removed.</li><li>Integration: <code>&lt;Image&gt;</code> SSR with manifest-known src → assert expected srcset shape.</li><li>Integration: <code>&lt;Image&gt;</code> SSR with unknown src → assert signed endpoint URLs in srcset.</li><li>Integration: <code>GET /_patties/image?...</code> correct flow → 200 + cached file on disk.</li><li>Adapter: edge build → endpoint absent + warning path verified.</li></ul>
+<h2>Out of this spec</h2>
+<ul><li>Image upload handling (multipart form, S3 put, etc.) — separate concern.</li><li>Sharp removal from the docs site or example apps — content task.</li><li>Deploy-plugin image-url hook contract — covered in spec 12.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

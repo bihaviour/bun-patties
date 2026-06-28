@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun-native task-output cache + affected detection (monorepo runner) · Patties specs</title>
+<meta name="description" content="Accept, encoded as framework spec 27">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-task-cache.md</span></div>
+<h1>Bun-native task-output cache + affected detection (monorepo runner)</h1>
+<p class="lede">Accept, encoded as framework spec 27</p>
+</header>
+<h2>Review verdict (2026-05-31)</h2>
+<p><strong>Accept</strong>, encoded as framework spec 27 ([[framework/27-task-runner-cache]]). Build the cache on Bun builtins rather than adopt Turborepo/Nx — consistent with the Bun-builtin policy ([[framework/24-bun-builtin-policy]]) and the framework's value framing. <strong>Deferred priority:</strong> ships <em>after</em> the single-React prerequisite ([[framework/26-monorepo-react-resolution]]) and the scaffolder ([[cli/18-create-patties-redesign]]); not required until a real monorepo hits CI-scale build times. Parking it costs nothing — a third-party orchestrator (or this) layers onto the same <code>package.json</code> scripts later with no migration.</p>
+<p>Resolved open questions (scope pins):</p>
+<ul><li><strong>Runner home</strong> — a new framework subsystem, <code>patties run</code> (spec 27), <strong>not</strong> an extension of the dispatch entry. CLI dispatch ([[cli/01-entry]]) gains only a <code>run</code> verb row; all cache logic lives in spec 27.</li><li><strong>Phasing</strong> — <strong>Phase 1 = local cache + affected detection.</strong> Phase 2 = remote cache via <code>Bun.s3</code>. No remote in v1.</li><li><strong>Config home</strong> — a <code>tasks</code> block in <code>patties.config.ts</code> (consistent with the <code>ui</code> / <code>agentsMd</code> blocks), validated by the config Zod schema. No separate file.</li><li><strong>Cache-key global-input set</strong> — pinned in spec 27 § "Cache key": command + declared inputs (content) + this package's resolved deps from <code>bun.lock</code> + internal-dep keys + root <code>patties.config.ts</code>/<code>tsconfig.json</code> + the package's own <code>package.json</code> + env-allowlist values + Bun &amp; patties versions + platform (os/arch) + a cache-format version. <strong>Conservative by design — over-invalidate before ever risking a stale hit.</strong></li></ul>
+<p>Out of scope:</p>
+<ul><li>Caching long-running <code>patties dev</code> processes — build/test tasks only.</li><li>A general dependency-dedup or polyglot task model — JS/Bun packages only; polyglot stays deferred ([[cli/18-create-patties-redesign]]).</li><li>Remote-cache GC/quota beyond a basic size/age prune (a Phase 2 detail).</li></ul>
+<hr>
+<blockquote><p>Continuation of [[cli/18-create-patties-redesign]] (monorepo option) and [[cli/19-patties-agent-skill]]. Spec 18 scaffolds a <strong>Bun-workspace</strong> monorepo and defers third-party orchestrators (Turborepo / Nx). Bun workspaces already give topological <code>bun --filter</code> execution and catalogs; the one gap at scale is <strong>task-output caching</strong> and <strong>affected detection</strong>. This RFC proposes building that gap on Bun builtins instead of adopting Turborepo — keeping the monorepo story 100% bun-native with no surfaced exception to the bun-native rule.</p>
+</blockquote>
+<h2>Summary</h2>
+<p>A <code>patties</code> task runner that wraps <code>bun --filter</code> with a content-addressed cache: hash a task's inputs (source, deps, config, internal-dep cache keys, tool versions) into a key; on a hit, restore the task's declared outputs and replay its log instead of running; on a miss, run it and store the outputs. Affected detection (<code>git diff</code> + reverse workspace graph) is layered on top as an optimization. Optional vendor-neutral remote cache via <code>Bun.s3</code>.</p>
+<p>Composed entirely from Bun builtins — no Turborepo, Nx, or third-party cache server:</p>
+<div class="table-wrap"><table><thead><tr><th>Mechanism</th><th>Bun builtin</th></tr></thead><tbody><tr><td>Cache key</td><td><code>Bun.CryptoHasher("sha256")</code></td></tr><tr><td>Input enumeration</td><td><code>Bun.Glob</code></td></tr><tr><td>Fast file hashes (reuse git's blob SHAs)</td><td><code>Bun.$</code> → <code>git ls-files -s</code></td></tr><tr><td>Changed files vs base ref</td><td><code>Bun.$</code> → <code>git diff --name-only</code></td></tr><tr><td>Run + capture task</td><td><code>Bun.spawn</code></td></tr><tr><td>Pack / restore outputs</td><td><code>Bun.Archive</code> (tar.gz) — same builtin adopted by [[rfc-bun-archive]]</td></tr><tr><td>Cache index</td><td><code>bun:sqlite</code></td></tr><tr><td>Optional remote cache</td><td><code>Bun.s3</code></td></tr><tr><td>Topological task ordering</td><td><code>bun --filter</code> (already native)</td></tr></tbody></table></div>
+<h2>Motivation</h2>
+<p>Spec 18's monorepo option is Bun-workspaces-only. That scales well for structure (catalogs, <code>workspace:</code> linking, one lockfile) and for ordered execution (<code>bun --filter '*' build</code> runs deps before dependents). It does <strong>not</strong> cache task outputs or detect affected packages, so every push rebuilds and re-tests everything. In CI on a large repo this is the difference between a 20-second and a 10-minute pipeline — the exact pain Turborepo/Nx exist to solve.</p>
+<p>The framework already treats "a Bun builtin replaces a Node-era dependency" as first-class value (see the Bun-builtin policy, [[framework/24-bun-builtin-policy]], and the RFC family <code>rfc-bun-*</code>). Caching + affected detection is not magic; it is a hashing layer plus a git diff plus the workspace graph. With <code>Bun.Archive</code> (1.3.6) and <code>Bun.s3</code> (1.2) now in core, the whole feature can be built without a third-party orchestrator — and the remote cache is vendor-neutral by construction because <em>we</em> own the key→blob mapping (unlike Nx, whose free self-host cache plugins were deprecated in May 2026).</p>
+<h2>Proposal</h2>
+<h3>Command surface</h3>
+<pre><code>patties run &lt;task&gt; [--filter &lt;pattern&gt;] [--affected] [--since &lt;ref&gt;]
+                   [--no-cache] [--force] [--dry-run] [--remote]
+</code></pre>
+<p><code>patties run</code> wraps <code>bun --filter</code> (preserving its topological order and TUI) and adds the cache layer around each <code>(package, task)</code> unit. Bare <code>patties build</code> / <code>dev</code> are unchanged; the runner is opt-in for monorepo orchestration.</p>
+<h3>Cache key</h3>
+<pre><code>key = sha256(
+  taskName + command
+  + inputsHash      // sorted [relPath + gitBlobSHA] over the task's `inputs` globs
+  + externalDeps    // this package's resolved versions from bun.lock
+  + Σ dep.cacheKey  // internal workspace deps' keys  ← propagates invalidation
+  + globalInputs    // root config, tsconfig, env allowlist values
+  + toolVersions    // bun + patties versions
+)
+</code></pre>
+<p>The <code>Σ dep.cacheKey</code> term is load-bearing: folding each internal dependency's key into its dependents' keys gives <strong>affected-correctness for free</strong> — change a leaf package and every transitive dependent's key changes (so they rebuild), while everything else stays a cache hit. This means a plain <code>patties run build</code> across all packages is already correct; affected detection is purely an optimization on top.</p>
+<p><strong>Speed:</strong> do not re-hash files — <code>git ls-files -s</code> returns the blob SHA git already computed for every tracked file; only untracked files are hashed with <code>Bun.CryptoHasher</code>. This keeps keying fast on large repos.</p>
+<h3>Per-task algorithm</h3>
+<pre><code>key = computeKey(pkg, task)                       // in bun --filter topo order
+if !flags.force &amp;&amp; cache.has(key):                // bun:sqlite lookup
+    Bun.Archive(cache.tarball(key)).extractTo(pkgDir)   // restore outputs
+    replay(cache.log(key)); markHit(key)
+else:
+    proc = Bun.spawn(command, { cwd: pkgDir })    // run + capture stdout/exit
+    if proc.exitCode == 0 &amp;&amp; !flags.noCache:
+        const tar = new Bun.Archive(glob(task.outputs))    // tar.gz outputs
+        cache.put(key, tar.toBytes(), proc.log, proc.exitCode)
+</code></pre>
+<h3>Affected detection (optimization layer)</h3>
+<pre><code>base    = $`git merge-base ${flags.since ?? "origin/main"} HEAD`
+changed = filesToPackages($`git diff --name-only ${base}...HEAD`)  // root files ⇒ all
+affected = reverseGraphClosure(changed)            // graph from workspace: deps
+$`bun --filter ${affected.map(p =&gt; p.name)} ${task}`   // or run all + let cache skip
+</code></pre>
+<h3>Config shape (the <code>turbo.json</code> equivalent, in patties)</h3>
+<pre data-lang="ts"><code>// patties.config.ts
+tasks: {
+  build: {
+    inputs:  ["src/**", "app/**", "patties.config.ts", "tsconfig.json"],
+    outputs: ["dist/**", ".patties/build/**"],
+    env:     ["NODE_ENV", "PATTIES_*"],   // env values that affect output → into the key
+    // ordering is already handled by `bun --filter`; no `dependsOn` needed for it
+  }
+}
+</code></pre>
+<h3>Cache store</h3>
+<pre><code>.patties/cache/
+  index.sqlite          // bun:sqlite: key → { outputs, exitCode, logRef, createdAt, size }
+  &lt;key&gt;.tar.gz          // Bun.Archive of the task's declared outputs
+  &lt;key&gt;.log             // captured stdout/stderr
+</code></pre>
+<p>Remote cache (<code>--remote</code>, phase 2) is the same map backed by <code>Bun.s3</code>: on a local miss, HEAD/GET <code>&lt;key&gt;.tar.gz</code> from any S3-compatible bucket, restore, and warm the local store. Configured by an S3 endpoint + credentials in env (which <code>Bun.s3</code> reads natively). Vendor-neutral: GitHub Actions cache, R2, MinIO, self-hosted — all just buckets.</p>
+<h3>Phased rollout</h3>
+<ul><li><strong>Phase 1 (local):</strong> <code>patties run</code>, content-addressed local cache (<code>CryptoHasher</code> + git SHAs + <code>bun:sqlite</code> + <code>Bun.Archive</code>), <code>--affected --since</code>, <code>--no-cache</code> / <code>--force</code> / <code>--dry-run</code>.</li><li><strong>Phase 2 (remote):</strong> <code>--remote</code> via <code>Bun.s3</code>, byte-deterministic archives, cache GC/pruning by size/age.</li></ul>
+<h2>Trade-offs</h2>
+<ul><li><strong>Cache-key correctness is the whole game, and it is the multi-year edge-case work Turborepo/Nx have already banked.</strong> Building our own means owning that burden: under-hashing an input produces a <em>silent</em> stale/wrong build — the worst failure mode. Mitigations: conservative default inputs, a <code>--no-cache</code> / <code>--force</code> escape hatch, and <code>--dry-run</code> that prints each unit's hit/miss <strong>and why</strong> (which input changed the key).</li><li><strong>Determinism becomes load-bearing.</strong> Caching is only sound if <code>patties build</code> is deterministic. The build-time-discovery rule already mandates this, but it graduates from "nice" to "required."</li><li><strong>Scope.</strong> This is a real sub-project, not a flag. It earns its keep only for users who actually hit CI-scale monorepos; small repos see no benefit and should not be forced onto <code>patties run</code>.</li><li><strong>Adopting Turborepo would be less work</strong> and offload correctness — at the cost of a Node-ecosystem dependency and a surfaced exception to the bun-native rule. This RFC trades that for purity + a vendor-neutral remote cache the framework controls end to end.</li></ul>
+<h2>Open questions</h2>
+<p><em>The runner home, phasing, config home, and the cache-key input set are resolved in the verdict above and pinned in spec 27. These remain open as implementation-validation items:</em></p>
+<ul><li><strong>Cache-key completeness validation</strong> — the pinned input set is conservative, but confirm against real cases that nothing output-affecting leaks in unhashed (locale, timezone, the system <code>git</code> version if used for SHAs). The <code>--dry-run</code> "why did the key change" output is the verification tool.</li><li><strong>Concurrency</strong> — parallel <code>--filter</code> writers hitting <code>index.sqlite</code>. Use WAL mode + write-temp-then-rename for tarballs to avoid torn writes. Verify under high <code>--filter</code> fan-out.</li><li><strong>Output fidelity</strong> — symlinks, file permissions, empty dirs. Inherits whatever <code>Bun.Archive</code> preserves (see [[rfc-bun-archive]] symlink open question); confirm round-trip equality.</li><li><strong>Affected base ref in CI</strong> — <code>origin/main</code> is the default; document shallow-clone / detached-HEAD handling so <code>git merge-base</code> resolves in CI.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

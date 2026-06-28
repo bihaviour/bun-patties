@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Date Picker · Patties specs</title>
+<meta name="description" content="Input + Popover + Calendar composed pattern. Mirrors shadcn Date Picker.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-4/20-date-picker.md</span></div>
+<h1>Date Picker</h1>
+<p class="lede">Input + Popover + Calendar composed pattern. Mirrors shadcn Date Picker.</p>
+</header>
+<h2>Purpose</h2>
+<p>Input + Popover + Calendar composed pattern. Mirrors shadcn <code>Date Picker</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Selection, popover state, parsing input text — all client.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>react-day-picker@^9</code></li><li><code>date-fns@^4</code></li><li><code>@radix-ui/react-popover@^1.1</code></li><li><code>lucide-react@^0.400</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function DatePicker(props: {
+  value?: string                  // ISO date string
+  defaultValue?: string
+  onChange?: (iso: string | undefined) =&gt; void
+  placeholder?: string
+  format?: string                 // date-fns format string
+  disabled?: boolean
+  className?: string
+}): JSX.Element
+
+export function DateRangePicker(props: {
+  value?: { from?: string; to?: string }
+  defaultValue?: { from?: string; to?: string }
+  onChange?: (range: { from?: string; to?: string }) =&gt; void
+  className?: string
+}): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>All dates cross the island boundary as ISO strings. <code>Date</code> objects are parsed in-island only.</li><li>A hidden <code>&lt;input type="hidden"&gt;</code> carries the ISO value so the picker works inside server forms.</li><li>Removes <code>forwardRef</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>SSR renders the formatted current value in the trigger.</li><li>Picking a date updates the trigger label and the hidden input.</li><li>Range picker constrains <code>to &gt;= from</code>.</li><li>Submitting a form posts the ISO string under the supplied <code>name</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

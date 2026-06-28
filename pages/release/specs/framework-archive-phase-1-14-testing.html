@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testing (Fixture-Driven) · Patties specs</title>
+<meta name="description" content="Every framework feature is verified by a real Patties app that exercises it. Fixtures are the source of truth — unit tests support them, they do not replace …">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-1/14-testing.md</span></div>
+<h1>Testing (Fixture-Driven)</h1>
+<p class="lede">Every framework feature is verified by a real Patties app that exercises it. Fixtures are the source of truth — unit tests support them, they do not replace …</p>
+</header>
+<h2>Purpose</h2>
+<p>Every framework feature is verified by a real Patties app that exercises it. Fixtures are the source of truth — unit tests support them, they do not replace them.</p>
+<h2>Workflow for adding a feature</h2>
+<ol><li>Create <code>tests/fixtures/&lt;feature-name&gt;/</code> containing a minimal Patties app.</li><li>Run it manually with <code>bun dev</code> inside the fixture. Confirm the behavior is what you want before you write framework code.</li><li>Implement the framework code that makes the fixture work.</li><li>Write an integration test that:<ul><li>Boots the fixture via the framework's <code>startServer</code>.</li><li>Hits it with <code>fetch</code>.</li><li>Asserts on the response.</li></ul></li><li>All tests must pass before opening a PR.</li></ol>
+<h2>Fixture layout</h2>
+<pre><code>tests/fixtures/counter-island/
+  app/
+    routes/index.tsx
+    islands/counter.tsx
+  package.json   # bun-link to the framework
+  patties.config.ts
+</code></pre>
+<h2>Test runner</h2>
+<ul><li><code>bun test</code> runs everything.</li><li>Integration tests live in <code>tests/integration/*.test.ts</code> and import fixtures by path.</li><li>No Jest, no Vitest — <code>bun:test</code> only.</li></ul>
+<h3>Mocks &amp; spies</h3>
+<p>Use Bun's built-in primitives from <code>bun:test</code>:</p>
+<ul><li><code>mock(() =&gt; value)</code> for plain function mocks.</li><li><code>spyOn(obj, "method")</code> for instance/method spies.</li><li><code>mock.module("module-id", () =&gt; ({ ... }))</code> to stub an entire module (preferred over hand-rolled DI for framework internals).</li></ul>
+<p>Never reach for <code>vi.fn</code>, <code>jest.fn</code>, <code>sinon</code>, or <code>proxyquire</code>. Test doubles for the <code>AiContext</code> (spec <a href="framework-archive-phase-3-10-agents-and-tools.html">10</a>) use <code>mock.module("@anthropic-ai/sdk", ...)</code> so request-shaped traffic is asserted without hitting the network.</p>
+<h3>Snapshot strategy</h3>
+<p><code>Bun.deepEquals(actual, expected)</code> is preferred over snapshot files for structured assertions — diffs land in the test output, not in a <code>__snapshots__/</code> directory that drifts silently.</p>
+<h2>What to test</h2>
+<ul><li>The fixture's golden-path request returns the expected status and body shape.</li><li>The fixture's HMR behavior in dev (where applicable).</li><li>The fixture's build output exists at the expected path.</li></ul>
+<h2>What not to test</h2>
+<ul><li>Internal implementation details of <code>Bun.build</code> or <code>react-dom</code> — trust the dependency.</li><li>Snapshot tests on rendered HTML beyond load-bearing structure (markers, manifest tags).</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>A new framework PR without a fixture is rejected in review.</li><li><code>bun test</code> runs to completion in the CI matrix on every PR.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

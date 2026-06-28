@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.ArrayBufferSink — streaming buffer builder for SSR · Patties specs</title>
+<meta name="description" content="Bun.ArrayBufferSink lets you accumulate bytes from many writes into a single ArrayBuffer or stream them out, with fewer intermediate allocations than Uint8Ar…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Backlog</span> <span class="badge badge-id">rfcs/backlog/rfc-bun-arraybuffersink.md</span></div>
+<h1>Bun.ArrayBufferSink — streaming buffer builder for SSR</h1>
+<p class="lede">Bun.ArrayBufferSink lets you accumulate bytes from many writes into a single ArrayBuffer or stream them out, with fewer intermediate allocations than Uint8Ar…</p>
+</header>
+<h2>Summary</h2>
+<p><code>Bun.ArrayBufferSink</code> lets you accumulate bytes from many writes into a single <code>ArrayBuffer</code> or stream them out, with fewer intermediate allocations than <code>Uint8Array</code> concatenation.</p>
+<h2>Why backlog</h2>
+<p>Current SSR uses <code>renderToReadableStream</code> from React and pipes through to <code>Response</code>. No measured benefit yet — we don't have profiling that says the stream path is allocation-bound.</p>
+<h2>Trigger to promote to draft</h2>
+<ul><li>SSR profiling (e.g. heap snapshots under load) shows the stream → Response path is GC-bound, OR</li><li>An HTML compressor / minifier plugin wants a write-sink it can flush incrementally.</li></ul>
+<h2>Bun-unique classification</h2>
+<p><strong>Bun-only</strong> — Node has no equivalent streaming buffer builder. <code>Buffer.concat</code> is eager; writable streams are higher-level.</p>
+<h2>Open questions when promoted</h2>
+<ul><li>Does this replace <code>ReadableStream</code> end-to-end, or only the inner accumulation buffer behind a stream wrapper?</li><li>Edge adapter (no Bun) needs a fallback path — likely <code>Uint8Array</code> concat with a worse allocation profile.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

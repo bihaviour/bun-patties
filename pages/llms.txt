@@ -1,0 +1,45 @@
+# Patties
+
+> Patties is a Bun-native full-stack meta-framework. HTTP is Bun.serve, bundling
+> is Bun.build, filesystem discovery is Bun.Glob, dev hot-reload is bun --hot.
+> UI is React 19 over renderToReadableStream with opt-in client islands. Route
+> and island discovery happens once at build time and is inlined into the
+> production bundle, so the server never re-scans the disk at runtime. Handlers
+> receive a standard Request and return a standard Response; the only added
+> affordance is a thin PattiesContext. Deploy targets (bun, edge) live behind
+> adapters. Ships as three npm packages: patties (framework), create-patties
+> (scaffolder), patties-ui (60 copy-in shadcn-compatible components).
+
+## Documentation
+
+- [Overview](docs/overview.html): what Patties is and the problems it solves
+- [App structure](docs/app-structure.html): the folder convention
+- [Project scaffolding](docs/scaffolding.html): create-patties prompt flow
+- [Framework overview](docs/framework-overview.html): the runtime in depth
+- [Routing](docs/routing.html): filesystem routes → Bun route patterns
+- [Server](docs/server.html): the Bun.serve request lifecycle
+- [Rendering and islands](docs/rendering-islands.html): React 19 SSR + islands
+- [Middleware and context](docs/middleware-context.html): compose() + PattiesContext
+- [Configuration and environment](docs/configuration.html): patties.config.ts + env
+- [Build pipeline](docs/build-pipeline.html): discovery, entries, manifest
+- [Adapters and targets](docs/adapters-targets.html): bun + edge deploy
+- [Plugins](docs/plugins.html): build/dev/job hooks
+- [AI and agents](docs/ai-agents.html): optional agents, tools, jobs
+- [AGENTS.md generation](docs/agents-md.html): app inventory for coding agents
+- [CLI overview](docs/cli-overview.html): the patties command
+- [dev](docs/dev.html), [build](docs/build.html), [deploy](docs/deploy.html), [secrets](docs/secrets.html)
+
+## Design specifications
+
+- [Specs overview](specs/index.html): the modular-monolith thesis
+- [Using Patties](specs/guidelines.html)
+- [Architecture](specs/architecture.html)
+- [Features](specs/features.html)
+- [Frontend & UI stack](specs/ui-frontend-stack.html)
+- [Decision records](specs/decisions.html)
+- [Delivery tracker](specs/roadmap.html)
+
+## Releases
+
+- [Releases & roadmap](release/index.html): live npm + GitHub data, spec status
+- [Changelog](changelog/index.html): human-readable version history

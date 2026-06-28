@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theming — base-color presets, @theme inline wiring, zero-JS dark mode · Patties specs</title>
+<meta name="description" content="This spec consolidates the theming-row parity items the matrix §5 leaves open:">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/62-theming-presets.md</span></div>
+<h1>Theming — base-color presets, @theme inline wiring, zero-JS dark mode</h1>
+<p class="lede">This spec consolidates the theming-row parity items the matrix §5 leaves open:</p>
+</header>
+<h2>Purpose</h2>
+<p>This spec consolidates the theming-row parity items the matrix §5 leaves open: CSS-variable tokens are <strong>shipped</strong>, <code>@theme inline</code> wiring is <strong>specced</strong>, dark mode is a deliberate <strong>divergence</strong>, and base-color presets + a theme editor are <strong>gaps</strong>. It defines the patties theming model end-to-end and the narrow preset surface worth adding, while ratifying what stays userland.</p>
+<h2>Shipped baseline (recorded, unchanged)</h2>
+<p><code>tokens.css</code> ships the shadcn CSS-variable set (<code>--background</code>, <code>--foreground</code>, <code>--primary</code>, …) and is merged idempotently by the CLI (<code>tokens.ts</code>). This spec does not change it; it builds on it.</p>
+<h2><code>@theme inline</code> wiring — specced → defined</h2>
+<p>Tailwind v4 consumes the tokens via <code>@theme inline</code> in the user's <code>app.css</code> (matrix §5 — <strong>specced</strong>; overview "Pillars"). patties does <strong>not</strong> own <code>app.css</code>; the wiring is a snippet the user adds once. [[cli/11-ui-init]] is the surface that <em>prints</em> (never edits) that snippet:</p>
+<pre data-lang="css"><code>@import "tailwindcss";
+@import "./styles/tokens.css";
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  /* … one mapping per token … */
+}
+</code></pre>
+<p>The token CSS is generated/merged by the CLI; the <code>@theme inline</code> mapping lives in the user's stylesheet so they retain full control of their Tailwind entry. This boundary is intentional and matches the build-time/userland split.</p>
+<h2>Dark mode — divergent (zero-JS)</h2>
+<p>shadcn toggles a <code>.dark</code> class, commonly via <code>next-themes</code>. patties keeps <code>.dark</code> on <code>&lt;html&gt;</code> but ships <strong>no JS theming dependency</strong> (matrix §5 — <strong>divergent</strong>; overview cross-cutting AC). Every component is authored so dark mode is pure CSS- variable cascade under <code>.dark</code>; nothing in the catalog imports a theme hook.</p>
+<ul><li>The class can be set server-side (SSR, from a cookie/header) or by a tiny inline <code>&lt;script&gt;</code> the user owns — patties does not bundle a provider. This keeps the zero-JS-by-default promise and avoids a hydration-flash dependency.</li><li>This divergence is deliberate and stays: no <code>next-themes</code>, no <code>useTheme</code> in stamped source.</li></ul>
+<h2>Base-color presets — gap → narrow design</h2>
+<p>shadcn offers base-color presets and a <code>baseColor</code>/preset system. patties has none (matrix §5 — <strong>gap</strong>). The patties-native form, consistent with copy-in + no-config:</p>
+<ol><li>Ship a small set of named token presets (e.g. <code>neutral</code>, <code>slate</code>, <code>stone</code>, <code>zinc</code>) as alternate <code>tokens.css</code> payloads in <code>patties-ui/templates/themes/</code>.</li><li><code>patties add --theme &lt;name&gt;</code> (or <code>patties ui init --theme &lt;name&gt;</code>) merges the chosen preset's variables instead of the default set, via the existing idempotent token merge. No new runtime; it only changes which CSS-variable values land in <code>tokensFile</code>.</li><li>The user owns the result — they edit <code>tokens.css</code> freely afterward. There is no <code>baseColor</code> config key (consistent with the convention-over-config stance — see the <code>style</code> / <code>baseColor</code> divergent row in <code>patties-ui-parity-matrix.md</code>); the preset is a one-time stamp choice, not persisted config.</li></ol>
+<p>This is the <em>only</em> theming-editor-adjacent feature worth building in the CLI; it is intentionally just "pick which token values to stamp," not a live editor.</p>
+<h2>Theme editor / preset codes — gap, scoped userland</h2>
+<p>shadcn's theme editor and <code>preset decode/url/open</code> codes are <strong>out of scope</strong> (matrix §5 marks the theming editor a "userland concern"; overview agrees). A live visual editor that round-trips preset URLs is an app-level tool, not a scaffolder feature. patties' contribution stops at stamping token sets the user then edits.</p>
+<ul><li><strong>Reconsider when:</strong> a community asks for shareable preset codes across patties projects — at which point a <code>patties ui theme &lt;code&gt;</code> could decode a preset into a <code>tokens.css</code> merge. Tracked, not built.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>The <code>@theme inline</code> snippet printed by [[cli/11-ui-init]] maps the shipped tokens and is documented here as the canonical wiring; the CLI never edits <code>app.css</code>.</li><li>Dark mode works by <code>.dark</code> on <code>&lt;html&gt;</code> with no JS dependency in any stamped component; no catalog file imports a theme hook or <code>next-themes</code>.</li><li><code>patties add --theme slate</code> (or <code>ui init --theme slate</code>) merges the <code>slate</code> preset token values idempotently into <code>tokensFile</code>; an unknown theme name exits <code>EXIT.USAGE</code>.</li><li>No <code>baseColor</code> config key exists; preset choice is a stamp-time flag only (consistent with the convention-over-config stance recorded in the matrix's Divergent section).</li><li>A live theme editor / preset-URL codes are explicitly out of scope with a stated reconsider-trigger.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

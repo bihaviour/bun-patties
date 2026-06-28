@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project scaffolding · Patties</title>
+<meta name="description" content="Starting new projects with create-patties.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>Project scaffolding</h1>
+<p class="lede">Patties ships a separate scaffolder, <code>create-patties</code>, that generates a base app and layers an optional agent-platform overlay on top.</p>
+</header>
+<section>
+<h2>Basic usage</h2>
+<pre data-lang="bash"><code>bunx create-patties@latest my-app</code></pre>
+<p>This creates <code>my-app/</code> from the base template, runs <code>bun install</code>, and initializes a git repository with an initial commit.</p>
+</section>
+<section>
+<h2>Options</h2>
+<pre data-lang="bash"><code>bunx create-patties@latest my-app \
+  --template claude|codex|none \
+  --target   bun|edge \
+  --deploy   cloudflare|vercel|deno|netlify|bun|none \
+  --no-install \
+  --no-git</code></pre>
+<ul>
+<li><code>--template</code> selects an <strong>agent-platform overlay</strong> layered on top of the base app. <code>claude</code> adds a <code>CLAUDE.md</code>, <code>codex</code> adds an <code>AGENTS.md</code>, <code>none</code> skips the overlay. Default: <code>claude</code>.</li>
+<li><code>--target</code> sets the runtime target written into <code>patties.config.ts</code> (<code>bun</code> or <code>edge</code>). Default: <code>bun</code>.</li>
+<li><code>--deploy</code> records the intended deploy target. Default: <code>none</code>.</li>
+<li><code>--no-install</code> skips <code>bun install</code>.</li>
+<li><code>--no-git</code> skips <code>git init</code> and the initial commit.</li>
+</ul>
+</section>
+<section>
+<h2>What the scaffolder produces</h2>
+<p>The base template is a minimal Patties app: <code>app/routes/</code>, <code>app/islands/</code>, <code>app/server.ts</code>, <code>patties.config.ts</code>, <code>tsconfig.json</code>, and a <code>.gitignore</code>. The scaffolder then:</p>
+<ul>
+<li>writes a fresh <code>package.json</code> with the project name and <code>patties</code> / <code>react</code> / <code>react-dom</code> pinned to current versions</li>
+<li>rewrites <code>patties.config.ts</code> to match the chosen <code>--target</code></li>
+<li>copies the selected agent overlay (<code>_claude</code> or <code>_codex</code>) over the project</li>
+<li>installs dependencies and commits, unless <code>--no-install</code> / <code>--no-git</code></li>
+</ul>
+</section>
+<section>
+<h2>Examples</h2>
+<pre data-lang="bash"><code>bunx create-patties@latest my-app
+bunx create-patties@latest my-app --template codex
+bunx create-patties@latest my-app --template none --no-git
+bunx create-patties@latest my-app --target edge --deploy cloudflare</code></pre>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>create-patties DX overhaul · Patties specs</title>
+<meta name="description" content="The Phase-0 scaffolder (spec 05) gets users a project directory. It does not">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/09-create-patties-dx.md</span></div>
+<h1>create-patties DX overhaul</h1>
+<p class="lede">The Phase-0 scaffolder (spec 05) gets users a project directory. It does not</p>
+</header>
+<h2>Purpose</h2>
+<p>The Phase-0 scaffolder (spec 05) gets users a project directory. It does not get them to "wow" — the default page is one line of text, the README is three shell commands, and the interactive path silently picks defaults the user never sees. This spec replaces the default template with a working mini-application, rewrites the README to actually onboard, and turns the flag-driven scaffolder into a real interactive prompt.</p>
+<p>This spec depends on framework spec 17 (dev-time island bundler) for the demo template to feel like a working app on first <code>bun dev</code>.</p>
+<h2>Scope (the five items)</h2>
+<h3>1. Demo template — a tiny todo app</h3>
+<p>Replace the current <code>default</code> template's <code>app/routes/index.tsx</code> + <code>app/islands/Counter.tsx</code> with a small todo app that demonstrates:</p>
+<ul><li><strong>Static SSR</strong>: page header, current date, and the initial todo list are rendered on the server.</li><li><strong>Island hydration</strong>: the todo input + list is a single island (<code>app/islands/TodoApp.tsx</code>) using <code>useState</code>. New users see state actually change when they click.</li><li><strong>HMR</strong>: edits to either the route file or the island reload the page / hydrate the new island without a full restart. The README points at specific lines to edit to see HMR in action.</li><li><strong>No persistence</strong>: state is in-memory. We are demonstrating the framework, not building a product. Persistence belongs in an <code>ai-starter</code> / <code>with-db</code> template later.</li></ul>
+<p>File layout:</p>
+<pre><code>app/
+  routes/
+    index.tsx          // server-rendered shell + &lt;TodoApp /&gt; island
+  islands/
+    TodoApp.tsx        // useState-based todo list
+  server.ts            // dev entry (see spec 17 contract)
+patties.config.ts
+package.json
+README.md              // generated from README-template.md (item 2)
+tsconfig.json
+.gitignore
+</code></pre>
+<p>The <code>with-islands</code> and <code>ai-starter</code> templates referenced in spec 05 are <strong>not in scope here</strong> — they remain future work.</p>
+<h3>2. README — real onboarding</h3>
+<p>Today's <code>README-template.md</code> is essentially <code>cd &lt;name&gt;; bun dev</code>. Replace it with a generated README that includes the actual project name and the specific structure of the scaffolded app. The generator interpolates <code>{{name}}</code>, <code>{{agent}}</code>, <code>{{target}}</code>, and <code>{{deploy}}</code> placeholders.</p>
+<p>Sections (in order):</p>
+<ol><li><strong><code># {{name}}</code></strong> — H1 with the project name.</li><li><strong>What you got</strong> — one-paragraph description of the todo demo and which files are interesting.</li><li><strong>Run it</strong> — ``<code> bun install     # if --no-install was used bun dev         # → http://localhost:3000 </code>``</li><li><strong>Try HMR</strong> — concrete instructions: <em>"Open <code>app/routes/index.tsx</code>, change the heading text, save. The browser refreshes. Open <code>app/islands/TodoApp.tsx</code>, change the placeholder text, save. The island re-hydrates without losing your other tabs."</em></li><li><strong>Project layout</strong> — annotated tree of <code>app/</code>.</li><li><strong>Build for production</strong> — <code>bun run build</code>, where artifacts land, how to run them (<code>patties start</code> or the adapter's instructions).</li><li><strong>Deploy</strong> — present only when <code>--deploy</code> is not <code>none</code>; one-paragraph pointer to the deploy plugin's docs.</li><li><strong>Agent tooling</strong> — present only when <code>--template</code> is <code>claude</code> or <code>codex</code>; describes what was scaffolded (CLAUDE.md / .claude/ vs AGENTS.md / .codex/) and how to launch the agent.</li><li><strong>Where to learn more</strong> — links to the framework docs site.</li></ol>
+<p>The generator lives in <code>packages/create-patties/src/readme.ts</code>. Template source is <code>templates/default/README-template.md</code> with <code>{{...}}</code> placeholders. Variant sections (deploy, agent) are gated by HTML-comment markers that the generator strips/keeps based on the chosen options:</p>
+<pre><code>&lt;!-- if:agent=claude --&gt;
+## Claude Code is set up
+…
+&lt;!-- /if --&gt;
+</code></pre>
+<h3>3. Interactive prompts</h3>
+<p>When stdin is a TTY and the corresponding flag was not passed, prompt:</p>
+<ol><li><strong>Project name</strong> (only if not given as the first positional arg — see item 5).</li><li><strong>Runtime target</strong> — <code>bun</code> (default) or <code>edge</code>.</li><li><strong>Deploy plugin</strong> — only when <code>target=edge</code>. Same options as spec 05.</li><li><strong>AI coding agent</strong> — <code>Claude Code</code> / <code>Codex (AGENTS.md)</code> / <code>None</code>. the right files for the one you pick."_ <code>--agent</code> flag name is retained as an alias for backwards compatibility.<ul><li>Question text: _"Which AI coding agent will you use? We'll scaffold</li><li>Maps to <code>--template</code> flag: <code>claude</code> / <code>codex</code> / <code>none</code>. The spec-05</li></ul></li></ol>
+<p>Implementation uses Bun's built-in <code>prompt()</code> (no new dependency). Non-TTY runs require the equivalent flags; missing values fall back to documented defaults silently. Add a <code>--yes</code> flag that accepts all defaults and skips all prompts even in a TTY (for CI / scripting).</p>
+<h3>4. Agent-tooling scaffolding</h3>
+<p>Extend the agent matrix from spec 05:</p>
+<div class="table-wrap"><table><thead><tr><th><code>--template</code></th><th><code>AGENTS.md</code></th><th><code>CLAUDE.md</code></th><th><code>.claude/</code></th><th><code>.codex/</code></th></tr></thead><tbody><tr><td><code>none</code> (default in non-TTY)</td><td>generated on first <code>patties build</code></td><td>—</td><td>—</td><td>—</td></tr><tr><td><code>claude</code></td><td>generated on first <code>patties build</code></td><td>scaffolded immediately</td><td>scaffolded immediately</td><td>—</td></tr><tr><td><code>codex</code></td><td><strong>scaffolded immediately</strong> and regenerated on <code>patties build</code></td><td>—</td><td>—</td><td>scaffolded immediately</td></tr></tbody></table></div>
+<h4><code>claude</code> overlay</h4>
+<p>The existing <code>_claude</code> overlay covers <code>.claude/settings.json</code>. Spec 09 expands it to include:</p>
+<ul><li><code>CLAUDE.md</code> at project root with project-specific rules pulled from the framework's own <code>CLAUDE.md</code> conventions (Bun-native, web-standards boundary, build-time discovery, optional AI). The text is tuned for <em>users</em> of the framework, not contributors — so "don't pull in chokidar" becomes "we use <code>Bun.serve</code> / <code>Bun.Glob</code> / <code>Bun.build</code>; reach for those first".</li><li><code>.claude/settings.json</code> with sensible defaults for a Patties app (permissions to run <code>bun</code>, <code>bunx</code>, <code>patties</code>).</li><li><code>.claude/hooks/</code> with the framework's <code>biome-check.sh</code> PostToolUse hook adapted to the user's project (Biome optional — the hook no-ops if Biome isn't installed).</li><li><code>.claude/agents/</code> and <code>.claude/commands/</code> directories present but empty with a one-line README pointing at the Claude Code docs. (No speculative subagents — the user can add their own.)</li></ul>
+<h4><code>codex</code> overlay</h4>
+<p>New <code>templates/_codex/</code> overlay. Must contain <strong>no Claude-specific files</strong>.</p>
+<ul><li><code>AGENTS.md</code> at project root, hand-authored with the same content as the Claude rules but framed neutrally. Subsequent <code>patties build</code> runs regenerate it via the existing <code>agents-md</code> generator, which already preserves user-edited sections marked with HTML comments (see framework spec 11). Document that contract in the file's header so the user knows what survives regeneration.</li><li><code>.codex/</code> directory with whatever is the current Codex convention. As of this spec's writing the convention is unsettled; ship a minimal <code>.codex/README.md</code> pointing at the Codex docs and leave room for contributors to fill in. <strong>Do not</strong> add a <code>.claude/</code> or <code>CLAUDE.md</code> in this template under any circumstance.</li></ul>
+<h3>5. Project-name handling</h3>
+<p>Today the CLI silently exits with code 2 if no name is given. New behavior:</p>
+<ul><li>If the first positional arg is missing <strong>and</strong> stdin is a TTY: prompt for a name. Default suggestion: <code>my-patties-app</code>. Reject and re-prompt on invalid input.</li><li>If the first positional arg is missing <strong>and</strong> stdin is not a TTY: exit with the current usage message (unchanged).</li><li>The chosen name flows into:<ul><li>The target directory.</li><li><code>package.json#name</code>.</li><li>The README H1 and every <code>{{name}}</code> placeholder.</li><li>The "Next steps" output (<code>cd &lt;name&gt;; bun dev</code>).</li><li>The success-path Claude/Codex hint message.</li></ul></li></ul>
+<p>Validation is unchanged from spec 05 (<code>/^[a-z0-9][a-z0-9_-]*$/</code>).</p>
+<h2>Implementation notes</h2>
+<ul><li>The CLI today is <code>bin/create-patties.ts</code> → <code>src/index.ts</code>. The interactive prompts and README rendering get their own modules (<code>src/prompts.ts</code>, <code>src/readme.ts</code>) so the run loop stays readable.</li><li>Template files use <code>{{name}}</code> interpolation in <code>package.json</code>, <code>README.md</code>, and any other text file. The copy step gains a templating pass — currently it's a plain <code>cp -R</code>. Use a simple in-process walk rather than adding a dependency.</li><li>The <code>_claude</code> and <code>_codex</code> overlays are copied <strong>after</strong> the templating pass on <code>default</code>, so overlay files can also use <code>{{...}}</code> placeholders (used in the README's agent section).</li><li>Keep the package zero-dependency. No <code>prompts</code>, no <code>enquirer</code>, no <code>mustache</code>. Bun's <code>prompt()</code> + manual string replace are enough.</li></ul>
+<h2>Tests</h2>
+<ul><li><code>tests/scaffold.test.ts</code> (new) — drive <code>run()</code> with synthetic argv, assert:<ul><li>Correct files exist for each <code>--template</code> choice.</li><li>No <code>.claude/</code> or <code>CLAUDE.md</code> ever appears under <code>--template codex</code>.</li><li>No <code>.codex/</code> ever appears under <code>--template claude</code>.</li><li>README contains the project name as the H1.</li><li><code>--yes</code> produces a deterministic output regardless of TTY state.</li></ul></li><li>CI: existing scaffold-smoke job runs <code>bunx create-patties</code> for each agent choice + each target, then runs <code>bun dev</code> against it and curls <code>/</code> to confirm the demo todo page SSRs.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>bunx create-patties</code> with no args in a TTY prompts for the name and agent choice, then scaffolds correctly.</li><li><code>bunx create-patties demo &amp;&amp; cd demo &amp;&amp; bun dev</code> → opening the browser shows the todo demo with a working interactive list (depends on framework spec 17).</li><li>Generated README contains the project name in the H1 and accurately describes the demo app, build steps, and (where relevant) the chosen agent tooling.</li><li><code>--template codex</code> produces a project with zero references to Claude Code; <code>--template claude</code> produces a project with zero references to Codex.</li><li>Passing the name as the first positional arg behaves exactly as today (no prompt, immediate scaffold) so existing scripts keep working.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

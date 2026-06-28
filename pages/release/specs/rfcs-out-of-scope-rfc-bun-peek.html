@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.peek — synchronously introspect a Promise's settled state · Patties specs</title>
+<meta name="description" content="Moved backlog → out-of-scope. An internals-only microtask optimization with">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Out of scope</span> <span class="badge badge-id">rfcs/out-of-scope/rfc-bun-peek.md</span></div>
+<h1>Bun.peek — synchronously introspect a Promise's settled state</h1>
+<p class="lede">Moved backlog → out-of-scope. An internals-only microtask optimization with</p>
+</header>
+<h2>Out-of-scope (2026-05-31)</h2>
+<p><strong>Moved backlog → out-of-scope.</strong> An internals-only microtask optimization with no user-visible benefit unless patties writes its own async runtime — which it doesn't and won't. No conceivable user-facing API depends on it. Permanent no.</p>
+<h2>Summary</h2>
+<p><code>Bun.peek(p)</code> returns a settled promise's value/error synchronously, or the promise itself if still pending. Lets framework code avoid awaiting promises that have already resolved.</p>
+<h2>Why backlog</h2>
+<p>This is an internals optimization with no user-visible benefit unless the framework writes its own async runtime. Today middleware/handler async lives entirely on the engine's microtask queue.</p>
+<p>This entry is borderline <strong>out-of-scope</strong>: framework will likely never expose it.</p>
+<h2>Trigger to promote to draft</h2>
+<p>Framework profiling shows hot-path microtask overhead that <code>Bun.peek</code> could eliminate (e.g. the response finalizer reads several promise-typed fields and most have already resolved).</p>
+<h2>Bun-unique classification</h2>
+<p><strong>Bun-only</strong> — Node has no equivalent. Capability is Bun-specific. But adoption is unlikely.</p>
+<h2>Open questions when promoted</h2>
+<ul><li>Honestly: should this RFC just be closed and the API stay invisible? Hard to imagine a user-facing API that depends on it.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

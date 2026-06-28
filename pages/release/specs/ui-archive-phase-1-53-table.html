@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Table · Patties specs</title>
+<meta name="description" content="Styled HTML &lt;table&gt; primitives. Mirrors shadcn Table.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/53-table.md</span></div>
+<h1>Table</h1>
+<p class="lede">Styled HTML &lt;table&gt; primitives. Mirrors shadcn Table.</p>
+</header>
+<h2>Purpose</h2>
+<p>Styled HTML <code>&lt;table&gt;</code> primitives. Mirrors shadcn <code>Table</code>.</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. Pure presentational.</p>
+<h2>Peer dependencies</h2>
+<p>None.</p>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Table(props: React.ComponentProps&lt;"table"&gt;): JSX.Element
+export function TableHeader(props: React.ComponentProps&lt;"thead"&gt;): JSX.Element
+export function TableBody(props: React.ComponentProps&lt;"tbody"&gt;): JSX.Element
+export function TableFooter(props: React.ComponentProps&lt;"tfoot"&gt;): JSX.Element
+export function TableRow(props: React.ComponentProps&lt;"tr"&gt;): JSX.Element
+export function TableHead(props: React.ComponentProps&lt;"th"&gt;): JSX.Element
+export function TableCell(props: React.ComponentProps&lt;"td"&gt;): JSX.Element
+export function TableCaption(props: React.ComponentProps&lt;"caption"&gt;): JSX.Element
+
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Wraps the <code>&lt;table&gt;</code> in an <code>overflow-x-auto</code> container so wide tables don't break layout.</li><li>No JS-driven features here — those live in 19-data-table.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Snapshot of a typical table tree.</li><li>Bundle audit: zero JS.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

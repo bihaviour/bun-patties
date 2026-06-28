@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties deploy · Patties specs</title>
+<meta name="description" content="Take a built Patties app and push it to the configured host. The framework core is vendor-neutral — the actual deploy step is owned by an installed deploy pl…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/04-deploy-command.md</span></div>
+<h1>patties deploy</h1>
+<p class="lede">Take a built Patties app and push it to the configured host. The framework core is vendor-neutral — the actual deploy step is owned by an installed deploy pl…</p>
+</header>
+<h2>Purpose</h2>
+<p>Take a built Patties app and push it to the configured host. The framework core is vendor-neutral — the actual deploy step is owned by an installed <strong>deploy plugin</strong> (framework 09-plugins). <code>patties deploy</code> is dispatch + ergonomics; the plugin does the upload.</p>
+<h2>Usage</h2>
+<pre><code>patties deploy [--target bun|edge] [--env production|staging|&lt;name&gt;]
+               [--skip-build] [--cwd &lt;path&gt;] [--config &lt;path&gt;]
+</code></pre>
+<h2>Behavior</h2>
+<ol><li>Load config (<a href="cli-archive-06-config-loading.html">06</a>). <code>--target</code> overrides <code>config.target</code>.</li><li>Unless <code>--skip-build</code>, run <code>patties build</code> (<a href="cli-archive-03-build-command.html">03</a>) for the same target.</li><li>Find the deploy plugin for the configured <code>target</code> by scanning <code>config.plugins</code> for the first one that declares a matching <code>deployTarget</code>. If none is installed, print remediation and exit 2: ``<code> ✗ No deploy plugin installed for target "edge". Install one of: bun add @patties/deploy-cloudflare bun add @patties/deploy-vercel bun add @patties/deploy-deno bun add @patties/deploy-netlify Or write your own — see framework spec 09-plugins. </code>``</li><li>Run the plugin's <code>deploy(artifacts, ctx)</code> step. The plugin owns:<ul><li>Vendor auth verification (e.g. <code>wrangler whoami</code>, <code>vercel whoami</code>).</li><li>Shell-outs via <code>Bun.$</code> to the vendor CLI.</li><li>Capturing and returning the deployed URL.</li></ul></li><li>Print the URL as the last line of output (whatever the plugin returns).</li><li><strong>Bun target with no deploy plugin</strong>: print the run command (<code>bun dist/server.js</code>) and exit 0. Self-hosted deploys are the user's choice of process supervisor (systemd, Docker, fly.io, etc.). The optional <code>@patties/deploy-bun</code> packages a Dockerfile / systemd unit.</li></ol>
+<h2>Multi-plugin behavior</h2>
+<p>If multiple deploy plugins are installed for the same target, <code>--env &lt;name&gt;</code> selects between them by matching the plugin's <code>name</code>. Without <code>--env</code>, the first plugin in declared order wins, with a warning.</p>
+<h2>Output</h2>
+<pre><code>✓ built  (4.2s)
+✓ deploy-cloudflare: wrangler deploy
+✓ live at https://my-app.workers.dev
+</code></pre>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties deploy</code> in a freshly-scaffolded <code>--target edge</code> app with <code>@patties/deploy-cloudflare</code> installed yields a working <code>workers.dev</code> URL.</li><li><code>patties deploy</code> with no deploy plugin installed exits 2 with the install-this-package message — no stack trace.</li><li>Vendor auth missing produces an actionable error (the plugin's responsibility, the framework just propagates the exit code).</li><li><code>--skip-build</code> reuses the prior <code>dist/</code> if present; aborts with a clear error if not.</li><li>The framework core has zero <code>wrangler</code> / <code>vercel</code> / <code>deployctl</code> / <code>netlify</code> references in this code path — all shell-outs originate inside plugins via <code>Bun.$</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bun --hot — state-preserving reload as alternative to --watch · Patties specs</title>
+<meta name="description" content="Accept. The most important RFC in this batch — spec 05 was designed around --watch's teardown problem, and --hot eliminates the problem rather than working a…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-hot-reload.md</span></div>
+<h1>bun --hot — state-preserving reload as alternative to --watch</h1>
+<p class="lede">Accept. The most important RFC in this batch — spec 05 was designed around --watch's teardown problem, and --hot eliminates the problem rather than working a…</p>
+</header>
+<h2>Review verdict (2026-05-24)</h2>
+<p><strong>Accept.</strong> The most important RFC in this batch — spec 05 was designed around <code>--watch</code>'s teardown problem, and <code>--hot</code> eliminates the problem rather than working around it. Encoding into spec 05 is straightforward; the WebSocket reconnect logic gets simpler (no more "reconnect on every save" — the WS survives the reload).</p>
+<p>Required additions before encoding:</p>
+<ul><li>Add <code>patties dev --cold</code> flag for forced clean-process semantics. Default is <code>--hot</code>.</li><li>Spec 05's HMR server uses <code>import.meta.hot.accept(() =&gt; server.publish("hmr", ...))</code> to push updates; the client snippet stays unchanged.</li><li>Smoke test: verify the route-table macro re-runs on <code>--hot</code> when a file under <code>app/routes/</code> changes. If it doesn't, those changes need a special-case full restart (acceptable fallback). See [[rfc-bun-import-attributes]] for the macro-reload question.</li></ul>
+<p>Depends on: the macro policy decided in [[rfc-bun-import-attributes]] (route table is a required macro).</p>
+<hr>
+<h2>Summary</h2>
+<p><code>bun --hot</code> reloads changed modules <em>inside the same process</em> and re-fires <code>Bun.serve</code> with the new fetch handler, while preserving live WebSocket connections, in-memory caches, and <code>bun:sqlite</code> handles. <code>bun --watch</code> (current Patties choice) kills and respawns the process. <code>--hot</code> is materially better DX for stateful dev sessions.</p>
+<h2>Motivation</h2>
+<p>05-dev-hmr explicitly notes: "<code>bun --watch</code> kills and respawns the server process on every source change, which closes all WebSockets." That breaks every open island demo, every dev WS, and forces the HMR client to reconnect on every save. <code>bun --hot</code> solves this directly without any framework code change beyond switching the dev command.</p>
+<h2>Proposal</h2>
+<ul><li>05-dev-hmr: change the dev launcher from <code>bun --watch app/server.ts</code> to <code>bun --hot app/server.ts</code>. The HMR WebSocket no longer needs the reconnect-on-startup signal; instead, the server publishes <code>{ type: "reload" }</code> from inside its <code>import.meta.hot.accept(() =&gt; server.publish("hmr", ...))</code> callback.</li><li>13-conventions: name <code>bun --hot</code> as the canonical dev runner; <code>bun --watch</code> is reserved for "I want a clean process every time" cases (e.g. running migrations on boot).</li></ul>
+<h2>Trade-offs</h2>
+<ul><li><code>--hot</code> retains module-level state — bugs caused by stale closures are easier to hit. Document the gotcha.</li><li>A small set of modules (those with native handles) reload imperfectly; we'll need a fallback "press R to full restart" path.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Does <code>--hot</code> cooperate with the route-table-as-literal-JSON output (08-config) when route files change? Needs a smoke test.</li><li>Should <code>patties dev</code> accept <code>--cold</code> to opt back into <code>--watch</code> semantics?</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

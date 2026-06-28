@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chart · Patties specs</title>
+<meta name="description" content="Themed charting wrapper around recharts. Mirrors shadcn Chart. Provides a config-driven theme + tooltip + legend that align with the Patties token system.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-4/13-chart.md</span></div>
+<h1>Chart</h1>
+<p class="lede">Themed charting wrapper around recharts. Mirrors shadcn Chart. Provides a config-driven theme + tooltip + legend that align with the Patties token system.</p>
+</header>
+<h2>Purpose</h2>
+<p>Themed charting wrapper around <code>recharts</code>. Mirrors shadcn <code>Chart</code>. Provides a config-driven theme + tooltip + legend that align with the Patties token system.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Recharts measures container size at runtime and renders SVG via D3 internals.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>recharts@^2.13</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export type ChartConfig = Record&lt;string, {
+  label?: React.ReactNode
+  icon?: React.ComponentType
+  color?: string
+  theme?: { light: string; dark: string }
+}&gt;
+
+export function ChartContainer(props: {
+  config: ChartConfig
+  id?: string
+  className?: string
+  children: React.ReactNode
+}): JSX.Element
+
+export function ChartTooltip(props: React.ComponentProps&lt;typeof Recharts.Tooltip&gt;): JSX.Element
+export function ChartTooltipContent(props: ChartTooltipContentProps): JSX.Element
+export function ChartLegend(props: React.ComponentProps&lt;typeof Recharts.Legend&gt;): JSX.Element
+export function ChartLegendContent(props: ChartLegendContentProps): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li><code>ChartContainer</code> injects per-chart CSS variables (<code>--color-&lt;key&gt;</code>) scoped by id so light/dark themes Just Work.</li><li>The chart's underlying <code>ResponsiveContainer</code> is wrapped in a <code>ClientOnly</code>-equivalent — SSR renders an empty <code>&lt;svg&gt;</code> with the configured aspect ratio to prevent layout shift; recharts hydrates.</li><li><code>config</code> is JSON-serializable and crosses the island boundary; <code>icon</code> (a component) must be referenced by registered string key, not passed directly.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>SSR renders a placeholder <code>&lt;div&gt;</code> at the correct aspect ratio; no recharts code runs server-side.</li><li>After hydration, the chart fills the container and tooltip shows tokenized colors.</li><li>Dark mode toggles produce different colors via <code>theme.light</code> / <code>theme.dark</code>.</li><li>Bundle is code-split: pages without charts don't load recharts.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

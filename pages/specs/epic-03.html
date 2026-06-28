@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epic 3 — Starter, docs &amp; release · Patties</title>
+<meta name="description" content="Make the convention reachable: a scaffolder template that lays out a working modular app, docs that make the choice between patties' two front doors obvious, and a feature (minor) release.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Roadmap</span></div>
+<h1>Epic 3 — Starter, docs &amp; release</h1>
+<p class="lede">Make the convention reachable: a scaffolder template that lays out a working modular app, docs that make the choice between patties' two front doors obvious, and a feature (minor) release. No rename, no deprecation — this adds a feature.</p>
+</header>
+
+<div class="callout note">
+<p class="callout-title">Goal</p>
+<p><code>bun create patties --template modular</code> scaffolds a working modular monolith; the docs explain when to reach for it; patties ships a minor version with the new convention.</p>
+</div>
+
+<section>
+<h2>Definition of done</h2>
+<ul>
+<li>A <code>modular</code> template in <code>create-patties</code> (two example modules + a shared <code>_platform</code>) that installs and passes <code>validate</code>.</li>
+<li>Docs page(s): the module convention, the boundary rule, and when to use it vs the file-based full-stack surface.</li>
+<li>The agent skills (<code>_claude</code>/<code>_codex</code>) updated so agents know the convention and the boundary rule.</li>
+<li>A <strong>minor</strong> changeset; Version Packages PR merged; published to npm <code>latest</code>.</li>
+<li>Presence confirmed directly on registry.npmjs.org — a green Release run is necessary but not sufficient.</li>
+</ul>
+</section>
+
+<section>
+<h2>Modular scaffolder template</h2>
+<p><strong>Files:</strong> a new template under <code>packages/create-patties/templates/</code>, wired into the template picker. Stamps a minimal module tree that obeys the boundary rule.</p>
+<pre data-lang="bash"><code>bun create patties /tmp/svc --template modular
+cd /tmp/svc &amp;&amp; bun install &amp;&amp; bun run validate
+# app/billing/{index,routes,invoice.service}.ts
+# app/orders/{index,routes,order.service}.ts   (imports ../billing)
+# app/_platform/{index,db}.ts</code></pre>
+</section>
+
+<section>
+<h2>Docs &amp; examples</h2>
+<p>The "two front doors" risk recorded in <a href="decisions.html#risks">Decisions</a> bites here. The docs must frame the choice, not bury it.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Reach for…</th><th>When</th></tr></thead>
+<tbody>
+<tr><td>File-based full-stack surface</td><td>UI-first apps: pages, islands, SSR, the component catalog.</td></tr>
+<tr><td>Module convention + <code>routes.ts</code></td><td>Service-heavy / API-first apps: many domains, strong internal boundaries.</td></tr>
+<tr><td>Both, in one app</td><td>Allowed — they share the same build pipeline, server, and middleware.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section>
+<h2>Release</h2>
+<p>Never hand-edit <code>version</code> — use a changeset. This is additive, so a minor bump. Stable-only flow. Published versions land on the live <a href="../release/index.html">Release</a> dashboard.</p>
+<pre data-lang="bash"><code>bun changeset                      # patties (+ create-patties for the template) → minor
+# merge the Version Packages PR → publishes to latest; if Release doesn't auto-fire:
+gh workflow run Release --ref master
+npm view patties version           # confirm on the live registry</code></pre>
+<div class="callout success">
+<p class="callout-title">Result</p>
+<p>Convention + boundary check → route macro → starter + docs → minor release. patties gains a modular-monolith convention built entirely on Bun primitives, and its existing surface is exactly as it was.</p>
+</div>
+</section>
+
+<section>
+<h2>Dependencies</h2>
+<div class="feature-grid">
+<div class="feature"><h3>Blocked by</h3><p><a href="epic-01.html">E1</a> (the convention to scaffold) and <a href="epic-02.html">E2</a> (the macro that wires it).</p></div>
+<div class="feature"><h3>Blocks</h3><p>Nothing — this is the finish line.</p></div>
+</div>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="roadmap.html">Delivery tracker</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

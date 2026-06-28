@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Form · Patties specs</title>
+<meta name="description" content="react-hook-form + Zod adapter for the 26-field primitives. Mirrors shadcn Form (the older RHF-flavored recipe; still ships for parity).">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-2/27-form.md</span></div>
+<h1>Form</h1>
+<p class="lede">react-hook-form + Zod adapter for the 26-field primitives. Mirrors shadcn Form (the older RHF-flavored recipe; still ships for parity).</p>
+</header>
+<h2>Purpose</h2>
+<p><code>react-hook-form</code> + Zod adapter for the <a href="ui-archive-phase-2-26-field.html">26-field</a> primitives. Mirrors shadcn <code>Form</code> (the older RHF-flavored recipe; still ships for parity).</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. RHF needs a live React tree. For SSR-first form usage without RHF, use Field + native <code>&lt;form action="…"&gt;</code> instead.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>react-hook-form@^7</code></li><li><code>@hookform/resolvers@^3</code></li><li><code>zod@^3</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export const Form: typeof FormProvider
+export const FormField: typeof Controller
+
+export function FormItem(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function FormLabel(props: React.ComponentProps&lt;typeof LabelPrimitive.Root&gt;): JSX.Element
+export function FormControl(props: React.ComponentProps&lt;typeof Slot&gt;): JSX.Element
+export function FormDescription(props: React.ComponentProps&lt;"p"&gt;): JSX.Element
+export function FormMessage(props: React.ComponentProps&lt;"p"&gt;): JSX.Element
+export function useFormField(): { id: string; name: string; formItemId: string; formDescriptionId: string; formMessageId: string; error?: FieldError }
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>The schema crosses no boundary (it's defined in the island module). Server validation should happen in a Patties route handler that re-uses the same Zod schema imported from a shared file.</li><li>Patties recommends Field+native-form for simple cases; use Form only when client validation is required.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>A controlled RHF form hydrates with the correct initial values.</li><li>Field/error wiring matches <code>aria-describedby</code> and <code>aria-invalid</code>.</li><li>Submit handler can call <code>event.preventDefault()</code> and a Patties route via <code>fetch</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

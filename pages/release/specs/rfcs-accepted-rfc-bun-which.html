@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.which — scaffold tool probes (bun + git) · Patties specs</title>
+<meta name="description" content="Accept. Smallest possible scope: two probes, no new flags, no">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-which.md</span></div>
+<h1>Bun.which — scaffold tool probes (bun + git)</h1>
+<p class="lede">Accept. Smallest possible scope: two probes, no new flags, no</p>
+</header>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Accept.</strong> Smallest possible scope: two probes, no new flags, no new CLI surface. Fails fast on missing <code>bun</code> (the scaffolder needs it to run <code>bun install</code>), warns on missing <code>git</code> (skips the optional git init), uses <code>Bun.which()</code> which is one-line per probe. Saves the <code>which</code> npm dep and matches what users expect from polished scaffolders.</p>
+<p>Scope pins:</p>
+<ul><li><strong>Two probes only.</strong> <code>bun</code> (fail) + <code>git</code> (warn). No <code>claude</code>, <code>docker</code>, <code>node</code>, etc.</li><li><strong>Probes run before template copy.</strong> If <code>bun</code> is missing, the user's filesystem is untouched.</li><li><strong>No auto-install.</strong> We never install tools on the user's behalf.</li><li><strong><code>--no-git</code> still wins.</strong> User opt-out continues to work as today.</li></ul>
+<p>Out of scope for this RFC:</p>
+<ul><li><strong><code>patties doctor</code> command.</strong> Richer probes (claude, docker, lockfile freshness, biome config) belong in a future doctor spec, not in <code>create-patties</code>.</li><li><strong>Cross-platform <code>which</code> quirks.</strong> Bun's implementation handles <code>.exe</code> on Windows; this RFC trusts that.</li><li><strong>Bun version-floor enforcement.</strong> Out of scope for this RFC.</li></ul>
+<hr>
+<h2>Summary</h2>
+<p><code>Bun.which("git")</code> returns the absolute path of the executable in <code>PATH</code>, or <code>null</code>. Use it in <code>create-patties</code> to (a) fail fast if <code>bun</code> is missing and (b) warn + skip git init if <code>git</code> is missing.</p>
+<h2>Motivation</h2>
+<p><code>create-patties</code> today runs <code>bun install</code> and <code>git init</code> blind: if either binary is missing, the user gets a confusing mid-pipeline failure with half a project on disk. A pre-flight probe takes ~5 lines to write and makes the failure mode either fail-fast-with-message (bun missing) or scaffold-cleanly-with- warning (git missing).</p>
+<p><code>Bun.which</code> is the right primitive: built-in, cross-platform, handles <code>.exe</code> resolution on Windows, returns <code>null</code> on miss without throwing.</p>
+<h2>Proposal</h2>
+<h3>Probe module</h3>
+<pre data-lang="ts"><code>// packages/create-patties/src/probes.ts
+export function probeTools(): void {
+  if (!Bun.which("bun")) {
+    console.error(
+      "create-patties: `bun` not found in PATH. " +
+      "Install Bun from https://bun.sh and re-run.",
+    )
+    process.exit(1)
+  }
+}
+
+export function hasGit(): boolean {
+  return Bun.which("git") !== null
+}
+</code></pre>
+<h3>Behavior changes</h3>
+<p><code>probeTools()</code> runs after arg-parse + directory-validate, before template copy. The git-init step (was step 9 in the existing behavior list) consults <code>hasGit()</code> and prints a warn line if false.</p>
+<h2>Trade-offs</h2>
+<ul><li><strong><code>bun</code> probe is theoretically redundant under <code>bunx</code></strong> — but defends against shipped-binary / clobbered-PATH cases. Cheap insurance.</li><li><strong>Warn-only on <code>git</code></strong> rather than fail keeps the scaffold useful for users on locked-down corporate machines without git.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Should we surface bun version too (<code>Bun.version</code> &gt;= some minimum)? Deferred — separate concern; if we ever bump a minimum Bun version, open a follow-up RFC.</li><li>Cross-platform <code>which</code> behavior on Windows verified by Bun's implementation; not re-verified here.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.Transpiler — on-demand single-file TS/TSX transpile · Patties specs</title>
+<meta name="description" content="Bun.Transpiler returns a transpiler instance that runs TS→JS / JSX→JS per file without wrapping into a build graph. Faster than SWC for many workloads; sync …">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Backlog</span> <span class="badge badge-id">rfcs/backlog/rfc-bun-transpiler.md</span></div>
+<h1>Bun.Transpiler — on-demand single-file TS/TSX transpile</h1>
+<p class="lede">Bun.Transpiler returns a transpiler instance that runs TS→JS / JSX→JS per file without wrapping into a build graph. Faster than SWC for many workloads; sync …</p>
+</header>
+<h2>Summary</h2>
+<p><code>Bun.Transpiler</code> returns a transpiler instance that runs TS→JS / JSX→JS per file without wrapping into a build graph. Faster than SWC for many workloads; sync API.</p>
+<h2>Why backlog</h2>
+<p><code>Bun.build</code> already handles transpile end-to-end for our build, dev-bundler (spec 18), and edge adapter. There is no current spec slot for raw per-file transpile.</p>
+<h2>Trigger to promote to draft</h2>
+<p>A feature appears that needs file-level transpile decoupled from bundling — e.g. an <code>eval</code>/REPL endpoint, a custom dev tool, or a plugin that wants to transpile arbitrary user-supplied source.</p>
+<h2>Bun-unique classification</h2>
+<p><strong>Bun-faster</strong> — Node has SWC (via <code>@swc/core</code>) and Babel; Bun's transpiler is materially faster but capability is not new.</p>
+<h2>Open questions when promoted</h2>
+<ul><li>Does the transpiler need to share macro/import-attribute config with <code>Bun.build</code>?</li><li>Would we expose it through a plugin hook or a direct framework API?</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

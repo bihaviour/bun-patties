@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.Cookie / Bun.CookieMap — adopt native cookie API in middleware · Patties specs</title>
+<meta name="description" content="Accept. Closes the auth-shaped hole in spec 07. With Hono removed, the cookie story gets simpler — ctx.cookies is a thin pass-through to Bun.CookieMap rather…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-cookies.md</span></div>
+<h1>Bun.Cookie / Bun.CookieMap — adopt native cookie API in middleware</h1>
+<p class="lede">Accept. Closes the auth-shaped hole in spec 07. With Hono removed, the cookie story gets simpler — ctx.cookies is a thin pass-through to Bun.CookieMap rather…</p>
+</header>
+<h2>Review verdict (2026-05-24)</h2>
+<p><strong>Accept.</strong> Closes the auth-shaped hole in spec 07. With Hono removed, the cookie story gets simpler — <code>ctx.cookies</code> is a thin pass-through to <code>Bun.CookieMap</code> rather than a layer over <code>c</code>.</p>
+<p>Scope tightening:</p>
+<ul><li>The handler/middleware <code>ctx</code> (decided in the Hono-removal pass) exposes <code>ctx.cookies: Bun.CookieMap</code> directly — no separate <code>hono/cookie</code> to displace.</li><li>Mutations are written back as <code>Set-Cookie</code> headers by the framework's response finalizer, not by middleware explicitly.</li><li>Signed cookies are deferred to a follow-up RFC; not blocking Phase 1.</li></ul>
+<p>Depends on: the <code>ctx</code> shape from the Hono-removal pass.</p>
+<hr>
+<h2>Summary</h2>
+<p>Bun ships <code>Bun.Cookie</code> and <code>Bun.CookieMap</code> plus a <code>request.cookies</code> accessor exposed by <code>Bun.serve</code>. The classes parse, validate, and serialize cookies (including SameSite, Partitioned, Priority, expiration math) without userland deps. Patties should expose <code>ctx.cookies</code> in middleware/handlers as a thin pass-through to <code>Bun.CookieMap</code>.</p>
+<h2>Motivation</h2>
+<p>07-middleware currently hand-waves auth and session work ("where do I do auth / logging / headers?") without naming a cookie primitive. Every realistic Patties app needs cookies for session IDs, CSRF tokens, theme preference, A/B bucketing. Reaching for <code>cookie</code> from npm contradicts the Bun-native commitment in 00-overview. <code>Bun.CookieMap</code> is also the prerequisite for <code>Bun.CSRF</code> (separate RFC) and any future session story.</p>
+<h2>Proposal</h2>
+<ul><li>07-middleware: <code>ctx.cookies: Bun.CookieMap</code> is a first-class field on the handler/middleware context. Populated from <code>request.cookies</code> provided by <code>Bun.serve</code>. Mutations are flushed to <code>Set-Cookie</code> headers by the framework's response finalizer.</li><li>01-server: document that <code>Bun.serve</code> provides cookies automatically — Patties does not re-parse <code>Cookie:</code> headers.</li><li>13-conventions: name <code>Bun.CookieMap</code> as the canonical cookie API; forbid <code>cookie</code>, <code>cookie-parser</code>, <code>tough-cookie</code>.</li></ul>
+<p>Sample:</p>
+<pre data-lang="ts"><code>// app/middleware.ts
+export default async (req, ctx, next) =&gt; {
+  if (!ctx.cookies.get("sid")) {
+    ctx.cookies.set("sid", crypto.randomUUID(), { httpOnly: true, sameSite: "lax" });
+  }
+  return next();
+};
+</code></pre>
+<h2>Trade-offs</h2>
+<ul><li>Locks middleware contract to <code>Bun.CookieMap</code> shape — if Bun changes signatures we follow.</li><li>Edge adapter (12) must polyfill or shim for vendors that don't run Bun (Workers, Vercel). Acceptable — the adapter already abstracts <code>Bun.serve</code>.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Do we expose mutation as <code>set(name, value, opts)</code> or as a Map-style assignment? Match Bun's API exactly to avoid divergence.</li><li>Signed cookies: defer to a follow-up or fold in here via <code>cookies.sign(secret)</code> helper?</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

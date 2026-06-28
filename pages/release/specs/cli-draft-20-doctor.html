@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties doctor — project hygiene checks · Patties specs</title>
+<meta name="description" content="Give a patties project a single &quot;is this project healthy?&quot; command. The scaffold">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Draft</span> <span class="badge badge-id">cli/draft/20-doctor.md</span></div>
+<h1>patties doctor — project hygiene checks</h1>
+<p class="lede">Give a patties project a single "is this project healthy?" command. The scaffold</p>
+</header>
+<h2>Purpose</h2>
+<p>Give a patties project a single "is this project healthy?" command. The scaffold story ends at init ([[cli/10-scaffold-probes]]); nothing covers keeping a project healthy <strong>over its lifetime</strong> — outdated deps, security advisories, lockfile drift, an invalid config. Before publishing 0.1.x, a published framework should ship that story rather than leave users to remember a grab-bag of <code>bun</code> sub-commands.</p>
+<p><code>patties doctor</code> aggregates a set of read-only checks into one report. It does not reinvent Bun's hygiene commands — it <strong>runs and contextualizes</strong> them (<code>bun audit</code>, <code>bun outdated</code>), adds patties-specific checks (config validity, single-React in monorepos), and prints one aligned, actionable report with a concrete remedy per finding. Encodes [[rfc-bun-package-hygiene]] and lands the "doctor cluster" together: it reuses the <code>Bun.which</code> probe helper from [[rfc-bun-which]] and the width-aware output utilities from [[rfc-bun-cli-ansi]] (codified in [[framework/24-bun-builtin-policy]] §24.2).</p>
+<p>Composed from Bun builtins — no <code>which</code> / <code>string-width</code> / advisory-client deps:</p>
+<div class="table-wrap"><table><thead><tr><th>Concern</th><th>Bun builtin</th></tr></thead><tbody><tr><td>Toolchain probes</td><td><code>Bun.which</code></td></tr><tr><td>Security advisories</td><td><code>Bun.$</code> → <code>bun audit --json</code></td></tr><tr><td>Outdated deps</td><td><code>Bun.$</code> → <code>bun outdated --json</code></td></tr><tr><td>Lockfile / config reads</td><td><code>Bun.file</code>, the config loader ([[framework/08-config]])</td></tr><tr><td>Aligned, wrapped output</td><td><code>Bun.stringWidth</code> / <code>Bun.stripANSI</code> / <code>Bun.wrapAnsi</code></td></tr></tbody></table></div>
+<h2>Public surface</h2>
+<h3>Command</h3>
+<pre><code>patties doctor [--json] [--audit-level &lt;low|moderate|high|critical&gt;]
+               [--offline] [--no-audit] [--no-outdated] [--strict]
+</code></pre>
+<ul><li><code>--json</code> — emit a machine-readable report (for CI) instead of the formatted one; implies no color.</li><li><code>--audit-level &lt;level&gt;</code> — minimum advisory severity that counts as a <strong>failure</strong> (default <code>high</code>); lower severities still appear as warnings.</li><li><code>--offline</code> — skip every check that hits the network (audit + outdated); useful in air-gapped CI. Reported as "skipped", not "passed".</li><li><code>--no-audit</code> / <code>--no-outdated</code> — skip that check group.</li><li><code>--strict</code> — promote every warning to a failure (CI gate).</li></ul>
+<p>There is <strong>no <code>--fix</code> in Phase 1</strong> (see Phasing). <code>doctor</code> is read-only; it <em>reports and suggests</em>, never installs or mutates. Adds a <code>doctor</code> verb row to the CLI dispatch table ([[cli/01-entry]]); all logic lives here.</p>
+<h3>Exit codes</h3>
+<ul><li><code>0</code> — all checks passed (warnings allowed unless <code>--strict</code>).</li><li><code>1</code> — one or more checks failed (a failure-level finding).</li><li><code>2</code> — <code>doctor</code> could not run (not a patties project; <code>bun</code> missing).</li></ul>
+<h2>Checks</h2>
+<p>Grouped; each group can be skipped by its flag. Every finding carries a status (<code>pass</code> / <code>warn</code> / <code>fail</code>) and a <strong>one-line remedy</strong> — the exact command to run.</p>
+<h3>A. Toolchain</h3>
+<p>Extends the scaffold's two probes ([[cli/10-scaffold-probes]]: <code>bun</code> fail, <code>git</code> warn) to a lifecycle set, reusing the same <code>Bun.which</code> helper:</p>
+<ol><li><strong><code>bun</code></strong> present and ≥ the patties-declared minimum version — <strong>fail</strong> if missing/old (doctor exits <code>2</code> if <code>bun</code> itself is absent).</li><li><strong><code>git</code></strong> present — <strong>warn</strong> if missing (versioning is optional but expected).</li><li><strong>Conditional probes</strong> (<strong>warn</strong> only), gated on project config so they never nag projects that don't use them: [[cli/19-patties-agent-skill]]).<ul><li><code>docker</code> — only if a container deploy target is configured.</li><li><code>claude</code> — only for <code>--agent claude</code> projects (the skill workflow,</li></ul></li></ol>
+<h3>B. Dependencies</h3>
+<ol><li><strong>Security advisories</strong> — run <code>bun audit --json</code>; parse, group by severity, and surface the count per level with the top advisories. Findings at or above <code>--audit-level</code> are <strong>failures</strong>; below are <strong>warnings</strong>. (Resolves the RFC's open question: severity <em>is</em> surfaced and gated, not passed through verbatim.) Remedy: the suggested <code>bun update &lt;pkg&gt;</code> per advisory.</li><li><strong>Outdated deps</strong> — run <code>bun outdated --json</code>; <strong>warn</strong> on available updates, distinguishing major (behind by a major version) from minor/patch drift. Major drift is the louder warning. Never a failure on its own.</li><li><strong>Lockfile health</strong> — <code>bun.lock</code> exists and is in sync with <code>package.json</code> (no declared dependency missing from the lock, no version mismatch). Drift is a <strong>fail</strong>. Remedy: <code>bun install</code>.</li></ol>
+<h3>C. Project config</h3>
+<ol><li><strong><code>patties.config.ts</code> validity</strong> — load it through the config loader and validate against the config Zod schema ([[framework/08-config]]). A load error or schema violation is a <strong>fail</strong>, reported with the Zod issue path.</li><li><strong>Biome config validity</strong> — if a <code>biome.json</code> exists, parse it and confirm it is well-formed JSON the project's biome version accepts. Malformed → <strong>fail</strong>. doctor checks <em>validity only</em>; biome owns lint/format (not a goal here).</li></ol>
+<h3>D. Monorepo (only when a Bun workspace is detected)</h3>
+<p>Skipped entirely for single-package projects. When <code>package.json</code> declares <code>workspaces</code>:</p>
+<ol><li><strong>Workspace resolution</strong> — every <code>workspaces</code> glob resolves to a directory with a <code>package.json</code>; a glob matching nothing is a <strong>fail</strong>.</li><li><strong>Single-React invariant</strong> — exactly one resolved copy of <code>react</code> / <code>react-dom</code> across the hoisted tree, per [[framework/26-monorepo-react-resolution]]. A second copy is a <strong>fail</strong> (it crashes SSR with "Invalid hook call"). Remedy: the dedupe/catalog-pin guidance from spec 26.</li><li><strong>Catalog references</strong> — every <code>catalog:</code> reference in a workspace package resolves to an entry in the root catalog. A dangling reference is a <strong>fail</strong>.</li></ol>
+<h2>Output</h2>
+<p>A width-aware, aligned report built with the spec-24 §24.2 utilities (<code>Bun.stringWidth</code> for column math, <code>Bun.wrapAnsi</code> for remedies that exceed the terminal width, <code>Bun.stripANSI</code> when piped / <code>--json</code>). Shape:</p>
+<pre><code>patties doctor
+
+  Toolchain
+    ✓ bun 1.3.6              (≥ 1.3.0 required)
+    ✓ git 2.45.1
+  Dependencies
+    ✗ 1 high severity advisory in left-pad@1.0.0
+        → bun update left-pad
+    ⚠ 3 outdated (1 major: react 18 → 19)
+        → bun outdated   to review
+    ✓ lockfile in sync
+  Config
+    ✓ patties.config.ts valid
+    ✓ biome.json valid
+
+  1 failed, 1 warning, 5 passed
+</code></pre>
+<p><code>--json</code> emits <code>{ checks: [{ id, group, status, detail, remedy }], summary }</code>.</p>
+<h2>Behavior</h2>
+<ol><li>Resolve the project root (config discovery, [[framework/08-config]]); if none, exit <code>2</code>. If <code>bun</code> is missing, exit <code>2</code> (every other check assumes it).</li><li>Run check groups; network groups (audit, outdated) run concurrently via <code>Bun.$</code>, skipped under <code>--offline</code>.</li><li>Aggregate findings; render the report (or JSON).</li><li>Exit <code>1</code> if any finding is <code>fail</code> (or any <code>warn</code> under <code>--strict</code>), else <code>0</code>.</li></ol>
+<h2>Phasing</h2>
+<ul><li><strong>Phase 1 (0.1.x):</strong> all checks above, read-only. <code>--json</code>, exit gating, the formatted report. No mutation of the user's project.</li><li><strong>Phase 2:</strong> <code>patties doctor --fix</code> — <strong>conservative and explicit</strong>, one confirmation per fix (<code>bun install</code> to sync the lockfile, <code>bun update &lt;pkg&gt;</code> for an advisory). Inherits the bun-which rule: never act on the user's behalf without consent. Also <code>bun patch</code> workflow checks (<code>patches/</code> integrity) and scheduled hygiene via <code>Bun.cron</code> ([[rfc-bun-cron]]) for nightly audits.</li></ul>
+<h2>Non-goals</h2>
+<ul><li><strong>Not a replacement</strong> for <code>bun audit</code> / <code>bun outdated</code> — doctor aggregates and contextualizes them under one command and one exit code.</li><li><strong>No auto-install / auto-update in Phase 1.</strong> Report and suggest only.</li><li><strong>No <code>bun patch</code> / <code>patches/</code> management in v1</strong> — deferred to Phase 2.</li><li><strong>Not a linter.</strong> Biome owns lint/format; doctor only checks biome <em>config validity</em>.</li></ul>
+<h2>Tests</h2>
+<ul><li><strong>Toolchain:</strong> missing <code>bun</code> → exit 2; missing <code>git</code> → warn, exit 0; container target set but no <code>docker</code> → warn; no container target → docker probe skipped.</li><li><strong>Advisories:</strong> a fixture lockfile with a known advisory at <code>high</code> → fail at default <code>--audit-level</code>; the same at <code>--audit-level critical</code> → warn, exit 0.</li><li><strong>Outdated:</strong> major-behind dep → warn (flagged major); patch-behind → warn (not flagged major); neither fails.</li><li><strong>Lockfile drift:</strong> add a dep to <code>package.json</code> without installing → fail with <code>bun install</code> remedy.</li><li><strong>Config:</strong> a config that violates the Zod schema → fail with the issue path; a valid config → pass.</li><li><strong>Monorepo:</strong> a workspace with two React copies → single-React fail; a dangling <code>catalog:</code> ref → fail; a glob matching no package → fail; clean workspace → monorepo group passes; single-package project → monorepo group absent.</li><li><strong><code>--offline</code>:</strong> audit + outdated reported "skipped", never "passed"; exit reflects only the checks that ran.</li><li><strong><code>--strict</code>:</strong> a project with only warnings exits 1.</li><li><strong><code>--json</code>:</strong> stable machine shape, no ANSI.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties doctor</code> on a healthy project prints an all-✓ report and exits 0.</li><li>A high-severity advisory, a lockfile drift, an invalid config, or a duplicate React in a monorepo each produces a clear failure with an actionable remedy and a non-zero exit.</li><li><code>--audit-level</code>, <code>--offline</code>, <code>--no-audit</code> / <code>--no-outdated</code>, and <code>--strict</code> behave as specified; <code>--json</code> is CI-consumable.</li><li>No check mutates the project in Phase 1.</li><li>The command reuses the <code>Bun.which</code> probe helper and the spec-24 §24.2 output utilities — no <code>which</code> / <code>string-width</code> / advisory-client dependency is added.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

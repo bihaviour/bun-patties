@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adapters &amp; targets · Patties</title>
+<meta name="description" content="Bun and edge build targets and emitted artifacts.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>Adapters &amp; targets</h1>
+<p class="lede">Patties currently supports two build targets — <code>bun</code> and <code>edge</code> — and the build system selects an adapter based on the configured target.</p>
+</header>
+<section>
+<h2>Supported targets</h2>
+<ul>
+<li><code>bun</code></li>
+<li><code>edge</code></li>
+</ul>
+<p>The build system selects an adapter based on the configured target.</p>
+</section>
+<section>
+<h2>Adapter responsibilities</h2>
+<p>An adapter receives:</p>
+<ul>
+<li>the bundled server entry path</li>
+<li>copied assets</li>
+<li>app directory</li>
+<li>output directory</li>
+<li>build mode</li>
+<li>compile preference</li>
+</ul>
+<p>It returns:</p>
+<ul>
+<li>the consumable server entry</li>
+<li>the asset list</li>
+<li>any extra emitted files</li>
+</ul>
+</section>
+<section>
+<h2>Bun target</h2>
+<p>The Bun adapter produces a Bun-consumable server entry. In production, it can also honor <code>compile: true</code> to emit a standalone binary via <code>bun build --compile</code>.</p>
+</section>
+<section>
+<h2>Edge target</h2>
+<p>The edge adapter emits an edge-friendly server artifact while keeping the rest of the build pipeline shared.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

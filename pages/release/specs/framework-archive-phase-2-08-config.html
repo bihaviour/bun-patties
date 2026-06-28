@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Config · Patties specs</title>
+<meta name="description" content="Single configuration file for a Patties project. Optional — sensible defaults must work without it.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-2/08-config.md</span></div>
+<h1>Config</h1>
+<p class="lede">Single configuration file for a Patties project. Optional — sensible defaults must work without it.</p>
+</header>
+<h2>Purpose</h2>
+<p>Single configuration file for a Patties project. Optional — sensible defaults must work without it.</p>
+<h2>User contract</h2>
+<pre data-lang="ts"><code>// patties.config.ts
+import { defineConfig } from "patties/config"
+
+export default defineConfig({
+  target: "edge",              // "bun" | "edge" — default "bun". "edge" emits a portable Worker module.
+  appDir: "./app",             // default "./app"
+  outDir: "./.patties",        // default "./.patties"
+  plugins: [],                 // see 09-plugins.md
+  env: {
+    required: ["DATABASE_URL"],
+    public: ["PUBLIC_*"]       // names exposed to the client bundle
+  },
+  secrets: ["ANTHROPIC_API_KEY", "DATABASE_URL"],   // loaded from Bun.secrets in dev (rfc-bun-secrets)
+  server: {
+    port: 3000,
+    hostname: "0.0.0.0"
+  }
+})
+</code></pre>
+<h2>Loader behavior</h2>
+<ol><li>Look for <code>patties.config.ts</code>, <code>.js</code>, or <code>.mjs</code> in the project root.</li><li>Import via Bun's native TS support.</li><li>Validate with a Zod schema; produce a normalized config with all defaults filled in.</li><li>If the file is missing, return defaults.</li><li>Surface validation errors with the field path and the offending value.</li></ol>
+<h2>Edge target validation</h2>
+<p>When <code>target === "edge"</code>, the loader cross-checks that no plugin or app code imports <code>node:*</code> modules without a Workers-runtime polyfill mapping. Failures are diagnostics, not warnings. This applies regardless of which vendor will host the artifact (Cloudflare, Deno Deploy, Vercel Edge, Netlify Edge, etc.) — the check is against the WinterCG / <code>workerd</code> runtime surface, not against any vendor's bindings.</p>
+<h2>Env validation</h2>
+<p><code>env.required</code> is validated at <strong>boot time only</strong> — inside <code>startServer</code> (Bun) and at the Worker's first <code>fetch</code> (edge target, any vendor). The build step deliberately does not read or validate env vars, so CI can build artifacts without holding production secrets.</p>
+<ul><li>On boot, every name in <code>env.required</code> must resolve to a non-empty value via the framework's <code>getEnv(name)</code> lookup. The lookup is adapter-aware: Missing names throw a single <code>MissingEnv</code> error listing all of them.<ul><li><strong>Bun target</strong>: reads from <code>Bun.env</code> (typed wrapper around <code>process.env</code>, faster than <code>process.env</code> access on hot paths).</li><li><strong>Edge target</strong>: reads from the runtime-provided bindings object (Cloudflare's <code>env</code>, Deno's <code>Deno.env.toObject()</code>, Vercel/Netlify edge <code>process.env</code>, etc.), normalized by the adapter.</li></ul></li><li>Names in <code>env.public</code> are inlined into the client bundle at build time (<code>Bun.build</code> define). They are not checked for presence — absent public vars become the empty string in the bundle.</li><li>No lazy / first-access validation: a typo in <code>env.required</code> should fail at boot, not at 3am during a request.</li></ul>
+<h2>Dev secrets via <code>Bun.secrets</code></h2>
+<p><code>config.secrets: string[]</code> lists keys to source from the OS keychain in development via <code>Bun.secrets.get(serviceName, key)</code>. Source order:</p>
+<ul><li><strong>Dev</strong> (<code>PATTIES_ENV !== "production"</code>): for each key, try <code>Bun.secrets.get(serviceName, key)</code> first; fall back to <code>Bun.env[key]</code> if absent. The keychain value wins on conflict.</li><li><strong>Production</strong> (<code>PATTIES_ENV === "production"</code> or <code>NODE_ENV === "production"</code>): <code>Bun.secrets</code> is bypassed entirely. Only <code>Bun.env</code> / vendor-injected bindings are read. The framework never speaks to the keychain in prod.</li></ul>
+<p><code>serviceName</code> defaults to <code>package.json#name</code> if present, else <code>"patties"</code> — so dev secrets are per-project, not shared across all Patties apps on the dev box.</p>
+<p><strong>Linux without libsecret</strong>: a missing keychain backend logs a one-line warning at boot and silently falls through to <code>Bun.env</code>. Not a boot error — CI on bare Linux must keep working. See [[rfc-bun-secrets]].</p>
+<p>CLI: <code>patties secret set &lt;key&gt;</code> (writes via <code>Bun.secrets.set</code>). See CLI specs.</p>
+<h2>Acceptance criteria</h2>
+<ul><li>Missing config → framework boots with defaults.</li><li>Invalid <code>target: "node"</code> → loader throws naming the field and the allowed values (<code>bun</code>, <code>edge</code>).</li><li><code>defineConfig</code> returns its argument unchanged (it exists for typing).</li><li>Booting with <code>env.required: ["DATABASE_URL"]</code> and no <code>DATABASE_URL</code> set throws <code>MissingEnv: DATABASE_URL</code> <em>before</em> <code>Bun.serve</code> binds a port.</li><li><code>patties build</code> succeeds in an environment with none of the <code>env.required</code> values set.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

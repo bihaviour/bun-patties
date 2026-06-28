@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.stringWidth / stripANSI / wrapAnsi — terminal output utilities · Patties specs</title>
+<meta name="description" content="Accept as a policy adoption. Patties' CLI surface">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-cli-ansi.md</span></div>
+<h1>Bun.stringWidth / stripANSI / wrapAnsi — terminal output utilities</h1>
+<p class="lede">Accept as a policy adoption. Patties' CLI surface</p>
+</header>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Accept</strong> as a policy adoption. Patties' CLI surface (<code>bin/patties.ts</code>, <code>packages/create-patties</code>, the dev error overlay's terminal output) will inevitably want width-aware text math: multi-column status output, wrapped error messages, aligned tables. The Node solution is the chalk-ecosystem trio (<code>string-width</code>, <code>strip-ansi</code>, <code>wrap-ansi</code>) — three more deps in every CLI install. Bun ships them in core.</p>
+<p>Codified as section 24.2 of the <strong>Bun-builtin policy spec</strong> ([[framework/draft/24-bun-builtin-policy]]) rather than its own feature spec, because the current CLI is minimal and a full "CLI ergonomics" spec doesn't exist yet — <code>Bun.stringWidth</code> etc. become the "reach for this when you need it" answer.</p>
+<p>Scope pins:</p>
+<ul><li><strong>CLI and dev-overlay only</strong>. Not for runtime response shaping — user middleware that wants to colorize logs uses inline ANSI escapes or whatever they choose.</li><li><strong><code>Bun.stringWidth</code> for measurement</strong>, never <code>String#length</code>, when emoji or CJK chars are possible.</li><li><strong><code>Bun.stripANSI</code> before piping to non-TTY</strong> destinations (CI logs).</li><li><strong><code>Bun.wrapAnsi</code> for hard-wrap</strong> that preserves inline styling.</li></ul>
+<p>Out of scope for this RFC:</p>
+<ul><li><strong><code>chalk</code> / <code>picocolors</code> adoption</strong> — patties uses inline ANSI escapes for color emission, no color lib.</li><li><strong>Structured-log JSON output</strong> — separate concern; if needed, add a <code>--format=json</code> flag to the CLI later.</li></ul>
+<hr>
+<h2>Summary</h2>
+<p>Three Bun helpers for terminal output:</p>
+<ul><li><code>Bun.stringWidth</code> — width-aware string length (double-width chars, ANSI escapes excluded).</li><li><code>Bun.stripANSI</code> — remove escape codes.</li><li><code>Bun.wrapAnsi</code> — hard-wrap text while preserving styling.</li></ul>
+<h2>Motivation</h2>
+<p>Pure dep replacement. The chalk-ecosystem libs (<code>string-width</code>, <code>strip-ansi</code>, <code>wrap-ansi</code>) exist because Node has no string-width primitive aware of emoji + CJK + ANSI escapes. Bun does.</p>
+<h2>Proposal</h2>
+<p>See [[framework/draft/24-bun-builtin-policy|spec 24]] § 24.2 for the policy and concrete patterns. Summary:</p>
+<ul><li>CLI code (<code>bin/patties.ts</code>, <code>packages/create-patties</code>, dev error overlay) uses these for any width-aware text operation.</li><li>The <code>cli/archive/07-logging-errors</code> spec is left untouched pending its own focused-work pass; this policy applies when that work happens.</li></ul>
+<h2>Trade-offs</h2>
+<ul><li><strong>No <code>chalk</code>-style color emission lib.</strong> Patties emits ANSI escapes inline (<code>\x1b[36m...\x1b[0m</code>). Acceptable for the small CLI surface; a future shift to <code>picocolors</code> or similar would be a separate decision.</li></ul>
+<h2>Open questions</h2>
+<ul><li><strong>Custom log formatter or wrap an existing one (e.g. <code>consola</code>)?</strong> v1: roll our own thin wrapper using these Bun primitives.</li><li><strong>Structured-log JSON output</strong> — if/when added, ANSI helpers are irrelevant on that path.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

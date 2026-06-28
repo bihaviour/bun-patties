@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Config Loading · Patties specs</title>
+<meta name="description" content="A single shared routine every CLI command calls to find, load, and validate patties.config.ts. The framework spec 08-config defines the file's shape; this sp…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/06-config-loading.md</span></div>
+<h1>Config Loading</h1>
+<p class="lede">A single shared routine every CLI command calls to find, load, and validate patties.config.ts. The framework spec 08-config defines the file's shape; this sp…</p>
+</header>
+<h2>Purpose</h2>
+<p>A single shared routine every CLI command calls to find, load, and validate <code>patties.config.ts</code>. The framework spec 08-config defines the file's <em>shape</em>; this spec defines the CLI's <em>resolution</em> behavior.</p>
+<h2>Public surface</h2>
+<pre data-lang="ts"><code>export interface ResolvedConfig { /* see framework spec 08 */ }
+export interface LoadOptions {
+  cwd: string
+  configPath?: string         // from --config flag
+  overrides?: Partial&lt;ResolvedConfig&gt;  // from per-command flags like --target
+}
+
+export async function loadConfig(opts: LoadOptions): Promise&lt;ResolvedConfig&gt;
+</code></pre>
+<h2>Resolution order</h2>
+<ol><li>If <code>configPath</code> is set, use it. Error if the file does not exist.</li><li>Otherwise look in <code>cwd</code> for <code>patties.config.ts</code>, then <code>.js</code>, then <code>.mjs</code>. First hit wins.</li><li>If nothing is found, return defaults — Patties must run with zero config.</li></ol>
+<h2>Load</h2>
+<ul><li>Import the file via Bun's native TS support.</li><li>The default export must be the object (or the result of <code>defineConfig(...)</code>).</li><li>Validate with Zod; produce a normalized config.</li><li>Apply <code>overrides</code> after validation, validating again (so <code>--target node</code> still rejects).</li></ul>
+<h2>Caching</h2>
+<ul><li>Loads are not cached across CLI invocations.</li><li>Within a single invocation (e.g. <code>dev</code> re-reading after a restart), the loader uses a content-hash cache to skip re-validation when the file is unchanged.</li></ul>
+<h2>Errors</h2>
+<p>Validation errors include:</p>
+<ul><li>Absolute path to the offending file.</li><li>The path within the config (e.g. <code>env.required[0]</code>).</li><li>The expected vs received value.</li><li>A suggested fix when possible (closest legal enum value).</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Running any command in an empty directory uses defaults without warning.</li><li><code>--config ./custom.ts</code> loads that file; if missing, the command exits 2 with the resolved path in the message.</li><li>An invalid <code>target</code> value in config is caught before any build or server work begins.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

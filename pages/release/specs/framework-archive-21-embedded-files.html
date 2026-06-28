@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Embedded files — single-binary deploy with embedded static assets · Patties specs</title>
+<meta name="description" content="This spec encodes [[rfc-bun-embedded-files]]. It extends the build">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/21-embedded-files.md</span></div>
+<h1>Embedded files — single-binary deploy with embedded static assets</h1>
+<p class="lede">This spec encodes [[rfc-bun-embedded-files]]. It extends the build</p>
+</header>
+<p>This spec encodes [[rfc-bun-embedded-files]]. It extends the build pipeline ([[framework/archive/phase-1/04-build|spec 04]]) and the bun adapter ([[framework/archive/phase-2/12-edge-adapters|spec 12]]) so that <code>patties build --target bun</code> with <code>adapter.bun.compile: true</code> produces a <strong>truly single file</strong> — runtime, server bundle, and all static assets in one binary.</p>
+<p><code>Bun.embeddedFiles</code> is the runtime-side API that exposes files embedded into a <code>--compile</code>'d binary as <code>BunFile[]</code>. The build side uses Bun's existing <code>with { type: "file" }</code> import attributes to register files for embedding.</p>
+<h2>Goal</h2>
+<p>Today, <code>patties build --target bun</code> with <code>compile: true</code> produces:</p>
+<pre><code>dist/
+  server        # compiled binary (~50MB)
+  assets/
+    favicon.ico
+    logo.png
+    _patties/client/&lt;hash&gt;.js
+    ...
+</code></pre>
+<p>The user must ship the binary <strong>and</strong> the <code>dist/assets/</code> directory. That's not a single-file deploy — it's a binary with a sidecar.</p>
+<p>With this spec:</p>
+<pre><code>dist/
+  server        # binary contains runtime + bundle + assets
+</code></pre>
+<p><code>scp dist/server user@host:/srv/</code>. Done.</p>
+<h2>Surface</h2>
+<p>No new user-facing API. Behavior changes only when <code>adapter.bun.compile</code> is <code>true</code>.</p>
+<p>The existing <code>adapter.bun.compile</code> boolean now also gates asset embedding — if compile is on, assets are embedded; if compile is off, assets remain in <code>dist/assets/</code> as today.</p>
+<h2>Build behaviour</h2>
+<h3>Asset-embedding entry</h3>
+<p>When <code>adapter.bun.compile === true</code> and <code>mode === "production"</code>, the build (<code>src/build/index.ts</code>) generates an additional synthetic module that imports every static asset:</p>
+<pre data-lang="ts"><code>// .patties/embedded-manifest.ts (generated at build time)
+import favicon from "../app/public/favicon.ico" with { type: "file" }
+import logo from "../app/public/logo.png" with { type: "file" }
+import clientEntry from "../.patties/client/abc123.js" with { type: "file" }
+// ...one import per file in app/public + .patties/client
+
+export const EMBEDDED_ASSET_PATHS: Record&lt;string, string&gt; = {
+  "/favicon.ico": favicon,
+  "/logo.png": logo,
+  "/_patties/client/abc123.js": clientEntry,
+}
+</code></pre>
+<p>The build walks <code>app/public/**/*</code> and <code>.patties/client/**/*</code> (the built client chunks) and emits one <code>import ... with { type: "file" }</code> per file. The synthetic module is imported from the server entry so Bun's bundler picks up the file dependencies and emits them into the binary at <code>--compile</code> time.</p>
+<h3>Compile invocation</h3>
+<p>The bun adapter (<code>src/adapters/bun/</code>) calls:</p>
+<pre data-lang="ts"><code>Bun.spawnSync([
+  "bun", "build", "--compile",
+  `--target=bun-${platform}`,
+  "--outfile=dist/server",
+  serverEntry,
+])
+</code></pre>
+<p>This is unchanged from today. The new piece is that <code>serverEntry</code> now transitively imports the embedded-manifest module, so all listed files are bundled into the binary's embedded-files table.</p>
+<h3>Assets directory output</h3>
+<p>When <code>compile === true</code>, the adapter does <strong>not</strong> emit <code>dist/assets/</code>. The directory is redundant — every file is already inside the binary.</p>
+<p>When <code>compile === false</code> (default), behaviour is unchanged: <code>dist/assets/</code> is emitted and served via the catch-all fetch handler as today.</p>
+<h2>Runtime behaviour</h2>
+<h3>Static map construction (compile mode)</h3>
+<p>In compile mode, the bun adapter's static map is built from <code>Bun.embeddedFiles</code> instead of disk paths:</p>
+<pre data-lang="ts"><code>import { EMBEDDED_ASSET_PATHS } from "./embedded-manifest"
+
+const filesByName = new Map&lt;string, BunFile&gt;()
+for (const file of Bun.embeddedFiles) {
+  filesByName.set(file.name, file)
+}
+
+const staticMap: Record&lt;string, Response&gt; = {}
+for (const [route, fileId] of Object.entries(EMBEDDED_ASSET_PATHS)) {
+  const file = filesByName.get(fileId)
+  if (file) {
+    staticMap[route] = new Response(file, {
+      headers: { "content-type": file.type },
+    })
+  }
+}
+</code></pre>
+<p>The resulting <code>staticMap</code> plugs into <code>Bun.serve</code>'s <code>static</code> option the same way <code>app/public/</code> files do in non-compile mode. Matched paths never enter JS.</p>
+<h3>Filesystem reads at runtime</h3>
+<p>The compiled binary <strong>must not</strong> read assets from disk. The catch-all fetch handler's filesystem-streaming fallback (spec 12, "Static assets across targets") is disabled when <code>compile === true</code> — a missing asset returns 404 directly, not "try disk first."</p>
+<p>This is the cleanest expression of the build-time-discovery rule: the binary contains everything it needs; the filesystem could be empty and the server would still respond correctly.</p>
+<h3>Dev mode</h3>
+<p>Dev mode (<code>patties dev</code>) is unchanged. The dev server reads <code>app/public/</code> from disk via <code>Bun.file(path)</code> per the existing dev spec. Embedded files are a build-time / production-only feature.</p>
+<h2>Build-time discovery</h2>
+<p>Per the build-time discovery rule, the route table is already inlined via Bun macro (spec 04 § "Server bundle"). This spec extends the same discipline to static assets: the asset list is walked at build time, embedded at compile time, looked up at runtime — no <code>Bun.Glob</code> of <code>app/public</code> in the production binary.</p>
+<h2>Edge adapter</h2>
+<p>Out of scope for this spec. The edge adapter targets WinterCG / <code>workerd</code> runtimes that don't use <code>bun build --compile</code>, so <code>Bun.embeddedFiles</code> doesn't apply there. Edge static-asset delivery remains "the host's job" per spec 12. A future RFC may explore file embedding for non-compile builds, but that's not this spec.</p>
+<h2>Non-goals</h2>
+<ul><li><strong>Edge adapter parity.</strong> Edge builds still emit <code>dist/assets/</code>.</li><li><strong>Asset hashing changes.</strong> Spec 04's <code>Bun.CryptoHasher</code> flow already hashes asset filenames; embedded paths use the hashed names.</li><li><strong>Compile-mode-by-default.</strong> Compile remains opt-in via <code>adapter.bun.compile: true</code>. The default <code>patties build --target bun</code> still emits the JS server bundle + assets directory.</li><li><strong>Dynamic asset addition.</strong> Assets known to the build are embedded; assets added at runtime (rare) still need disk and are out of scope for compile mode — users adding runtime assets should leave compile off.</li><li><strong>Compression.</strong> The binary stores assets as-is; build-time brotli/zstd variants are a separate concern (see [[rfc-bun-alt-compression]]).</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties build --target bun</code> with <code>adapter.bun.compile: true</code> produces a single executable at <code>dist/server</code> and <strong>no</strong> <code>dist/assets/</code> directory.</li><li>The same compiled binary, moved to a directory with no <code>dist/assets/</code> present, serves all files from <code>app/public/</code> and the client bundle correctly.</li><li><code>Bun.embeddedFiles</code> returns the full list of embedded assets at runtime; the static map covers every embedded path.</li><li><code>patties build --target bun</code> with <code>compile: false</code> (default) still emits <code>dist/assets/</code> and the JS server bundle, unchanged from today.</li><li><code>patties build --target edge</code> is unaffected by this spec.</li><li>The catch-all fetch handler in compile mode does not attempt to read from <code>process.cwd()/app/public</code> — verifiable by stubbing <code>Bun.file</code> to throw and confirming the binary still serves embedded assets.</li></ul>
+<h2>Test plan</h2>
+<ul><li>Unit: build a fixture with <code>app/public/{a.txt,b.png}</code> → inspect generated <code>.patties/embedded-manifest.ts</code> → assert two <code>with { type: "file" }</code> imports.</li><li>Integration: <code>patties build --target bun</code> with <code>compile: true</code> on a fixture with assets → run the resulting binary in an empty directory → curl each asset path → expect 200 with correct bytes.</li><li>Integration: same fixture, <code>compile: false</code> → assert <code>dist/assets/</code> exists and binary path does not.</li><li>Integration: stub the filesystem so disk reads fail → compiled binary still serves embedded assets correctly.</li><li>Negative: <code>--target edge</code> with <code>compile: true</code> is a config-time error (compile is bun-only).</li></ul>
+<h2>Out of this spec</h2>
+<ul><li>The deploy plugin contract (spec 12 § "Deploy plugin contract") is unaffected — plugins still emit vendor configs. Deploy plugins that consume the compiled binary should treat it as a drop-in replacement for <code>dist/server</code> + <code>dist/assets/</code>.</li><li>The <code>--smol</code> flag ([[rfc-bun-smol]]) is orthogonal; it tunes the allocator, not asset embedding.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties migrate (rtl, radix) — codemods for user-authored UI code · Patties specs</title>
+<meta name="description" content="Accept, scoped to user-authored code. First-party stamped components already use">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-patties-ui-migrate.md</span></div>
+<h1>patties migrate (rtl, radix) — codemods for user-authored UI code</h1>
+<p class="lede">Accept, scoped to user-authored code. First-party stamped components already use</p>
+</header>
+<h2>Review verdict (2026-05-28)</h2>
+<p><strong>Accept, scoped to user-authored code.</strong> First-party stamped components already use the unified <code>radix-ui</code> import and logical CSS props, so a migration over unmodified catalog source is a no-op. The value is for <strong>user-written or imported</strong> code adopting patties-ui conventions.</p>
+<p>Scope pins:</p>
+<ul><li><strong><code>radix</code></strong>: scattered <code>@radix-ui/react-*</code> imports → unified <code>radix-ui</code> namespace import. Uses Bun's transpiler/AST tooling — <strong>no Babel/jscodeshift dep</strong> (bun-native rule).</li><li><strong><code>rtl</code></strong>: physical → logical CSS/Tailwind props (<code>ml-*</code>→<code>ms-*</code>, <code>text-left</code>→ <code>text-start</code>, etc.); pairs with the <code>direction</code> provider ([[ui/22-direction]]).</li><li>Refuses to run on a dirty tree without <code>--force</code>; <code>--dry-run</code> recommended first.</li><li>Ambiguous sites reported for manual review, never silently mis-rewritten.</li></ul>
+<p>Encoded into <code>cli/17-migrate-codemods</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p>Two codemods — <code>radix</code> (unify Radix imports) and <code>rtl</code> (physical→logical CSS props) — for migrating user-authored/imported components onto patties-ui conventions.</p>
+<h2>Motivation</h2>
+<p>shadcn ships these codemods. patties has none. They're mostly moot for first-party source (already compliant) but useful for code users bring from old shadcn projects.</p>
+<h2>Proposal</h2>
+<p><code>patties migrate &lt;radix|rtl&gt; [glob] [--dry-run] [--force]</code>, default glob = <code>config.ui.componentsDir</code>. Idempotent; per-file before/after summary.</p>
+<h2>Trade-offs</h2>
+<ul><li>Codemods can mis-rewrite dynamic class construction; mitigated by reporting (not guessing) ambiguous sites and requiring a clean tree.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Is a combined <code>patties migrate all</code> worth it? (Out of scope for v1.)</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

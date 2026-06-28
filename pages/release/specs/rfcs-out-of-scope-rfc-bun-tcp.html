@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.connect / Bun.listen — raw TCP · Patties specs</title>
+<meta name="description" content="Moved backlog → out-of-scope. Raw TCP sits one rung below where a">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Out of scope</span> <span class="badge badge-id">rfcs/out-of-scope/rfc-bun-tcp.md</span></div>
+<h1>Bun.connect / Bun.listen — raw TCP</h1>
+<p class="lede">Moved backlog → out-of-scope. Raw TCP sits one rung below where a</p>
+</header>
+<h2>Out-of-scope (2026-05-31)</h2>
+<p><strong>Moved backlog → out-of-scope.</strong> Raw TCP sits one rung <em>below</em> where a meta-framework operates — it's a runtime/library concern. patties is HTTP-first by identity; the named trigger ("a non-HTTP transport story") would mean becoming a different product, not picking up a parked feature. Permanent no. Kept as a discovered-and-dismissed record (pairs with [[rfc-bun-udp]]).</p>
+<h2>Summary</h2>
+<p>Bun's TCP primitives. Lower-level than <code>Bun.serve</code>. Useful for hosting non-HTTP protocols.</p>
+<h2>Why backlog</h2>
+<p>Patties is an HTTP-first meta-framework. Raw TCP doesn't fit the current spec set. Adoption would require a new subsystem ("custom transports").</p>
+<p>This entry is borderline <strong>out-of-scope</strong>: if we never host non-HTTP protocols, this RFC will move to <code>rfcs/out-of-scope/</code>.</p>
+<h2>Trigger to promote to draft</h2>
+<p>A clear non-HTTP use case lands (gRPC, raw socket game server, etc.) and we decide patties wants to own it.</p>
+<h2>Bun-unique classification</h2>
+<p><strong>Bun-faster</strong> — <code>node:net</code> has the same surface; Bun's is faster. Capability isn't unique.</p>
+<h2>Open questions when promoted</h2>
+<ul><li>Does patties even want to be in this business? (Current stance: no.)</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

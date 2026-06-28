@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Context Menu · Patties specs</title>
+<meta name="description" content="Right-click contextual menu. Mirrors shadcn ContextMenu. Built on @radix-ui/react-context-menu.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/18-context-menu.md</span></div>
+<h1>Context Menu</h1>
+<p class="lede">Right-click contextual menu. Mirrors shadcn ContextMenu. Built on @radix-ui/react-context-menu.</p>
+</header>
+<h2>Purpose</h2>
+<p>Right-click contextual menu. Mirrors shadcn <code>ContextMenu</code>. Built on <code>@radix-ui/react-context-menu</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Open-state and pointer/keyboard interactions require client JS. SSR renders only the trigger area.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-context-menu@^2.2</code></li><li><code>lucide-react@^0.400</code> (Check, ChevronRight, Circle)</li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export const ContextMenu: typeof Radix.Root
+export const ContextMenuTrigger: typeof Radix.Trigger
+export const ContextMenuGroup: typeof Radix.Group
+export const ContextMenuPortal: typeof Radix.Portal
+export const ContextMenuSub: typeof Radix.Sub
+export const ContextMenuRadioGroup: typeof Radix.RadioGroup
+export function ContextMenuSubTrigger(props: Radix.ContextMenuSubTriggerProps &amp; { className?: string; inset?: boolean }): JSX.Element
+export function ContextMenuSubContent(props: Radix.ContextMenuSubContentProps &amp; { className?: string }): JSX.Element
+export function ContextMenuContent(props: Radix.ContextMenuContentProps &amp; { className?: string }): JSX.Element
+export function ContextMenuItem(props: Radix.ContextMenuItemProps &amp; { className?: string; inset?: boolean }): JSX.Element
+export function ContextMenuCheckboxItem(props: Radix.ContextMenuCheckboxItemProps &amp; { className?: string }): JSX.Element
+export function ContextMenuRadioItem(props: Radix.ContextMenuRadioItemProps &amp; { className?: string }): JSX.Element
+export function ContextMenuLabel(props: Radix.ContextMenuLabelProps &amp; { className?: string; inset?: boolean }): JSX.Element
+export function ContextMenuSeparator(props: Radix.ContextMenuSeparatorProps &amp; { className?: string }): JSX.Element
+export function ContextMenuShortcut(props: React.ComponentProps&lt;"span"&gt;): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code> everywhere.</li><li>The portal lives outside the island in the DOM (Radix), but is logically owned by the island root.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Right-click on the trigger area opens the menu at the cursor.</li><li><code>Esc</code> closes; outside-click closes.</li><li>Submenus open on hover with the right keyboard semantics.</li><li>Radio and checkbox items reflect controlled state.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

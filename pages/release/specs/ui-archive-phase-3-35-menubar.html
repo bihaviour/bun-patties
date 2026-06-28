@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menubar · Patties specs</title>
+<meta name="description" content="Application-style top menubar (File / Edit / View …). Mirrors shadcn Menubar. Built on @radix-ui/react-menubar.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/35-menubar.md</span></div>
+<h1>Menubar</h1>
+<p class="lede">Application-style top menubar (File / Edit / View …). Mirrors shadcn Menubar. Built on @radix-ui/react-menubar.</p>
+</header>
+<h2>Purpose</h2>
+<p>Application-style top menubar (File / Edit / View …). Mirrors shadcn <code>Menubar</code>. Built on <code>@radix-ui/react-menubar</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Focus traversal between menus and open-state coordination require client JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-menubar@^1.1</code></li><li><code>lucide-react@^0.400</code></li></ul>
+<h2>Public API</h2>
+<p>Same shape as <a href="ui-archive-phase-3-24-dropdown-menu.html">24-dropdown-menu</a> and <a href="ui-archive-phase-3-18-context-menu.html">18-context-menu</a> — <code>Menubar</code>, <code>MenubarMenu</code>, <code>MenubarTrigger</code>, <code>MenubarContent</code>, <code>MenubarItem</code>, <code>MenubarCheckboxItem</code>, <code>MenubarRadioGroup</code>, <code>MenubarRadioItem</code>, <code>MenubarLabel</code>, <code>MenubarSeparator</code>, <code>MenubarShortcut</code>, <code>MenubarSub</code>, <code>MenubarSubTrigger</code>, <code>MenubarSubContent</code>, <code>MenubarPortal</code>, <code>MenubarGroup</code>.</p>
+<pre data-lang="ts"><code>export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>The whole menubar is a single island root.</li><li>Removes <code>forwardRef</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Arrow keys move focus across top-level triggers.</li><li>Opening one menu and hovering another auto-opens the next (Radix default).</li><li>Shortcut text aligns to the right within items.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

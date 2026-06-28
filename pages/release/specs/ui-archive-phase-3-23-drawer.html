@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drawer · Patties specs</title>
+<meta name="description" content="Bottom-sheet (mobile-friendly) modal. Mirrors shadcn Drawer. Built on vaul.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/23-drawer.md</span></div>
+<h1>Drawer</h1>
+<p class="lede">Bottom-sheet (mobile-friendly) modal. Mirrors shadcn Drawer. Built on vaul.</p>
+</header>
+<h2>Purpose</h2>
+<p>Bottom-sheet (mobile-friendly) modal. Mirrors shadcn <code>Drawer</code>. Built on <code>vaul</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Pointer-driven drag and snap-points require client JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>vaul@^1</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export const Drawer: typeof Vaul.Root
+export const DrawerTrigger: typeof Vaul.Trigger
+export const DrawerPortal: typeof Vaul.Portal
+export const DrawerClose: typeof Vaul.Close
+export function DrawerOverlay(props: Vaul.OverlayProps &amp; { className?: string }): JSX.Element
+export function DrawerContent(props: Vaul.ContentProps &amp; { className?: string }): JSX.Element
+export function DrawerHeader(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function DrawerFooter(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function DrawerTitle(props: Vaul.TitleProps &amp; { className?: string }): JSX.Element
+export function DrawerDescription(props: Vaul.DescriptionProps &amp; { className?: string }): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Vaul references <code>window</code> in module body; the import is dynamically loaded inside the island file via a top-level import that is dead-code-eliminated for the server build.</li><li>Removes <code>forwardRef</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>SSR renders only the trigger.</li><li>Drag-to-dismiss works on touch and pointer devices after hydration.</li><li><code>prefers-reduced-motion</code> disables the spring animation.</li><li>Server build does not include vaul (verified via bundle-size CI).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

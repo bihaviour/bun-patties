@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Optional `ui` block in patties.config.ts — redirectable stamp paths · Patties specs</title>
+<meta name="description" content="Accept — narrowly. patties' &quot;config = convention&quot; stance is a legitimate">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-patties-ui-config-block.md</span></div>
+<h1>Optional `ui` block in patties.config.ts — redirectable stamp paths</h1>
+<p class="lede">Accept — narrowly. patties' "config = convention" stance is a legitimate</p>
+</header>
+<h2>Review verdict (2026-05-28)</h2>
+<p><strong>Accept — narrowly.</strong> patties' "config = convention" stance is a legitimate divergence (less surface, no config drift), but it costs the one thing shadcn users miss immediately: redirectable stamp paths. Add a <em>minimal</em> optional <code>ui</code> block — only the paths that genuinely vary per project — without reintroducing <code>components.json</code>.</p>
+<p>Scope pins:</p>
+<ul><li>Exposes <strong>only</strong> <code>componentsDir</code>, <code>internalDir</code>, <code>tokensFile</code>, and (for [[rfc-patties-ui-registries]]) <code>registries</code>. Everything else stays convention.</li><li><code>.strict()</code> — an unknown key (e.g. <code>aliases</code>, <code>style</code>, <code>rsc</code>) is a config error pointing at the convention it replaces.</li><li>Paths resolve relative to project root; reject absolute / <code>..</code>-escaping paths.</li><li>Backs the <code>--path</code> flag ([[rfc-patties-ui-add-path]]) and <code>patties ui init</code> ([[rfc-patties-ui-init]]).</li></ul>
+<p>Encoded into <code>framework/25-ui-config-block</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p>A fully-optional <code>ui</code> block on the patties config so projects can redirect <em>where</em> component source, helpers, and tokens are stamped. Absent config behaves exactly as today.</p>
+<h2>Motivation</h2>
+<p><code>patties add</code> hard-codes <code>app/components/ui/</code>, <code>_internal/</code>, and <code>app/styles/tokens.css</code>. Monorepos and non-<code>app/</code> layouts can't redirect. shadcn's <code>components.json</code> makes this configurable; patties needs the same flexibility for the two paths that actually vary, without the rest of the config surface.</p>
+<h2>Proposal</h2>
+<pre data-lang="ts"><code>ui: {
+  componentsDir: "app/components/ui",      // default
+  internalDir: undefined,                  // default: &lt;componentsDir&gt;/_internal
+  tokensFile: "app/styles/tokens.css",     // default
+}
+</code></pre>
+<p>Thread a resolved <code>UiPaths</code> through <code>stamper.ts</code> / <code>internal.ts</code> / <code>tokens.ts</code> instead of string literals. Precedence: <code>--path</code> flag &gt; <code>config.ui</code> &gt; convention.</p>
+<h2>Trade-offs</h2>
+<ul><li>Any config is config drift risk; mitigated by keeping the surface to three paths and <code>.strict()</code>-rejecting everything else.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Should <code>registries</code> live here or in a separate <code>ui.registries</code>? (Encoded here, extended by the registries RFC.)</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

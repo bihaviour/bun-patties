@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logging, Errors, Exit Codes · Patties specs</title>
+<meta name="description" content="Make the CLI's output predictable and useful — for humans, for CI logs, and for agents reading transcripts.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/07-logging-errors.md</span></div>
+<h1>Logging, Errors, Exit Codes</h1>
+<p class="lede">Make the CLI's output predictable and useful — for humans, for CI logs, and for agents reading transcripts.</p>
+</header>
+<h2>Purpose</h2>
+<p>Make the CLI's output predictable and useful — for humans, for CI logs, and for agents reading transcripts.</p>
+<h2>Streams</h2>
+<ul><li><strong>stdout</strong> — primary output: build summaries, ready-banners, deploy URLs. Machine-parseable when <code>--json</code> is added later.</li><li><strong>stderr</strong> — diagnostics: warnings, errors, the trailing stack trace on <code>--verbose</code>.</li></ul>
+<h2>Verbosity</h2>
+<ul><li>Default: one ready/summary line plus per-request logs (dev) or per-step ticks (build/deploy).</li><li><code>--verbose</code>: include resolved config, file lists, full stack traces.</li><li><code>--silent</code> (future): suppress everything except errors.</li></ul>
+<h2>Colors</h2>
+<ul><li>ANSI color when <code>stdout</code> is a TTY and <code>NO_COLOR</code> is unset.</li><li>Conventions:<ul><li>Green ✓ for success ticks.</li><li>Yellow ⚠ for warnings.</li><li>Red ✗ for errors.</li><li>Dim for timing / metadata.</li></ul></li></ul>
+<h2>Error format</h2>
+<pre><code>✗ Build failed
+  File: app/routes/index.tsx:14:8
+  Reason: Cannot find name 'usState'. Did you mean 'useState'?
+  → Tip: import { useState } from "react"
+</code></pre>
+<p>Three required parts: what failed, where, and a tip when possible. Stacks belong behind <code>--verbose</code>.</p>
+<h2>Exit codes</h2>
+<div class="table-wrap"><table><thead><tr><th>Code</th><th>Meaning</th></tr></thead><tbody><tr><td>0</td><td>Success</td></tr><tr><td>1</td><td>Build / runtime error (user-facing)</td></tr><tr><td>2</td><td>CLI usage error (unknown command, bad flag, missing config when explicitly requested)</td></tr><tr><td>130</td><td>Interrupted (SIGINT)</td></tr></tbody></table></div>
+<h2>Telemetry</h2>
+<ul><li>None in the draft. Any future telemetry requires an RFC and an opt-in flag — never opt-out.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>A user typo in a route file produces a single block matching the error format above.</li><li>Piping <code>patties build</code> into a non-TTY removes color codes from output.</li><li><code>patties dev</code> interrupted with Ctrl-C exits with code 130.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation · Patties</title>
+<meta name="description" content="User documentation for Patties: scaffold an app, write filesystem routes, render React 19 with islands, compose middleware, build and deploy with the CLI.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta">
+<span class="badge badge-status status-review">User guide</span>
+</div>
+<h1>Documentation</h1>
+<p class="lede">Everything you need to build with Patties — scaffold an app, write filesystem routes on <code>Bun.serve</code>, render React 19 with on-demand islands, compose middleware over web-standard <code>Request</code>/<code>Response</code>, and build and deploy with the CLI. New here? Start with the <a href="overview.html">Overview</a>.</p>
+</header>
+
+<section>
+<h2>The mental model</h2>
+<p>A Patties app is mostly a <strong>folder convention plus a small runtime</strong>. You write route modules and islands; the framework discovers them at build time, inlines them into the production bundle, and serves them with <code>Bun.serve</code>. There is no separate bundler, file watcher, or glob library to wire up — Bun ships those, and Patties uses them directly.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>You write…</th><th>In…</th><th>Bun primitive behind it</th></tr></thead>
+<tbody>
+<tr><td>Route modules</td><td><code>app/routes/</code></td><td><code>Bun.Glob</code> discovery → <code>Bun.serve</code> routes</td></tr>
+<tr><td>Interactive islands</td><td><code>app/islands/</code></td><td><code>Bun.build</code> client entries</td></tr>
+<tr><td>Middleware</td><td><code>app/middleware.ts</code></td><td><code>compose()</code> over <code>Request</code></td></tr>
+<tr><td>Config</td><td><code>patties.config.ts</code></td><td>typed config + adapters</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout tip">
+<p class="callout-title">The one thing to remember</p>
+<p>Expensive thinking happens at <strong>build time</strong>. Route and island discovery runs once during <code>patties build</code> and is inlined into the bundle — the production server never re-scans the filesystem. Dev mode is the exception: it may re-scan on change to drive HMR.</p>
+</div>
+</section>
+
+<section>
+<h2>Browse the docs</h2>
+<div class="doc-card-grid">
+<a class="doc-card" href="overview.html">
+<div class="ic">⚡</div><h3>Overview</h3>
+<p>What Patties is, the problems it solves, and the core mental model. Read this first.</p>
+</a>
+<a class="doc-card" href="app-structure.html">
+<div class="ic">🗂️</div><h3>App structure</h3>
+<p>The folder convention: routes, islands, middleware, config, and where everything lives.</p>
+</a>
+<a class="doc-card" href="scaffolding.html">
+<div class="ic">🚀</div><h3>Project scaffolding</h3>
+<p><code>create-patties</code>: the prompt flow, project types, Patties UI, monorepo, and deploy targets.</p>
+</a>
+<a class="doc-card" href="framework-overview.html">
+<div class="ic">📦</div><h3>Framework</h3>
+<p>The runtime in depth: routing, server, rendering &amp; islands, middleware &amp; context, config.</p>
+</a>
+<a class="doc-card" href="routing.html">
+<div class="ic">🧭</div><h3>Routing</h3>
+<p>Filesystem routes compiled to Bun route patterns — dynamic segments, methods, nesting.</p>
+</a>
+<a class="doc-card" href="rendering-islands.html">
+<div class="ic">🏝️</div><h3>Rendering &amp; islands</h3>
+<p>React 19 streaming SSR with <code>renderToReadableStream</code> and opt-in client islands.</p>
+</a>
+<a class="doc-card" href="build-pipeline.html">
+<div class="ic">🏗️</div><h3>Build pipeline</h3>
+<p>How discovery, client/server entry generation, and the manifest come together at build.</p>
+</a>
+<a class="doc-card" href="adapters-targets.html">
+<div class="ic">🚢</div><h3>Adapters &amp; targets</h3>
+<p>Ship to <code>bun</code> or <code>edge</code> behind adapters — platform specifics out of the core.</p>
+</a>
+<a class="doc-card" href="ai-agents.html">
+<div class="ic">🤖</div><h3>AI &amp; agents</h3>
+<p>Optional primitives for agents, tools, and jobs — and how they stay out of non-AI apps.</p>
+</a>
+<a class="doc-card" href="cli-overview.html">
+<div class="ic">⌨️</div><h3>CLI</h3>
+<p>The <code>patties</code> command: <code>dev</code>, <code>build</code>, <code>deploy</code>, and <code>secret</code> management.</p>
+</a>
+</div>
+</section>
+
+<section>
+<h2>Looking for design intent?</h2>
+<p>This section is the <em>user</em> documentation. If you want to understand <em>why</em> the framework is shaped the way it is — the modular-monolith convention, the public-API boundary, why there is no DI container — the design specifications are indexed with their status on the <a href="../release/index.html">Release</a> page, and the specs themselves live under <a href="../specs/index.html">Specs</a>. To see what shipped in each version, see the <a href="../changelog/index.html">Changelog</a>.</p>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

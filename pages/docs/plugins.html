@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plugins · Patties</title>
+<meta name="description" content="Runtime extension points and deploy plugins.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>Plugins</h1>
+<p class="lede">Patties includes a plugin system for build, dev, routing, middleware, jobs, and deployment.</p>
+</header>
+<section>
+<h2>Base plugin contract</h2>
+<p>A plugin has:</p>
+<ul>
+<li><code>name</code></li>
+<li>optional <code>compat</code></li>
+<li>optional <code>setup(server, ctx)</code></li>
+<li>optional <code>hooks</code></li>
+</ul>
+<p>Use <code>definePlugin()</code> to author plugins and let Patties validate that the plugin has a name.</p>
+</section>
+<section>
+<h2>Setup capabilities</h2>
+<p><code>setup()</code> receives a <code>PluginServer</code> that can:</p>
+<ul>
+<li>register routes with <code>route(pattern, methods)</code></li>
+<li>add middleware with <code>use(middleware)</code></li>
+</ul>
+</section>
+<section>
+<h2>Hooks</h2>
+<p>Supported hooks:</p>
+<ul>
+<li><code>onBuildStart</code></li>
+<li><code>onBuildEnd</code></li>
+<li><code>onDevStart</code></li>
+<li><code>onAgentsMdGenerate</code></li>
+<li><code>onJobsCollect</code></li>
+</ul>
+</section>
+<section>
+<h2>Compatibility</h2>
+<p>If a plugin provides a <code>compat</code> semver range, Patties checks it against the framework version using <code>Bun.semver.satisfies()</code> when available.</p>
+</section>
+<section>
+<h2>Deploy plugins</h2>
+<p>Deploy plugins extend the base plugin shape with:</p>
+<ul>
+<li><code>deployTarget</code></li>
+<li><code>deploy(artifacts, ctx)</code></li>
+</ul>
+<p>The <code>patties deploy</code> command selects from installed deploy plugins whose target matches the active build target.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

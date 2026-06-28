@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.markdown — built-in MD parser for content pages · Patties specs</title>
+<meta name="description" content="Accept. Content pages (blog, docs, marketing) are a recurring">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-markdown.md</span></div>
+<h1>Bun.markdown — built-in MD parser for content pages</h1>
+<p class="lede">Accept. Content pages (blog, docs, marketing) are a recurring</p>
+</header>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Accept.</strong> Content pages (blog, docs, marketing) are a recurring template request and patties has no story for them today. The Node-ecosystem solution stack — <code>@next/mdx</code>, <code>remark</code>, <code>rehype</code>, <code>unified</code>, plus ~12 plugin deps — is heavy enough that frameworks ship MDX as an opt-in package. Bun ships CommonMark + GFM in core (<code>Bun.markdown</code>); the islands-in-markdown layer on top is a hundred-line transformer.</p>
+<p>The chosen scope is the <strong>maximally-ambitious option</strong> from the 2026-05-27 acceptance prompt — MDX with JSX-in-markdown — but deliberately <strong>constrained</strong> to a v1 dialect that admits one JSX shape: <code>&lt;IslandName client:directive [literal-props] /&gt;</code>. Arbitrary JSX, JS expressions, imports, and inline component definitions are explicit non-goals for v1.</p>
+<p>Scope pins:</p>
+<ul><li><strong><code>.md</code> and <code>.mdx</code> routes</strong> picked up by the filesystem router.</li><li><strong>YAML frontmatter</strong> parsed by <code>Bun.YAML</code> (internal use; distinct from the deferred [[rfc-bun-config-formats]] which concerns user configs).</li><li><strong>CommonMark + GFM</strong> via <code>Bun.markdown</code> for body rendering.</li><li><strong>Constrained MDX dialect</strong> — only the island pattern is recognized as JSX.</li><li><strong>Layout components</strong> (<code>app/_markdown-layout.tsx</code> global, per-directory overrides).</li><li><strong>Optional Zod schema</strong> at <code>app/_markdown-schema.ts</code> for typed frontmatter (opt-in peer dep, same pattern as <code>@anthropic-ai/sdk</code>).</li><li><strong>HMR</strong> via the existing route-watcher extended to <code>.md/.mdx</code>.</li></ul>
+<p>Out of scope for this RFC:</p>
+<ul><li><strong><code>@mdx-js/mdx</code> integration</strong> — pulling MDX as a dep defeats the no-dep premise. Revisit if the constrained dialect proves too limiting.</li><li><strong>Content collections (Astro-style)</strong> — typed collection queries with cross-route indexing. Separate, larger RFC.</li><li><strong>Bun.markdown plugin API</strong> — v1 uses default CommonMark + GFM only.</li></ul>
+<hr>
+<h2>Summary</h2>
+<p><code>Bun.markdown(input)</code> parses CommonMark + GFM in-process and returns HTML or AST. Combined with a filesystem-router extension, a <code>.mdx</code> JSX-extraction pass, and a layout component contract, it gives patties users a content-pages story with zero markdown deps.</p>
+<h2>Motivation</h2>
+<p>Every meta-framework eventually grows a content story. Next has <code>@next/mdx</code>, Astro has content collections, Remix has MDX recipes, SvelteKit has <code>mdsvex</code>. Patties has nothing. The barrier is the weight of the standard solution: remark/rehype/unified is a 12-package stack that exists because Node has no markdown parser in core.</p>
+<p>Bun does. The patties value is the same content-pages capability without the ecosystem tax.</p>
+<h2>Proposal</h2>
+<p>See [[framework/draft/23-markdown-pages|spec 23]] for the full shape. Summary:</p>
+<ul><li><strong>Route discovery</strong> — <code>app/routes/**/*.{md,mdx}</code> mounts as routes.</li><li><strong>Frontmatter</strong> — YAML block at top, parsed via <code>Bun.YAML</code>. Required field: <code>title</code>.</li><li><strong>Body rendering</strong> — <code>Bun.markdown(body, { gfm: true })</code> → HTML string.</li><li><strong>MDX dialect (<code>.mdx</code>)</strong> — pre-pass scans for <code>&lt;IslandName client:directive [literal-props] /&gt;</code> patterns, replaces with HTML comment tokens, renders markdown, then generates a synthetic <code>.tsx</code> route that interleaves HTML fragments with island JSX.</li><li><strong>Layouts</strong> — <code>app/_markdown-layout.tsx</code> (global), with per-directory overrides.</li><li><strong>Schema (optional)</strong> — <code>app/_markdown-schema.ts</code> exports a Zod schema that's enforced at build time.</li></ul>
+<h2>Trade-offs</h2>
+<ul><li><strong>Constrained MDX is not real MDX.</strong> Users who expect to write <code>{frontmatter.title}</code> in body or use arbitrary React components will hit the wall. Mitigation: clear build error pointing at the unsupported syntax + a path forward (use the layout for dynamic values).</li><li><strong>Build-time bias.</strong> Markdown rendering is build-time; runtime changes to a <code>.md</code> file require dev-mode HMR. No "render markdown at request time" mode in v1.</li><li><strong>Optional Zod dep.</strong> Same pattern as the AI SDK — Zod is opt-in peer dep; users without it lose typed frontmatter but the feature still works.</li><li><strong><code>Bun.YAML</code> internal use</strong> while [[rfc-bun-config-formats]] is deferred. These are decoupled uses: frontmatter is an internal framework concern; user config files (the deferred RFC's domain) are user-facing. Using Bun.YAML in one doesn't commit to user-facing YAML config.</li></ul>
+<h2>Open questions</h2>
+<ul><li><strong>Per-directory layouts vs single global</strong> — v1 walks the directory tree for <code>_markdown-layout.tsx</code>; matches what users expect from <code>_layout.tsx</code> patterns in other frameworks.</li><li><strong>Code fences and syntax highlighting</strong> — v1 emits <code>&lt;pre&gt;&lt;code&gt;</code> without highlighting. A follow-up RFC may integrate Shiki/Prism via a Bun build plugin.</li><li><strong>Image embedding</strong> (<code>![](photo.jpg)</code>) — flows through the existing static-asset pipeline; if spec 22 is also loaded, the user gets srcset variants automatically.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

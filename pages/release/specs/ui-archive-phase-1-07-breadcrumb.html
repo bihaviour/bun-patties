@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Breadcrumb · Patties specs</title>
+<meta name="description" content="Hierarchical navigation trail. Mirrors shadcn Breadcrumb.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/07-breadcrumb.md</span></div>
+<h1>Breadcrumb</h1>
+<p class="lede">Hierarchical navigation trail. Mirrors shadcn Breadcrumb.</p>
+</header>
+<h2>Purpose</h2>
+<p>Hierarchical navigation trail. Mirrors shadcn <code>Breadcrumb</code>.</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. Anchor-tag based navigation; no client JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>lucide-react@^0.400</code> (ChevronRight, Ellipsis)</li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Breadcrumb(props: React.ComponentProps&lt;"nav"&gt;): JSX.Element
+export function BreadcrumbList(props: React.ComponentProps&lt;"ol"&gt;): JSX.Element
+export function BreadcrumbItem(props: React.ComponentProps&lt;"li"&gt;): JSX.Element
+export function BreadcrumbLink(props: React.ComponentProps&lt;"a"&gt; &amp; { asChild?: boolean }): JSX.Element
+export function BreadcrumbPage(props: React.ComponentProps&lt;"span"&gt;): JSX.Element
+export function BreadcrumbSeparator(props: React.ComponentProps&lt;"li"&gt;): JSX.Element
+export function BreadcrumbEllipsis(props: React.ComponentProps&lt;"span"&gt;): JSX.Element
+
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>The default root is <code>&lt;nav aria-label="breadcrumb"&gt;</code> — never an <code>&lt;ol&gt;</code>-only tree, for screen-reader clarity.</li><li><code>BreadcrumbLink</code> uses native <code>&lt;a&gt;</code>; integration with Patties router-link components is left to userland.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Renders <code>&lt;nav aria-label="breadcrumb"&gt;&lt;ol&gt;…&lt;/ol&gt;&lt;/nav&gt;</code> shape.</li><li>Current page renders as <code>&lt;span aria-current="page"&gt;</code>, not a link.</li><li>Bundle audit: zero JS.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

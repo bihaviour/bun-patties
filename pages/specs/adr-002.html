@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-002 — No DI container; wiring is plain ES imports · Patties</title>
+<meta name="description" content="Cross-module wiring is plain ES import statements; Bun's module system is the container.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">ADR</span> <span class="pill green">accepted</span></div>
+<h1>ADR-002 — No DI container; wiring is plain ES imports</h1>
+<p class="lede">Cross-module wiring is plain ES <code>import</code> statements; Bun's module system is the container.</p>
+</header>
+<section>
+<h2>Context</h2>
+<p>A DI container exists to invert construction and manage lifetimes. Bun's module system already constructs and caches module-level values exactly once, in dependency order.</p>
+</section>
+<section>
+<h2>Decision</h2>
+<p>Cross-module dependencies are plain <code>import</code> statements. A singleton service is a module-level value; a configurable one is a factory export. No tokens, no <code>@Injectable</code>, no resolver, no scopes.</p>
+</section>
+<section>
+<h2>Consequences</h2>
+<p>Nothing new to learn; "go to definition" works; types are honest. No build-time graph resolver to write or maintain. Cost: no automatic request-scoped instances and no container-level test overrides — you construct per-request state and inject fakes by hand (usually a feature, not a loss).</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="decisions.html">All decisions</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

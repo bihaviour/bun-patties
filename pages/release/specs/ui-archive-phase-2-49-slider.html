@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slider · Patties specs</title>
+<meta name="description" content="Range slider with one or more thumbs. Mirrors shadcn Slider. Built on @radix-ui/react-slider.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-2/49-slider.md</span></div>
+<h1>Slider</h1>
+<p class="lede">Range slider with one or more thumbs. Mirrors shadcn Slider. Built on @radix-ui/react-slider.</p>
+</header>
+<h2>Purpose</h2>
+<p>Range slider with one or more thumbs. Mirrors shadcn <code>Slider</code>. Built on <code>@radix-ui/react-slider</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Drag and keyboard interaction need client JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-slider@^1.2</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Slider(props: Radix.SliderProps &amp; { className?: string }): JSX.Element
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li>Renders a hidden <code>&lt;input type="range" name&gt;</code> per thumb when <code>name</code> is set, so native form submission works.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Arrow keys move the thumb by <code>step</code>.</li><li>Multi-thumb mode renders two thumbs and prevents crossing.</li><li><code>aria-valuemin</code>, <code>aria-valuemax</code>, <code>aria-valuenow</code> are correct.</li><li>RTL flips the axis direction.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

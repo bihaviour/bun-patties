@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision records · Patties</title>
+<meta name="description" content="The load-bearing architecture decisions behind a thin modular monolith on Bun, plus the open questions and cross-cutting risks the design must hold to.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Design spec</span></div>
+<h1>Decision records</h1>
+<p class="lede">The load-bearing decisions behind a <em>thin</em> modular monolith on Bun. Each row opens to its own page with the context, the call, and what it costs. The throughline: take the modular-monolith boundary, and add as little framework as possible on top of Bun's primitives.</p>
+</header>
+
+<section>
+<h2>Architecture decision records</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>ADR</th>
+<th>Decision</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>001</code></td>
+<td><a href="adr-001.html">A module is a folder, not a class</a><br>A module is just a directory under <code>app/</code> — no decorated class, no registration object.</td>
+<td><span class="pill green">accepted</span></td>
+</tr>
+<tr>
+<td><code>002</code></td>
+<td><a href="adr-002.html">No DI container; wiring is plain ES imports</a><br>Cross-module wiring is plain <code>import</code> statements; Bun's module system is the container.</td>
+<td><span class="pill green">accepted</span></td>
+</tr>
+<tr>
+<td><code>003</code></td>
+<td><a href="adr-003.html">Encapsulation = a public-API boundary check at build</a><br>A module may only be imported via its <code>index.ts</code>; deeper imports are build errors.</td>
+<td><span class="pill green">accepted</span></td>
+</tr>
+<tr>
+<td><code>004</code></td>
+<td><a href="adr-004.html">No decorators, no <code>reflect-metadata</code></a><br>Handlers are plain functions in a <code>routes</code> map — no decorator machinery.</td>
+<td><span class="pill green">accepted</span></td>
+</tr>
+<tr>
+<td><code>005</code></td>
+<td><a href="adr-005.html">No new request lifecycle; reuse <code>compose()</code></a><br>Module handlers run in the existing middleware chain; no new phases.</td>
+<td><span class="pill green">accepted</span></td>
+</tr>
+<tr>
+<td><code>006</code></td>
+<td><a href="adr-006.html">Validation, jobs, persistence stay libraries</a><br>Call Zod, an ORM, the job primitives directly — the framework doesn't wrap them.</td>
+<td><span class="pill green">accepted</span></td>
+</tr>
+<tr>
+<td><code>007</code></td>
+<td><a href="adr-007.html">Shared state has an explicit owner and a frozen mutation window</a><br>One owner, one mutation window, one freeze point per shared structure.</td>
+<td><span class="pill blue">draft</span></td>
+</tr>
+<tr>
+<td><code>008</code></td>
+<td><a href="adr-008.html">The module dependency graph must be a DAG</a><br>Inter-module cycles are a hard build failure, detected by <code>patties graph</code>.</td>
+<td><span class="pill blue">draft</span></td>
+</tr>
+<tr>
+<td><code>009</code></td>
+<td><a href="adr-009.html">What's out of scope, and what stays untouched</a><br>No DI, decorators, or scopes; the existing SSR/islands/UI surface is unaffected.</td>
+<td><span class="pill green">accepted</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section>
+<h2 id="open">Open questions</h2>
+<div class="feature-grid">
+<div class="feature"><h3>① Route prefixing</h3><p>Do module routes self-declare full paths (as shown), or does the build prefix them with the module name (<code>/billing/...</code>)? Self-declared is more flexible; auto-prefix is more enforced. Leaning self-declared, with collision detection at merge.</p></div>
+<div class="feature"><h3>② Module root convention</h3><p>Is the boundary rule scoped to <code>app/*</code>, or configurable for nested feature trees? How are path aliases (<code>@billing</code>) resolved by the check?</p></div>
+<div class="feature"><h3>③ Packaging the boundary check</h3><p>Is the check part of the build macro, a standalone <code>patties</code> CLI command, or also a Biome/lint rule for editor feedback? Likely the macro is the gate; a lint rule is a nice-to-have.</p></div>
+<div class="feature"><h3>④ Relationship to patties' file routes</h3><p>patties already has file-based routing for pages. Do module <code>routes.ts</code> maps coexist with that, or is this an alternate convention for API-first apps? (The "two front doors" question.)</p></div>
+</div>
+</section>
+
+<section>
+<h2>Cross-cutting risks</h2>
+<p>Recorded here, not on the roadmap — these are standing concerns the design must hold to, each tied to a decision above.</p>
+<div class="feature-grid">
+<div class="feature"><h3>Boundary check completeness</h3><p>Resolving relative paths, path aliases, and re-export barrels correctly so the check (<a href="adr-003.html">ADR-003</a>) neither false-positives nor is trivially dodged. Scoped and tested as part of Epic 1.</p></div>
+<div class="feature"><h3>Two front doors</h3><p>patties would offer both file-based page routing and module <code>routes.ts</code> maps. The docs must make "use this for API-first / service-heavy apps" obvious, not confusing — see open question <a href="#open">④</a>.</p></div>
+<div class="feature"><h3>Route prefixing call</h3><p>Self-declared full paths vs build-applied module prefixes — open question <a href="#open">①</a>. Decide before the macro API is committed.</p></div>
+<div class="feature"><h3>Staying thin</h3><p>Pressure to grow this into DI / scopes / decorators. The whole value is that it doesn't — keep it convention + one macro (<a href="adr-009.html">ADR-009</a>).</p></div>
+</div>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="../docs/index.html">User docs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+
+<script src="../assets/app.js"></script>
+</body>
+</html>

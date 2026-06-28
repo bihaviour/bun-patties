@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties build · Patties specs</title>
+<meta name="description" content="Produce a production artifact in outDir (default .patties/ → dist/ for the deploy adapter), tailored to the configured target.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/03-build-command.md</span></div>
+<h1>patties build</h1>
+<p class="lede">Produce a production artifact in outDir (default .patties/ → dist/ for the deploy adapter), tailored to the configured target.</p>
+</header>
+<h2>Purpose</h2>
+<p>Produce a production artifact in <code>outDir</code> (default <code>.patties/</code> → <code>dist/</code> for the deploy adapter), tailored to the configured target.</p>
+<h2>Usage</h2>
+<pre><code>patties build [--target bun|edge] [--out &lt;dir&gt;] [--cwd &lt;path&gt;] [--config &lt;path&gt;]
+</code></pre>
+<h2>Behavior</h2>
+<ol><li>Load config (<a href="cli-archive-06-config-loading.html">06</a>). <code>--target</code> overrides <code>config.target</code>. Allowed values: <code>bun</code>, <code>edge</code>. <code>cloudflare</code> / <code>vercel</code> / etc. are <strong>deploy plugin</strong> concerns, not build targets.</li><li>Invoke the framework <code>build()</code> (04) with <code>mode: "production"</code>.</li><li>Run the target's adapter <code>emit</code> step (12). For <code>edge</code>, this produces a portable <code>dist/worker.js</code>. Any installed deploy plugin's <code>onBuildEnd</code> hook then emits vendor-specific config (<code>wrangler.toml</code>, <code>vercel.json</code>, etc.).</li><li>Generate <code>AGENTS.md</code> (11) at the project root.</li><li>Print a build summary:<ul><li>Time taken.</li><li>Output dir.</li><li>Bundle sizes per chunk (gzipped, computed via <code>Bun.gzipSync</code>).</li><li>Number of routes, islands, agents, tools, jobs.</li><li>List of deploy-plugin artifacts emitted (if any).</li></ul></li><li>Exit 0 on success, 1 on any build error.</li></ol>
+<h2>Determinism</h2>
+<ul><li>Same source tree → identical core outputs. Vendor-specific config files emitted by deploy plugins may include timestamps (<code>compatibility_date</code> etc.); the core <code>dist/worker.js</code> is byte-identical across re-runs.</li><li><code>AGENTS.md</code> must be byte-identical across re-runs with no source change.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties build --target edge</code> produces <code>dist/worker.js</code>, <code>dist/assets/</code>, and <code>AGENTS.md</code>.</li><li>With <code>@patties/deploy-cloudflare</code> installed, the same command also produces <code>dist/wrangler.toml</code>.</li><li>A failed user route compile yields a non-zero exit and a diagnostic naming the file and line.</li><li>The summary always prints, even on partial failure (best-effort).</li><li><code>patties build --target node</code> is rejected at config-validation time (Node is not a target).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

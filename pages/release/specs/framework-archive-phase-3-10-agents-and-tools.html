@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agents &amp; Tools (AI-Native Layer) · Patties specs</title>
+<meta name="description" content="This is the layer that separates Patties from HonoX. Agents and tools are first-class filesystem entries — not configuration, not plugins. The framework wire…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-3/10-agents-and-tools.md</span></div>
+<h1>Agents &amp; Tools (AI-Native Layer)</h1>
+<p class="lede">This is the layer that separates Patties from HonoX. Agents and tools are first-class filesystem entries — not configuration, not plugins. The framework wire…</p>
+</header>
+<h2>Purpose</h2>
+<p>This is the layer that separates Patties from HonoX. Agents and tools are first-class filesystem entries — not configuration, not plugins. The framework wires the Anthropic SDK, exposes <code>streamText</code> and <code>streamObject</code>, and propagates request context to every agent call.</p>
+<h2>User contracts</h2>
+<h3>Agent</h3>
+<pre data-lang="ts"><code>// app/agents/booking.ts
+import { defineAgent } from "patties/ai"
+
+export default defineAgent({
+  name: "booking",
+  model: "claude-sonnet-4-6",
+  tools: ["search", "availability"],     // tool names from app/tools/
+  systemPrompt: "...",
+  triggers: ["POST /api/booking/chat"]   // optional auto-wiring
+})
+</code></pre>
+<h3>Tool</h3>
+<pre data-lang="ts"><code>// app/tools/search.ts
+import { defineTool } from "patties/ai"
+import { z } from "zod"
+
+export default defineTool({
+  name: "search",
+  description: "Search hotel inventory by city and dates.",
+  input: z.object({ city: z.string(), from: z.string(), to: z.string() }),
+  async handler(input, ctx) {
+    return { results: [] }
+  }
+})
+</code></pre>
+<h2>Framework exports</h2>
+<ul><li><code>streamText(opts)</code> — wraps Anthropic Messages streaming with sensible Patties defaults (prompt caching enabled, retry policy).</li><li><code>streamObject(opts)</code> — structured output streaming with a Zod schema.</li><li><code>getAgent(name)</code> — programmatic invocation in any route handler or background script.</li><li><code>getTool(name)</code> — same, for tools.</li><li><code>createAiContext(opts)</code> — build an <code>AiContext</code> for callers outside a request (CLI scripts, cron jobs, queue handlers, scheduled tasks, tests).</li></ul>
+<h2>AI context</h2>
+<p>Every agent and tool execution receives an <code>AiContext</code>:</p>
+<pre data-lang="ts"><code>interface AiContext {
+  requestId: string
+  user?: unknown               // populated by an auth plugin if present
+  anthropic: Anthropic         // per-context client, prompt-caching keys scoped here
+  signal?: AbortSignal
+  // free-form bag plugins may attach to:
+  vars: Record&lt;string, unknown&gt;
+}
+</code></pre>
+<h3>Inside a request</h3>
+<p>A framework middleware (registered by <code>createRouter</code> when any agent or tool exists) populates <code>ctx.aiContext</code> once per request. Route handlers do not need to pass it explicitly:</p>
+<pre data-lang="ts"><code>// app/routes/api/booking/chat.ts
+export async function POST(req: Request, ctx: PattiesContext) {
+  const result = await getAgent("booking").run({ message: "..." }, ctx.aiContext!)
+  return new Response(result.stream, { headers: { "Content-Type": "text/event-stream" } })
+}
+</code></pre>
+<h3>Outside a request (programmatic)</h3>
+<p><code>getAgent(name).run(input, ctx)</code> requires an explicit <code>AiContext</code>. Construct one with <code>createAiContext</code>:</p>
+<pre data-lang="ts"><code>import { createAiContext, getAgent } from "patties/ai"
+
+const ctx = createAiContext({ requestId: crypto.randomUUID() })
+await getAgent("booking").run({ message: "from a cron" }, ctx)
+</code></pre>
+<p>This keeps context flow visible and testable — no module-level globals, no <code>AsyncLocalStorage</code> traps. Tool handlers always receive the same <code>ctx</code> as their second argument.</p>
+<h2>Scheduled jobs (<code>app/jobs/</code>)</h2>
+<p>Recurring work has a first-class home parallel to <code>app/agents/</code> and <code>app/tools/</code>:</p>
+<pre data-lang="ts"><code>// app/jobs/refresh-inventory.ts
+import { defineJob } from "patties/ai"
+
+export default defineJob({
+  name: "refresh-inventory",
+  schedule: "*/15 * * * *",        // standard cron expression
+  tz: "Asia/Makassar",             // explicit TZ required — no implicit process TZ
+  async handler(ctx) {
+    // ctx is AiContext, built per fire via createAiContext()
+  },
+})
+</code></pre>
+<p>Behavior:</p>
+<ul><li>On boot, the framework scans <code>app/jobs/**/*.ts</code> via <code>Bun.Glob</code> and registers each handler with <code>Bun.cron(schedule, handler)</code> on the <code>bun</code> target.</li><li>Each fire constructs a fresh <code>AiContext</code> via <code>createAiContext()</code> — no request to thread through, no <code>c.var</code>.</li><li>On the <code>edge</code> target, the framework does not register cron handlers itself. The job inventory is exposed to deploy plugins via the <code>onJobsCollect</code> hook (<a href="framework-archive-phase-4-09-plugins.html">09-plugins</a>); each deploy plugin emits vendor-native cron triggers (<code>wrangler.toml [triggers]</code>, <code>vercel.json crons</code>, etc.).</li><li><strong>Multi-instance fires</strong>: Phase 2 ships without a singleton mechanism — multi-replica deploys fire each job N times. The <code>singleton: true + Redis</code> mechanism is a follow-up RFC once <code>@patties/cache</code> lands. Document this in dev logs at boot if <code>server.reusePort</code> is true.</li></ul>
+<p>See [[rfc-bun-cron]].</p>
+<h2>Triggers and route conflicts</h2>
+<p><code>triggers: ["POST /api/booking/chat"]</code> is <strong>opt-in auto-wiring</strong>. When present, the framework registers a default handler at that method/path that streams the agent's response.</p>
+<p>If a filesystem route file (e.g. <code>app/routes/api/booking/chat.ts</code> exporting <code>POST</code>) claims the same method+path:</p>
+<ul><li>The filesystem route <strong>always wins</strong>. The framework does not register the trigger handler.</li><li>A warning is logged at boot naming both the agent and the conflicting route file. The warning lists the path once per conflicting method.</li><li>This is intentional: hand-written code is the source of truth; declarative triggers are convenience scaffolding the user can override at any time.</li></ul>
+<h2>Name enforcement</h2>
+<p>Agent and tool <code>name</code> fields must match their filename basename (kebab-case, see <a href="framework-archive-13-conventions.html">13-conventions</a>):</p>
+<ul><li><code>app/agents/booking.ts</code> must export <code>defineAgent({ name: "booking", ... })</code>.</li><li>A mismatch (<code>name: "bookings"</code> in <code>booking.ts</code>) throws at boot with both names cited.</li><li>Boot collects all mismatches before throwing, so the developer sees every problem in one error.</li><li>Two agents (or two tools) declaring the same <code>name</code> is also a boot error — both file paths are named in the message.</li></ul>
+<h2>Anthropic SDK wiring</h2>
+<ul><li>The framework ships <code>@anthropic-ai/sdk</code> as a peer dependency.</li><li>API key is read from <code>ANTHROPIC_API_KEY</code> env; failure to find one when an agent runs throws a typed error.</li><li>Prompt caching is on by default for system prompts and tool definitions.</li></ul>
+<h2>Non-goals</h2>
+<ul><li>Multi-provider abstractions (Anthropic only — by design).</li><li>A queue/worker layer. If you need queues, use whatever your host provides (Cloudflare Queues, AWS SQS, Upstash QStash, etc.) via a capability plugin — the framework stays neutral.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>An agent with one tool can be invoked from an API route and streams a response.</li><li>Tool input validation failures return a <code>400</code> with the Zod issue list.</li><li>Removing <code>ANTHROPIC_API_KEY</code> and invoking an agent throws <code>MissingAnthropicKey</code> with remediation text.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

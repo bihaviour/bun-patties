@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Releases &amp; Roadmap · Patties</title>
+<meta name="description" content="What shipped in Patties and what's coming next — live npm + GitHub release data, the delivery roadmap, and the status of every design specification.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<script>window.SITE_BASE="../";window.SITE_SECTION="release";</script>
+<style>
+  .rel-status { font-size:.78rem; color:var(--text-muted); margin:2px 0 var(--s4); }
+  .rel-status.err { color:var(--warn); }
+  .verlist { display:flex; flex-wrap:wrap; gap:6px; }
+  .vertag { font-size:.72rem; font-weight:600; padding:3px 9px; border-radius:999px; background:var(--bg-soft); border:1px solid var(--border); color:var(--text-soft); }
+  .vertag .vk { color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em; font-size:.62rem; margin-right:5px; }
+  table.rel .relname { font-weight:650; color:var(--heading); }
+  table.rel .reldate { font-size:.8rem; color:var(--text-muted); white-space:nowrap; }
+  table.rel .relbody { display:block; font-size:.78rem; color:var(--text-muted); font-weight:400; margin-top:3px; max-width:60ch; }
+</style>
+</head>
+<body>
+
+<div class="hero-wrap">
+  <div class="hero">
+    <span class="eyebrow"><span class="dot"></span>Pre-1.0 · published on npm</span>
+    <h1>Releases &amp; roadmap</h1>
+    <p class="sub">Patties ships as three npm packages — <code>patties</code>, <code>create-patties</code>, and <code>patties-ui</code>. This page shows what's actually published (fetched live from npm and GitHub), what's being built next, and the status of every design specification. For the human-readable version history, see the <a href="../changelog/index.html">Changelog</a>.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="../changelog/index.html">Changelog →</a>
+      <a class="btn btn-ghost" href="https://github.com/bihaviour/bun-patties-framework/releases" target="_blank" rel="noopener">GitHub releases</a>
+      <a class="btn btn-ghost" href="../specs/roadmap.html">Delivery tracker</a>
+    </div>
+  </div>
+</div>
+
+<main class="site-main">
+
+  <section>
+    <div class="callout warning">
+      <p class="callout-title">Pre-1.0 — active development</p>
+      <p>Patties is under active development (currently <code>0.x</code>). The framework API, CLI flags, config shape, and the UI catalog may change between releases — <strong>backward compatibility is not guaranteed until <code>1.0.0</code></strong>. Pin an exact version and review the release notes before upgrading.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="kicker">Status</span>
+      <h2>Where the project stands</h2>
+      <p>The framework runtime, scaffolder, and UI catalog are published and usable today. The modular-monolith convention is a design exploration in the specs, sequenced behind a pluggable-validation foundation.</p>
+    </div>
+    <div class="stat-strip">
+      <div class="stat"><div class="v">3</div><div class="l">published npm packages</div></div>
+      <div class="stat"><div class="v">60</div><div class="l">copy-in UI components</div></div>
+      <div class="stat"><div class="v">bun · edge</div><div class="l">deploy targets</div></div>
+      <div class="stat"><div class="v">0.x</div><div class="l">pre-1.0, additive</div></div>
+    </div>
+  </section>
+
+  <!-- ============ LIVE: NPM PACKAGES ============ -->
+  <section id="packages">
+    <div class="sec-head">
+      <span class="kicker">Live</span>
+      <h2>Published packages</h2>
+      <p>Fetched in your browser straight from <a href="https://registry.npmjs.org" rel="noreferrer noopener" target="_blank">registry.npmjs.org</a>. A green Release run is not enough — presence here is confirmed against the live registry.</p>
+    </div>
+    <p class="rel-status" id="npm-status">Fetching dist-tags from registry.npmjs.org…</p>
+    <div class="table-wrap">
+      <table class="rel" id="npm-table">
+        <thead><tr><th>Package</th><th>Latest</th><th>Dist-tags</th><th>Last published</th></tr></thead>
+        <tbody id="npm-body"><tr><td colspan="4">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ LIVE: GITHUB RELEASES ============ -->
+  <section id="github">
+    <div class="sec-head">
+      <span class="kicker">Live</span>
+      <h2>GitHub releases</h2>
+      <p>Fetched from the <a href="https://github.com/bihaviour/bun-patties-framework/releases" rel="noreferrer noopener" target="_blank">GitHub Releases</a> API. The <a href="../changelog/index.html">Changelog</a> mirrors these notes.</p>
+    </div>
+    <p class="rel-status" id="gh-status">Fetching releases from api.github.com…</p>
+    <div class="table-wrap">
+      <table class="rel" id="gh-table">
+        <thead><tr><th>Release</th><th>Tag</th><th>Published</th></tr></thead>
+        <tbody id="gh-body"><tr><td colspan="3">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ SHIPPED CAPABILITIES ============ -->
+  <section>
+    <h2 style="border-bottom:1px solid var(--border);padding-bottom:var(--s2);">Shipped capabilities</h2>
+    <div class="timeline">
+      <div class="tl-item done">
+        <h3>Bun-native runtime <span class="chip shipped">✓ Shipped</span></h3>
+        <p><span class="ver">Bun.serve · Bun.Glob · Bun.build · bun --hot</span></p>
+        <p>HTTP on <code>Bun.serve</code>, discovery on <code>Bun.Glob</code>, bundling on <code>Bun.build</code>, hot-reload on <code>bun --hot</code> — no Webpack, chokidar, or <code>node:http</code> wrapper. <a href="../docs/framework-overview.html">Framework overview →</a></p>
+      </div>
+      <div class="tl-item done">
+        <h3>Filesystem routing + React 19 SSR <span class="chip shipped">✓ Shipped</span></h3>
+        <p><span class="ver">app/routes/ → Bun route patterns · renderToReadableStream · islands</span></p>
+        <p>Routes compiled from the filesystem, React 19 streaming SSR, and opt-in client islands with on-demand hydration. <a href="../docs/routing.html">Routing →</a> · <a href="../docs/rendering-islands.html">Rendering &amp; islands →</a></p>
+      </div>
+      <div class="tl-item done">
+        <h3>Build-time discovery <span class="chip shipped">✓ Shipped</span></h3>
+        <p><span class="ver">discover once at build, inline into the bundle, serve frozen</span></p>
+        <p>Route + island discovery runs during <code>build</code> and is inlined; the production server never re-scans the disk. Integration tests gate it. <a href="../docs/build-pipeline.html">Build pipeline →</a></p>
+      </div>
+      <div class="tl-item done">
+        <h3>CLI + adapters <span class="chip shipped">✓ Shipped</span></h3>
+        <p><span class="ver">patties dev / build / deploy / secret · bun + edge adapters</span></p>
+        <p>The full CLI plus deploy adapters for <code>bun</code> and <code>edge</code>, keeping platform specifics out of the core. <a href="../docs/cli-overview.html">CLI →</a> · <a href="../docs/adapters-targets.html">Adapters &amp; targets →</a></p>
+      </div>
+      <div class="tl-item done">
+        <h3>create-patties scaffolder <span class="chip shipped">✓ Shipped</span></h3>
+        <p><span class="ver">project type · Patties UI · monorepo · deploy target · coding-agent overlays</span></p>
+        <p>A guided prompt flow that stamps a working app, optionally with Patties UI starter components and a container target, plus Claude/Codex skill overlays. <a href="../docs/scaffolding.html">Project scaffolding →</a></p>
+      </div>
+      <div class="tl-item done">
+        <h3>Patties UI catalog <span class="chip shipped">✓ Shipped</span></h3>
+        <p><span class="ver">60 shadcn-compatible, copy-in components · patties add</span></p>
+        <p>All 60 components ship; <code>patties add &lt;component&gt;</code> stamps source into <code>app/components/ui/</code> — never a versioned dependency. React 19 style, Tailwind v4 + CSS variables.</p>
+      </div>
+      <div class="tl-item done">
+        <h3>Optional AI + plugins + AGENTS.md <span class="chip shipped">✓ Shipped</span></h3>
+        <p><span class="ver">agents/tools/jobs · plugin hooks · CLAUDE.md / AGENTS.md generation</span></p>
+        <p>Optional AI primitives (lazy <code>@anthropic-ai/sdk</code>), plugin hooks for build/dev/jobs, and a regenerated app inventory for coding agents. <a href="../docs/ai-agents.html">AI &amp; agents →</a> · <a href="../docs/plugins.html">Plugins →</a> · <a href="../docs/agents-md.html">AGENTS.md →</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ROADMAP ============ -->
+  <section>
+    <h2 style="border-bottom:1px solid var(--border);padding-bottom:var(--s2);">Roadmap</h2>
+    <p>The next body of work is the <strong>modular-monolith design exploration</strong>: a thin convention where modules talk only through a published public <code>index.ts</code>, enforced by one build-time boundary check. It is sequenced behind a pluggable-validation foundation. Everything below is <span class="chip planned">Draft</span> today — specs written, no implementation issue opened yet.</p>
+    <div class="timeline">
+      <div class="tl-item next">
+        <h3>Pluggable validation <span class="chip planned">Spec 29 · Foundation</span></h3>
+        <p><span class="ver">widen the AI-tool API from Zod to Standard Schema</span></p>
+        <p>Lands first. Retypes <code>ToolConfig.input</code> to <code>StandardSchemaV1</code> so module templates ship validator-agnostic tools (Zod, Valibot, ArkType) written once instead of migrated later. <a href="../specs/spec-29-pluggable-validation.html">Spec 29 →</a></p>
+      </div>
+      <div class="tl-item next">
+        <h3>Modular-monolith convention <span class="chip planned">Spec 28 · Planned</span></h3>
+        <p><span class="ver">modulesDirs · per-module routes/islands/agents-md · public-API boundary</span></p>
+        <p>Adds an optional <code>modulesDirs</code> so the router scans module subdirectories, the island scanner emits module-prefixed keys, and the manifest groups by module — flat layout unchanged when absent. <a href="../specs/spec-28-modular-monolith.html">Spec 28 →</a></p>
+      </div>
+      <div class="tl-item next">
+        <h3>create-patties — modular by default <span class="chip planned">CLI Spec 21 · Planned</span></h3>
+        <p><span class="ver">drop --type · modular default template · module-first agent overlays</span></p>
+        <p>Rewrites the default template as a modular layout (<code>modules/home/</code> + <code>modules/api/</code>), pre-fills <code>modulesDirs</code>, and authors AI module tools against Standard Schema. <a href="../specs/spec-21-create-patties.html">CLI Spec 21 →</a></p>
+      </div>
+      <div class="tl-item next">
+        <h3>Delivery epics <span class="chip planned">E1–E3 · Planned</span></h3>
+        <ul class="reqs">
+          <li><span class="req-tag stage">E1</span><span>Convention &amp; boundary — module folder layout + build-time public-API import check. <a href="../specs/epic-01.html">Epic 01</a></span></li>
+          <li><span class="req-tag stage">E2</span><span>Route discovery macro — <code>Bun.Glob</code> merges each module's routes into one frozen <code>Bun.serve</code> table. <a href="../specs/epic-02.html">Epic 02</a></span></li>
+          <li><span class="req-tag stage">E3</span><span>Starter · docs · release — <code>--template modular</code> scaffold, docs, and a minor release verified on npm. <a href="../specs/epic-03.html">Epic 03</a></span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DESIGN SPECS & STATUS ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="kicker">Specifications</span>
+      <h2>Design specs &amp; status</h2>
+      <p>The design specifications are the source of truth for <em>why</em> the framework is shaped the way it is. <span class="chip shipped">● Live</span> describes shipped behaviour; <span class="chip planned">○ Draft</span> is a proposed convention not yet implemented.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Specification</th><th>Scope</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><a href="../specs/index.html">Overview &amp; index</a></td><td>The thesis: a modular monolith on Bun-native primitives</td><td><span class="chip planned">○ Draft</span></td></tr>
+          <tr><td><a href="../specs/guidelines.html">Using Patties</a></td><td>create-patties, the framework + CLI, Patties UI</td><td><span class="chip shipped">● Live</span></td></tr>
+          <tr><td><a href="../specs/architecture.html">Architecture</a></td><td>Layer model, build-time discovery, deploy artifact</td><td><span class="chip shipped">● Live</span></td></tr>
+          <tr><td><a href="../specs/features.html">Features</a></td><td>Modules &amp; boundary, data ownership, graph checker, UI</td><td><span class="chip planned">○ Draft</span></td></tr>
+          <tr><td><a href="../specs/ui-frontend-stack.html">Frontend &amp; UI stack</a></td><td>The full frontend/UI layer breakdown</td><td><span class="chip shipped">● Live</span></td></tr>
+          <tr><td><a href="../specs/decisions.html">Decision records</a></td><td>ADRs: folders-not-classes, no DI, the boundary check</td><td><span class="chip planned">○ Draft</span></td></tr>
+          <tr><td><a href="../specs/roadmap.html">Delivery tracker</a></td><td>Filterable epics / specs / tasks with status</td><td><span class="chip progress">◐ Tracking</span></td></tr>
+          <tr><td><a href="../specs/spec-29-pluggable-validation.html">Spec 29 — Pluggable validation</a></td><td>Standard Schema for AI tools (foundation)</td><td><span class="chip planned">○ Draft</span></td></tr>
+          <tr><td><a href="../specs/spec-28-modular-monolith.html">Spec 28 — Modular monolith</a></td><td>The <code>modulesDirs</code> convention</td><td><span class="chip planned">○ Draft</span></td></tr>
+          <tr><td><a href="../specs/spec-21-create-patties.html">Spec 21 — create-patties</a></td><td>Modular-by-default scaffolding</td><td><span class="chip planned">○ Draft</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout note">
+      <p class="callout-title">Browse the full specification archive</p>
+      <p>The table above is the curated set. The complete <code>agent_specs/</code> archive — every framework, CLI, and UI spec, plus all accepted, backlog, and deferred RFCs and the raw research notes — is browsable in full.</p>
+      <p><a class="btn btn-primary" href="specs/index.html">Browse all design specs →</a></p>
+    </div>
+  </section>
+
+  <section>
+    <div class="callout note">
+      <p class="callout-title">How releases ship</p>
+      <p>Versions are managed with <a href="https://github.com/changesets/changesets" target="_blank" rel="noopener">Changesets</a>. Each package (<code>patties</code>, <code>create-patties</code>, <code>patties-ui</code>) is versioned and published to npm independently; GitHub Releases mirror the notes. Pre-release work ships on the <code>next</code> dist-tag.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="inner">
+    <div>Patties — a Bun-native full-stack meta-framework. Licensed under MIT.</div>
+    <div class="foot-links">
+      <a href="../docs/index.html">Docs</a>
+      <a href="../release/index.html">Release</a>
+      <a href="../changelog/index.html">Changelog</a>
+      <a href="../specs/index.html">Specs</a>
+      <a href="https://github.com/bihaviour/bun-patties-framework" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const REPO = "bihaviour/bun-patties-framework";
+  const PACKAGES = ["patties", "create-patties", "patties-ui"];
+
+  const fmtDate = (iso) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  };
+  const esc = (s) =>
+    String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+  async function loadNpm() {
+    const body = document.getElementById("npm-body");
+    const status = document.getElementById("npm-status");
+    try {
+      const results = await Promise.all(
+        PACKAGES.map(async (name) => {
+          const res = await fetch(`https://registry.npmjs.org/${name}`, { headers: { Accept: "application/json" } });
+          if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
+          const doc = await res.json();
+          const tags = doc["dist-tags"] || {};
+          const latest = tags.latest;
+          const time = doc.time || {};
+          const published = latest ? time[latest] : time.modified;
+          return { name, tags, latest, published };
+        }),
+      );
+      body.innerHTML = results.map((p) => {
+        const tagPills = Object.entries(p.tags)
+          .map(([k, v]) => `<span class="vertag"><span class="vk">${esc(k)}</span>${esc(v)}</span>`)
+          .join("");
+        const npmUrl = `https://www.npmjs.com/package/${p.name}`;
+        return `<tr><td><a class="relname" href="${npmUrl}" rel="noreferrer noopener" target="_blank">${esc(p.name)}</a></td>`
+          + `<td>${p.latest ? `<span class="chip shipped">${esc(p.latest)}</span>` : '<span class="pill">no latest</span>'}</td>`
+          + `<td><div class="verlist">${tagPills || "—"}</div></td>`
+          + `<td class="reldate">${fmtDate(p.published)}</td></tr>`;
+      }).join("");
+      status.textContent = `Live from registry.npmjs.org · ${results.length} package(s).`;
+      status.classList.remove("err");
+    } catch (err) {
+      body.innerHTML = PACKAGES.map(
+        (name) => `<tr><td><a class="relname" href="https://www.npmjs.com/package/${name}" rel="noreferrer noopener" target="_blank">${name}</a></td><td colspan="3" class="reldate">open on npmjs.com</td></tr>`,
+      ).join("");
+      status.textContent = `Could not reach the npm registry (${err.message}). Links above go to npmjs.com.`;
+      status.classList.add("err");
+    }
+  }
+
+  async function loadGitHub() {
+    const body = document.getElementById("gh-body");
+    const status = document.getElementById("gh-status");
+    try {
+      const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=30`, { headers: { Accept: "application/vnd.github+json" } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const releases = await res.json();
+      if (!Array.isArray(releases) || releases.length === 0) {
+        body.innerHTML = '<tr><td colspan="3" class="reldate">No GitHub releases published yet.</td></tr>';
+        status.textContent = "Live from api.github.com · 0 releases.";
+        status.classList.remove("err");
+        return;
+      }
+      body.innerHTML = releases.map((r) => {
+        const title = r.name || r.tag_name || "(untitled)";
+        const firstLine = (r.body || "").split(/\r?\n/).find((l) => l.trim()) || "";
+        const tag = r.prerelease
+          ? `<span class="chip progress">${esc(r.tag_name)}</span>`
+          : `<span class="chip shipped">${esc(r.tag_name)}</span>`;
+        return `<tr><td><a class="relname" href="${esc(r.html_url)}" rel="noreferrer noopener" target="_blank">${esc(title)}</a>`
+          + (firstLine ? `<span class="relbody">${esc(firstLine)}</span>` : "")
+          + `</td><td>${tag}</td><td class="reldate">${fmtDate(r.published_at || r.created_at)}</td></tr>`;
+      }).join("");
+      status.textContent = `Live from api.github.com · ${releases.length} release(s).`;
+      status.classList.remove("err");
+    } catch (err) {
+      body.innerHTML = `<tr><td colspan="3" class="reldate">Could not load releases — <a href="https://github.com/${REPO}/releases" rel="noreferrer noopener" target="_blank">view on GitHub</a>.</td></tr>`;
+      status.textContent = `Could not reach the GitHub API (${err.message}).`;
+      status.classList.add("err");
+    }
+  }
+
+  loadNpm();
+  loadGitHub();
+})();
+</script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

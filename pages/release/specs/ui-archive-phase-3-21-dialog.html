@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dialog · Patties specs</title>
+<meta name="description" content="Modal dialog. Mirrors shadcn Dialog. Built on @radix-ui/react-dialog.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/21-dialog.md</span></div>
+<h1>Dialog</h1>
+<p class="lede">Modal dialog. Mirrors shadcn Dialog. Built on @radix-ui/react-dialog.</p>
+</header>
+<h2>Purpose</h2>
+<p>Modal dialog. Mirrors shadcn <code>Dialog</code>. Built on <code>@radix-ui/react-dialog</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Open state and portal mounting need client JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-dialog@^1.1</code></li><li><code>lucide-react@^0.400</code> (X close icon)</li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export const Dialog: typeof Radix.Root
+export const DialogTrigger: typeof Radix.Trigger
+export const DialogPortal: typeof Radix.Portal
+export const DialogClose: typeof Radix.Close
+export function DialogOverlay(props: Radix.DialogOverlayProps &amp; { className?: string }): JSX.Element
+export function DialogContent(props: Radix.DialogContentProps &amp; { className?: string }): JSX.Element
+export function DialogHeader(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function DialogFooter(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function DialogTitle(props: Radix.DialogTitleProps &amp; { className?: string }): JSX.Element
+export function DialogDescription(props: Radix.DialogDescriptionProps &amp; { className?: string }): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>The whole <code>Dialog</code> tree is one island root. Triggers outside the island cannot open the dialog.</li><li><code>DialogContent</code> always renders <code>DialogTitle</code> (visually hidden if not provided) to satisfy ARIA — Radix logs a warning otherwise.</li><li>Removes <code>forwardRef</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>SSR contains only the trigger; content is absent.</li><li><code>Esc</code>, overlay-click, and X-button all close the dialog (unlike AlertDialog).</li><li>Focus is trapped inside the content and restored to the trigger on close.</li><li>Background scroll is locked while open.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

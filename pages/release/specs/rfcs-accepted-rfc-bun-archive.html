@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.Archive — tar/zip packaging for deploy plugins · Patties specs</title>
+<meta name="description" content="Accept as a policy adoption — not a standalone spec feature.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-archive.md</span></div>
+<h1>Bun.Archive — tar/zip packaging for deploy plugins</h1>
+<p class="lede">Accept as a policy adoption — not a standalone spec feature.</p>
+</header>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Accept</strong> as a policy adoption — not a standalone spec feature. Deploy plugins (<code>@patties/deploy-aws-lambda</code>, <code>@patties/deploy-app-engine</code>, etc.) need to package the build output into vendor-specific artifact shapes (Lambda zip, App Engine tar.gz, etc.). The Node solution is <code>tar</code> + <code>archiver</code> + <code>adm-zip</code> — three deps to cover three formats. Bun ships archive read/write in core.</p>
+<p>Codified as section 24.1 of the <strong>Bun-builtin policy spec</strong> ([[framework/draft/24-bun-builtin-policy]]) rather than its own feature spec, because there's no first-party <code>patties deploy</code> command yet — <code>Bun.Archive</code> becomes the "reach for this when you need it" answer for plugin authors.</p>
+<p>Scope pins:</p>
+<ul><li><strong>Use only in deploy / packaging plugins</strong>, not in framework core. The framework emits a directory; packaging is a deploy concern.</li><li><strong><code>tar</code> and <code>zip</code> formats</strong> for v1. <code>tar.gz</code> via composing <code>format: "tar"</code> + <code>Bun.gzipSync</code>.</li><li><strong>Streaming output</strong> to stdout (for piping into vendor CLIs like <code>aws lambda update-function-code</code>).</li></ul>
+<p>Out of scope for this RFC:</p>
+<ul><li><strong>A first-party <code>patties deploy</code> command</strong> — separate RFC if it ever lands.</li><li><strong>Archive extraction in user app code</strong> — borderline out-of-scope; if a user wants to extract uploads at runtime, they can call <code>Bun.Archive</code> directly without framework involvement.</li></ul>
+<hr>
+<h2>Summary</h2>
+<p><code>Bun.Archive</code> reads and writes tar / zip files in-process. Deploy plugins reach for it when packaging a build directory into a single uploadable artifact.</p>
+<h2>Motivation</h2>
+<p>Today, deploy plugins emit a directory (<code>dist/</code>) and the user zips or tars it themselves. For vendor platforms that require a specific archive shape (Lambda's flat zip, App Engine's <code>source.tar.gz</code>), the plugin should produce that artifact directly. The Node solution is multi-dep; Bun's is built in.</p>
+<h2>Proposal</h2>
+<p>See [[framework/draft/24-bun-builtin-policy|spec 24]] § 24.1 for the policy and concrete patterns. Summary:</p>
+<ul><li>Deploy plugins use <code>new Bun.Archive({ format })</code> to build uploadable artifacts.</li><li>Output target is either a <code>Uint8Array</code> (in-memory for vendor CLI piping) or <code>Bun.write(path, archive.toBytes())</code> for file output.</li><li><code>tar.gz</code> composes from <code>format: "tar"</code> + <code>Bun.gzipSync</code> rather than a magic combined mode.</li></ul>
+<h2>Trade-offs</h2>
+<ul><li><strong>Bun.Archive's API may lag</strong> mature libs like <code>tar</code> for exotic cases (symlink handling, ACL preservation). v1 covers the common cases that deploy plugins actually need.</li><li><strong>Streaming write</strong> isn't needed for sub-100MB artifacts; v1 builds the whole archive in memory before emitting.</li></ul>
+<h2>Open questions</h2>
+<ul><li><strong>Symlink preservation</strong> — Lambda zip ignores symlinks; tar.gz preserves them. Document per-format behavior when first deploy plugin lands.</li><li><strong>Reproducibility</strong> — vendor deploys care about deterministic hashes. <code>Bun.Archive</code> should produce byte-identical output for identical input; verify when first plugin ships.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

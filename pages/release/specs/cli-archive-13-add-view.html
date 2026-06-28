@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties add --view / patties view · Patties specs</title>
+<meta name="description" content="shadcn lets you preview a registry item's source before installing (view /">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/13-add-view.md</span></div>
+<h1>patties add --view / patties view</h1>
+<p class="lede">shadcn lets you preview a registry item's source before installing (view /</p>
+</header>
+<h2>Purpose</h2>
+<p>shadcn lets you preview a registry item's source before installing (<code>view</code> / <code>add --view</code>). patties has no pre-install preview — <code>--dry-run</code> shows the <em>file and dep plan</em> but not the <em>source</em> (matrix §1 <code>view</code>, §2 <code>--view</code> — <strong>gap</strong>). The matrix rates this cheap to add on top of <code>--dry-run</code> and a clean win for the "see before you stamp" gap ("Gaps worth an RFC" #4).</p>
+<h2>Usage</h2>
+<pre><code>patties add --view &lt;component&gt;       # print the component's source + metadata
+patties view &lt;component&gt;             # alias of the above
+patties add --view --dry-run &lt;c&gt;     # --view implies read-only; --dry-run is redundant but allowed
+</code></pre>
+<p><code>--view</code> never writes. It is a strict superset of <code>--dry-run</code>'s information: the plan <strong>plus</strong> the actual source that would be stamped.</p>
+<h2>Behavior</h2>
+<ol><li>Load the catalog and resolve the named component (reuse <code>resolveNames</code>, <code>add.ts:78</code>). Unknown name → <code>EXIT.USAGE</code>, same message as <code>add</code>.</li><li>Print a metadata header: name, phase, <code>kind</code>, <code>island</code>, <code>status</code>, declared <code>peerDeps</code>, <code>internalHelpers</code>, <code>tokens</code> — the same fields <code>--dry-run</code> surfaces (<code>add.ts:100</code>,<code>118</code>).</li><li>For each file in <code>entry.files</code>, read the template from <code>templatesDir</code> and print its full source, fenced with the destination path as a heading so the user sees exactly what lands where.</li><li>With a TTY, apply lightweight syntax styling via the ANSI helpers; when piped, emit plain text so <code>patties view button &gt; button.tsx</code> is a usable escape hatch.</li><li><code>--view</code> is read-only; never patches <code>package.json</code>, never merges tokens.</li></ol>
+<h2>Relationship to <code>--dry-run</code> and <code>--diff</code></h2>
+<ul><li><code>--dry-run</code> (shipped, <code>add.ts:107</code>): plan only — which files are new/exist, dep diff, token/helper plan. No source.</li><li><code>--view</code> (this spec): plan + <strong>source of the catalog template</strong>.</li><li><code>--diff</code> ([[cli/12-add-update-diff]]): catalog source <strong>vs the user's stamped file</strong> — only meaningful once stamped.</li></ul>
+<p><code>--view</code> answers "what will I get?"; <code>--diff</code> answers "how did mine drift?".</p>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties add --view button</code> prints the metadata header and the full source of every file in the button entry, writes nothing, exits <code>EXIT.OK</code>.</li><li><code>patties view button</code> behaves identically (alias).</li><li><code>patties add --view nonexistent</code> exits <code>EXIT.USAGE</code> with the unknown-component message.</li><li>Output is syntax-styled on a TTY and plain when piped; piping a single-file component yields valid <code>.tsx</code> source.</li><li>No <code>package.json</code>, <code>tokens.css</code>, or <code>_internal/</code> writes occur during <code>--view</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

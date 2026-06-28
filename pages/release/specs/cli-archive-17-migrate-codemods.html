@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties migrate (rtl, radix) · Patties specs</title>
+<meta name="description" content="shadcn ships migrate rtl (rewrite physical CSS props → logical props) and">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/17-migrate-codemods.md</span></div>
+<h1>patties migrate (rtl, radix)</h1>
+<p class="lede">shadcn ships migrate rtl (rewrite physical CSS props → logical props) and</p>
+</header>
+<h2>Purpose</h2>
+<p>shadcn ships <code>migrate rtl</code> (rewrite physical CSS props → logical props) and <code>migrate radix</code> (rewrite scattered <code>@radix-ui/react-*</code> imports → the unified <code>radix-ui</code> import). patties has no codemods (matrix §1 <code>migrate</code> — <strong>gap</strong>). The matrix notes the <code>radix</code> migration is <em>partly moot</em> — patties specs already target the unified <code>radix-ui</code> style and React-19 (no <code>forwardRef</code>) — and that RTL has a <code>direction</code> provider ([[ui/22-direction]]) but no codemod. This spec defines the narrow, genuinely-useful slice and explicitly scopes out the moot parts.</p>
+<h2>Why mostly moot for first-party components</h2>
+<p>Stamped <code>patties-ui</code> source already uses the unified <code>radix-ui</code> import and logical CSS properties (per the catalog rules). So a migration over <em>unmodified</em> stamped components is a no-op. The value is for <strong>user-authored or pre-existing</strong> code in the project: components a user wrote against old shadcn conventions, or imported from elsewhere, before adopting patties-ui.</p>
+<h2>Usage</h2>
+<pre><code>patties migrate radix [&lt;glob&gt;]     # @radix-ui/react-* imports → unified radix-ui
+patties migrate rtl   [&lt;glob&gt;]     # physical CSS/Tailwind props → logical props
+patties migrate &lt;kind&gt; --dry-run   # print the rewrite plan, change nothing
+</code></pre>
+<p>Default glob is the resolved <code>componentsDir</code> ([[framework/25-ui-config-block]]); an explicit glob narrows it. Always prints a per-file before/after summary.</p>
+<h2>Behavior — <code>radix</code></h2>
+<ol><li>Find imports matching <code>@radix-ui/react-&lt;x&gt;</code> and rewrite to the unified <code>import { &lt;X&gt; } from "radix-ui"</code> form (namespace import), merging multiple single-package imports in a file into one statement.</li><li>Use Bun's transpiler/AST tooling for the rewrite — no Babel/jscodeshift dependency (bun-native rule). If a file uses an API with no unified-import equivalent, leave it untouched and report it for manual review rather than producing broken code.</li><li>Idempotent: running twice changes nothing the second time.</li></ol>
+<h2>Behavior — <code>rtl</code></h2>
+<ol><li>Rewrite the common physical → logical mappings in both inline styles and Tailwind class names: <code>ml-*</code>→<code>ms-*</code>, <code>mr-*</code>→<code>me-*</code>, <code>pl-*</code>→<code>ps-*</code>, <code>pr-*</code>→<code>pe-*</code>, <code>left-*</code>/<code>right-*</code>→<code>start-*</code>/<code>end-*</code>, <code>text-left/right</code>→<code>text-start/end</code>, and the <code>border-l/r</code>, <code>rounded-l/r</code> families. CSS: <code>margin-left</code>→<code>margin-inline-start</code>, etc.</li><li>Only touch className string literals and style objects; never rewrite arbitrary identifiers that happen to match.</li><li>Pairs with the [[ui/22-direction]] provider — the codemod makes markup direction-agnostic; the provider sets <code>dir</code> at runtime.</li><li>Ambiguous cases (dynamic class construction, <code>clsx</code> with computed parts) are reported, not guessed.</li></ol>
+<h2>Safety</h2>
+<ul><li><code>--dry-run</code> is the default-recommended first run; the command prints a reminder to commit before applying.</li><li>Refuses to run on a dirty working tree without <code>--force</code> (so the rewrite is its own reviewable diff). Detected via <code>git status --porcelain</code> when in a git repo; outside git, <code>--force</code> is required.</li><li>Inherits the <code>NODE_ENV=production</code> guard → <code>EXIT.USAGE</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties migrate radix</code> rewrites <code>import * as Dialog from "@radix-ui/react-dialog"</code> to the unified <code>radix-ui</code> form and is idempotent.</li><li>A file already using unified imports is unchanged (no-op).</li><li><code>patties migrate rtl</code> rewrites <code>ml-2</code>→<code>ms-2</code>, <code>text-left</code>→<code>text-start</code>, etc., in className literals and leaves unrelated tokens alone.</li><li>Both refuse to run on a dirty tree without <code>--force</code>; both support <code>--dry-run</code>.</li><li>Unconvertible/ambiguous sites are reported for manual review, never silently mis-rewritten.</li><li>Running over unmodified first-party stamped components is a no-op (already compliant).</li></ul>
+<h2>Implementation note (2026-05-29)</h2>
+<p>The "mostly moot for first-party" premise above is <strong>not yet true of the shipped catalog</strong>: as of implementation, <code>patties-ui/templates/*.tsx</code> still use scattered <code>@radix-ui/react-*</code> imports (≈30 files), not the unified <code>radix-ui</code> import the catalog rule prescribes. So <code>patties migrate radix</code> over freshly-stamped first-party components currently <strong>does</strong> rewrite them rather than no-op. The codemod is correct; the catalog is the laggard. Migrating the catalog templates to the unified import (and flipping the registry <code>peerDeps</code> from <code>@radix-ui/react-*</code> to <code>radix-ui</code>) is tracked separately and was intentionally out of scope here.</p>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

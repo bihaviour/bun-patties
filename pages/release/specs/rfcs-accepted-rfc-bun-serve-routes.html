@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.serve routes — adopt native routes map (Hono removed) · Patties specs</title>
+<meta name="description" content="Accept — and promote to the primary routing mechanism. Originally rejected because Hono's middleware model would diverge from Bun.serve({ routes }). With the…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-serve-routes.md</span></div>
+<h1>Bun.serve routes — adopt native routes map (Hono removed)</h1>
+<p class="lede">Accept — and promote to the primary routing mechanism. Originally rejected because Hono's middleware model would diverge from Bun.serve({ routes }). With the…</p>
+</header>
+<h2>Review verdict (2026-05-24)</h2>
+<p><strong>Accept — and promote to the primary routing mechanism.</strong> Originally rejected because Hono's middleware model would diverge from <code>Bun.serve({ routes })</code>. With the Hono-removal decision (2026-05-24), that objection disappears: there's only one router, and it's <code>Bun.serve</code>'s native <code>routes:</code> map on the Bun target. The edge adapter (12) compiles the same route table into a plain <code>fetch</code> dispatcher for vendors whose runtime doesn't accept <code>routes:</code> natively.</p>
+<p>This RFC now subsumes spec 02's old "Hono assembly" purpose:</p>
+<ul><li>02b's <code>RouteEntry[]</code> is consumed by 01 to build the <code>routes:</code> object directly.</li><li>Middleware composes via the new <code>ctx</code>-based linear composer (decided 2026-05-24) — wrapped around each handler at registration time, not by a Hono <code>app.use</code>.</li><li>Per-route handlers receive <code>(req, ctx)</code> where Bun's native <code>req.params</code> populate <code>ctx.params</code>.</li></ul>
+<p>The "two code paths kept in sync" concern from the original draft is real but bounded: the edge adapter implements a tiny JS matcher (~30 lines) that walks the same <code>RouteEntry[]</code>. Conformance is enforced by running the integration fixture set against both targets.</p>
+<hr>
+<h2>Summary</h2>
+<p>Modern <code>Bun.serve</code> accepts a <code>routes:</code> object alongside <code>fetch:</code> — keys are path patterns (<code>/users/:id</code>), values are either method-keyed handler objects or <code>Response</code> instances. Bun matches the route in C++ before calling JS, with typed <code>req.params</code>. Patties should mount its compiled route table through <code>routes:</code> instead of routing entirely in JS inside <code>fetch:</code>.</p>
+<h2>Motivation</h2>
+<p>01-server today wires <code>fetch</code> to call <code>router.fetch</code> which iterates the compiled table. That's correct and fast, but loses Bun's native route matcher, native param parsing, and the static-html-import shortcut. Pages and <code>static:</code> already use the native fast path; API routes should too.</p>
+<h2>Proposal</h2>
+<ul><li>01-server: build a <code>routes:</code> object from the <code>RouteEntry[]</code>. Each handler is wrapped in the framework's middleware composer before registration so user middleware sees every request. The <code>fetch:</code> handler is the catch-all 404.</li><li>02-router: this spec's purpose becomes "compose the routes object" — it no longer assembles a Hono app. Pattern compilation emits Bun-compatible strings (<code>/users/:id</code>, <code>/files/*</code>).</li><li>02b: filesystem router's output already provides paths; add a <code>bunPattern</code> field consumed by 01.</li><li>07-middleware: the framework owns a ~50-line linear composer; handlers receive <code>(req, ctx)</code>.</li><li>09-plugins: <code>setup(server, ctx)</code> receives the route-registration API (<code>server.route(pattern, methodHandlers)</code>) instead of a Hono <code>app</code>.</li><li>12-edge-adapters: edge target compiles the same <code>RouteEntry[]</code> into a <code>fetch(req)</code> dispatcher (~30 lines of matcher). Same handlers, same <code>ctx</code>, different entrypoint shape.</li></ul>
+<p>Sample:</p>
+<pre data-lang="ts"><code>Bun.serve({
+  routes: {
+    "/api/users/:id": {
+      GET:  compose([userMiddleware], handlers.usersGet),
+      POST: compose([userMiddleware], handlers.usersPost),
+    },
+    "/healthz": new Response("ok"),
+  },
+  fetch: compose([userMiddleware], notFoundHandler),
+});
+</code></pre>
+<h2>Trade-offs</h2>
+<ul><li>Two route-dispatch implementations (Bun-native <code>routes:</code> vs. edge JS matcher). Bounded by a shared <code>RouteEntry[]</code> and conformance tests.</li><li>Removing Hono means losing the Hono middleware ecosystem (<code>hono/jwt</code>, <code>hono/cors</code>, etc.). Trade-off accepted — equivalents land as <code>@patties/*</code> plugins.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Param typing — generate <code>.d.ts</code> from the route table at build time, or rely on Bun's inferred <code>req.params</code>? Leaning generated, for editor go-to-def.</li><li>How does the middleware composer surface in user code? Likely <code>defineMiddleware(handler)</code> from <code>patties/middleware</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

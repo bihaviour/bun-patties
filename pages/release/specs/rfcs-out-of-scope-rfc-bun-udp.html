@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.udpSocket — UDP sockets · Patties specs</title>
+<meta name="description" content="Moved backlog → out-of-scope alongside [[rfc-bun-tcp]] (same reasoning —">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Out of scope</span> <span class="badge badge-id">rfcs/out-of-scope/rfc-bun-udp.md</span></div>
+<h1>Bun.udpSocket — UDP sockets</h1>
+<p class="lede">Moved backlog → out-of-scope alongside [[rfc-bun-tcp]] (same reasoning —</p>
+</header>
+<h2>Out-of-scope (2026-05-31)</h2>
+<p><strong>Moved backlog → out-of-scope</strong> alongside [[rfc-bun-tcp]] (same reasoning — non-HTTP transport is outside patties' identity). Permanent no.</p>
+<h2>Summary</h2>
+<p>UDP socket primitive. Game state sync, DNS-style protocols, multicast. Same shape as [[rfc-bun-tcp]] — different transport.</p>
+<h2>Why backlog</h2>
+<p>HTTP-only meta-framework. No spec slot. Borderline <strong>out-of-scope</strong>.</p>
+<h2>Trigger to promote to draft</h2>
+<p>Same as TCP — a real non-HTTP use case lands.</p>
+<h2>Bun-unique classification</h2>
+<p><strong>Bun-faster</strong> — <code>node:dgram</code> covers the same ground; Bun's is faster.</p>
+<h2>Open questions when promoted</h2>
+<ul><li>Probably ships (or doesn't) together with <code>rfc-bun-tcp</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

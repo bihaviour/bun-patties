@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sheet · Patties specs</title>
+<meta name="description" content="Side-anchored dialog (left/right/top/bottom). Mirrors shadcn Sheet. Built on @radix-ui/react-dialog with a sliding-content variant.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/46-sheet.md</span></div>
+<h1>Sheet</h1>
+<p class="lede">Side-anchored dialog (left/right/top/bottom). Mirrors shadcn Sheet. Built on @radix-ui/react-dialog with a sliding-content variant.</p>
+</header>
+<h2>Purpose</h2>
+<p>Side-anchored dialog (left/right/top/bottom). Mirrors shadcn <code>Sheet</code>. Built on <code>@radix-ui/react-dialog</code> with a sliding-content variant.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Open state, focus trap, and portal — same as Dialog.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-dialog@^1.1</code></li><li><code>lucide-react@^0.400</code></li></ul>
+<h2>Public API</h2>
+<p>Same shape as <a href="ui-archive-phase-3-21-dialog.html">21-dialog</a>, plus a <code>side</code> prop on <code>SheetContent</code>:</p>
+<pre data-lang="ts"><code>export function SheetContent(props: Radix.DialogContentProps &amp; { side?: "top" | "right" | "bottom" | "left"; className?: string }): JSX.Element
+export const island = true
+</code></pre>
+<p>The remaining exports — <code>Sheet</code>, <code>SheetTrigger</code>, <code>SheetPortal</code>, <code>SheetClose</code>, <code>SheetOverlay</code>, <code>SheetHeader</code>, <code>SheetFooter</code>, <code>SheetTitle</code>, <code>SheetDescription</code> — mirror Dialog.</p>
+<h2>Patties adjustments</h2>
+<ul><li>Side-specific slide animations use Tailwind <code>data-[state=open]:</code> selectors so transitions work without JS.</li><li>Removes <code>forwardRef</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>side="right"</code> slides in from the right.</li><li>Same focus/keyboard semantics as Dialog.</li><li>Background scroll lock while open.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

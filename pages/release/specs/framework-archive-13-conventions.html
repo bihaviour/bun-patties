@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conventions &amp; Critical Rules · Patties specs</title>
+<meta name="description" content="These are the bright lines. An agent violating any of them is wrong, regardless of how reasonable the change looks.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/13-conventions.md</span></div>
+<h1>Conventions &amp; Critical Rules</h1>
+<p class="lede">These are the bright lines. An agent violating any of them is wrong, regardless of how reasonable the change looks.</p>
+</header>
+<h2>File conventions (user <code>app/</code> folder)</h2>
+<div class="table-wrap"><table><thead><tr><th>Path</th><th>Becomes</th></tr></thead><tbody><tr><td><code>app/routes/index.tsx</code></td><td><code>/</code></td></tr><tr><td><code>app/routes/about.tsx</code></td><td><code>/about</code></td></tr><tr><td><code>app/routes/hotels/[city].tsx</code></td><td><code>/hotels/:city</code></td></tr><tr><td><code>app/routes/api/revenue.ts</code></td><td><code>/api/revenue</code></td></tr><tr><td><code>app/islands/counter.tsx</code></td><td>interactive island <code>Counter</code></td></tr><tr><td><code>app/agents/booking.ts</code></td><td>agent <code>booking</code></td></tr><tr><td><code>app/tools/search.ts</code></td><td>MCP tool <code>search</code></td></tr><tr><td><code>app/middleware.ts</code></td><td>global middleware</td></tr><tr><td><code>patties.config.ts</code></td><td>framework config</td></tr></tbody></table></div>
+<h2>Reserved prefixes</h2>
+<ul><li>Files starting with <code>_</code> are private and never routed.</li><li>The URL prefix <code>/__patties_*</code> is reserved (dev HMR, internal endpoints).</li><li>The output directory prefix <code>/_patties/*</code> is reserved (client bundle URLs).</li></ul>
+<h2>Critical rules for agents working on this codebase</h2>
+<p>These are the bright lines. An agent violating any of them is wrong, regardless of how reasonable the change looks.</p>
+<ol><li><strong>Never import from <code>"next"</code>.</strong> This is not Next.js.</li><li><strong>Never use Node.js <code>http</code> module.</strong> Use <code>Bun.serve</code>.</li><li><strong>Never use webpack or vite.</strong> Use <code>Bun.build</code>.</li><li><strong>Never use <code>fs.watch</code> or <code>chokidar</code>.</strong> Use <code>bun --watch</code>.</li><li><strong>Use React for rendering.</strong> Server: <code>react-dom/server.renderToReadableStream</code>. Client: <code>react-dom/client.hydrateRoot</code>. Never import from <code>hono/jsx</code> or <code>hono/jsx/dom</code>. Never use <code>renderToPipeableStream</code> (Node-only) or <code>renderToString</code> (no streaming).</li><li><strong><code>tsconfig.json</code> must set <code>"jsx": "react-jsx"</code> and <code>"jsxImportSource": "react"</code>.</strong> JSX is resolved through <code>react/jsx-runtime</code>; no manual <code>import React</code> in user code.</li><li><strong>All routes are plain handlers <code>(req: Request, ctx: PattiesContext) =&gt; Response | Promise&lt;Response&gt;</code>.</strong> No HTTP framework — <code>Bun.serve({ routes })</code> dispatches; the framework owns a ~50-line middleware composer and the <code>ctx</code> shape. Never import from <code>"hono"</code>.</li><li><strong>Islands must live in <code>app/islands/</code>.</strong> No exceptions.</li><li><strong>API routes export <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>DELETE</code> named functions.</strong> Default exports are reserved for page components.</li><li><strong>Middleware exports a default function</strong> typed as <code>Middleware = (req, ctx, next) =&gt; Promise&lt;Response&gt;</code>. Never <code>MiddlewareHandler</code> from Hono.</li><li><strong>No <code>getServerSideProps</code> or Next-style data loaders.</strong> Use middleware or route handlers.</li><li><strong>Use Bun primitives for I/O, not <code>node:fs</code>/<code>node:child_process</code>.</strong> File reads → <code>Bun.file(path).text()/.json()/.bytes()</code>. File writes → <code>Bun.write(path, data)</code>. Subprocess → <code>Bun.spawn</code> or <code>Bun.$</code> (Bun Shell). Hashing → <code>Bun.CryptoHasher</code>. Env reads → <code>Bun.env</code> (Bun target) or the adapter's <code>getEnv()</code> (edge). Password hashing → <code>Bun.password</code>. SQLite → <code>bun:sqlite</code>. Postgres → <code>Bun.sql</code>. Redis → <code>Bun.RedisClient</code>. S3-compatible storage → <code>Bun.S3Client</code>. <code>node:fs</code> is only acceptable when a Bun built-in does not exist for the task.</li></ol>
+<h2>Naming</h2>
+<ul><li>Module file names: kebab-case (<code>booking-flow.ts</code>).</li><li>Exported components: PascalCase.</li><li>Agent and tool <code>name</code> fields: kebab-case, <strong>must match their filename basename</strong>. Mismatches and duplicate <code>name</code>s are boot errors — see <a href="framework-archive-phase-3-10-agents-and-tools.html#name-enforcement">10-agents-and-tools</a>.</li></ul>
+<h2>Commit format</h2>
+<p><code>feat(router): add dynamic segment support</code> — conventional commits drive <code>CHANGELOG.md</code>.</p>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

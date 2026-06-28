@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun-builtin policy — Archive, ANSI helpers, one-shot hashing · Patties specs</title>
+<meta name="description" content="This spec encodes three RFCs at once — [[rfc-bun-archive]],">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">framework/archive/24-bun-builtin-policy.md</span></div>
+<h1>Bun-builtin policy — Archive, ANSI helpers, one-shot hashing</h1>
+<p class="lede">This spec encodes three RFCs at once — [[rfc-bun-archive]],</p>
+</header>
+<p>This spec encodes three RFCs at once — [[rfc-bun-archive]], [[rfc-bun-cli-ansi]], [[rfc-bun-hash]] — as concrete applications of the existing <strong>bun-native rule</strong> (<code>.claude/rules/bun-native.md</code>). Each section says when to reach for the Bun primitive, what it replaces from the Node ecosystem, and where in the codebase it applies.</p>
+<p>The framing: <strong>patties' value isn't "do what Next can't" — it's "do what every Node framework does, with a fraction of the dependency surface."</strong> This spec is the concrete embodiment of that for three commonly-reached-for Node libs.</p>
+<h2>24.1 <code>Bun.Archive</code> — tar / zip in deploy plugins</h2>
+<h3>When to reach for it</h3>
+<p>A deploy plugin needs to package the build output into a single uploadable artifact:</p>
+<ul><li>AWS Lambda zip</li><li>Google App Engine tar.gz</li><li>generic tarball for <code>scp + extract</code></li></ul>
+<h3>Concrete pattern</h3>
+<pre data-lang="ts"><code>// plugins/deploy-lambda/src/package.ts
+import { Bun } from "bun"
+
+export async function packageForLambda(distDir: string): Promise&lt;Uint8Array&gt; {
+  const archive = new Bun.Archive({ format: "zip" })
+  for await (const entry of readDir(distDir)) {
+    archive.append(entry.relPath, await Bun.file(entry.absPath).bytes())
+  }
+  return archive.toBytes()
+}
+</code></pre>
+<h3>Replaces</h3>
+<ul><li><code>tar</code> npm package</li><li><code>archiver</code> npm package</li><li><code>adm-zip</code> npm package</li></ul>
+<h3>Scope guardrails</h3>
+<ul><li>Use <code>Bun.Archive</code> only in deploy / packaging plugins, <strong>not</strong> in framework core. The framework emits a directory; packaging is a deploy concern.</li><li>For tar.gz, prefer <code>format: "tar"</code> + post-gzip via <code>Bun.gzipSync</code> over a combined <code>"tar.gz"</code> mode (composability + clarity).</li><li>Stream output to stdout when piping to vendor CLIs that accept stdin (<code>aws lambda update-function-code</code>).</li></ul>
+<h2>24.2 ANSI text helpers — CLI formatting</h2>
+<h3>When to reach for them</h3>
+<p>The CLI (<code>bin/patties.ts</code>, <code>packages/create-patties</code>, and the dev error overlay's terminal output) needs accurate string measurement or wrapping that respects ANSI escapes:</p>
+<ul><li>Multi-column tables in <code>patties dev</code> startup output</li><li>Wrapped error messages with code frames in <code>cli/archive/07-logging-errors</code></li><li>Aligned status output in scaffolders / future <code>patties doctor</code></li></ul>
+<h3>Concrete patterns</h3>
+<pre data-lang="ts"><code>// width-aware truncation
+import { Bun } from "bun"
+
+function truncate(s: string, max: number): string {
+  if (Bun.stringWidth(s) &lt;= max) return s
+  // ... walk grapheme-aware until fits
+}
+
+// strip ANSI before piping to non-TTY destinations
+const plainLog = Bun.stripANSI(coloredLog)
+
+// hard-wrap a paragraph at 80 cols, preserving inline styles
+const wrapped = Bun.wrapAnsi(text, 80)
+</code></pre>
+<h3>Replaces</h3>
+<ul><li><code>string-width</code> npm package</li><li><code>strip-ansi</code> npm package</li><li><code>wrap-ansi</code> npm package</li><li>(collectively known as the chalk-ecosystem text utilities)</li></ul>
+<h3>Scope guardrails</h3>
+<ul><li>The CLI's color emission itself stays as-is — patties uses ANSI escapes inline (<code>\x1b[36m...\x1b[0m</code>) rather than reaching for <code>chalk</code> / <code>kleur</code> / <code>picocolors</code>. Color emission is two template literals; the dep tax isn't worth it.</li><li>Use <code>Bun.stringWidth</code> before any padding / column math, never <code>String#length</code> — emoji and CJK characters are double-width.</li><li>When writing logs to non-TTY (CI pipes), strip ANSI via <code>Bun.stripANSI</code> before emission.</li></ul>
+<h2>24.3 One-shot hashing — <code>Bun.hash</code> / <code>Bun.sha</code></h2>
+<h3>When to reach for them</h3>
+<p>A short-lived single buffer needs to be hashed and the streaming <code>Bun.CryptoHasher</code> API is friction:</p>
+<ul><li>Cache key for a single input (image cache, route cache)</li><li>ETag derivation from a small response body</li><li>Quick fingerprint for dev-mode change detection</li></ul>
+<h3>Concrete patterns</h3>
+<pre data-lang="ts"><code>// non-crypto cache key (fast)
+import { Bun } from "bun"
+
+const cacheKey = Bun.hash(`${src}|${w}|${fmt}|${q}`).toString(36)
+
+// crypto-grade hash for SRI / signed-cookie verify
+const signature = Bun.sha(body, "sha256")  // Uint8Array
+
+// streaming case stays on Bun.CryptoHasher
+const hasher = new Bun.CryptoHasher("xxh64")
+for await (const chunk of stream) hasher.update(chunk)
+const final = hasher.digest("hex")
+</code></pre>
+<h3>Replaces</h3>
+<ul><li><code>crypto.createHash(...).update(...).digest(...)</code> for one-shot cases (works, but verbose).</li><li>The <code>xxhash-wasm</code> / <code>xxhash</code> npm packages for non-crypto fingerprints.</li></ul>
+<h3>Scope guardrails</h3>
+<ul><li><code>Bun.CryptoHasher</code> is <strong>still the right call for streaming inputs</strong> — multi-chunk content (build outputs, large responses). This policy adds the one-shot form, not replaces the streaming form.</li><li>Use <code>Bun.hash</code> (Wyhash) for non-security keys (cache fingerprints, ETags-as-suggestions). Use <code>Bun.sha</code> (SHA-2 family) for security-touching hashes (HMAC verification, SRI).</li><li>Never use these for passwords — <code>Bun.password</code> is the only correct call there.</li></ul>
+<h2>Acceptance criteria</h2>
+<p>This spec lands as a <strong>policy document</strong> consumed by code reviewers and future RFCs. It has no implementation to verify other than "future PRs that reach for <code>tar</code> / <code>archiver</code> / <code>string-width</code> / <code>crypto.createHash</code> are redirected to the Bun-builtin equivalent."</p>
+<p>Concretely:</p>
+<ul><li>A deploy-plugin RFC that proposes packaging via <code>archiver</code> is reviewed against this spec and rewritten to use <code>Bun.Archive</code>.</li><li>A CLI improvement that imports <code>string-width</code> is reviewed against this spec and rewritten to use <code>Bun.stringWidth</code>.</li><li>A new cache key implementation that uses <code>crypto.createHash("md5").update(x).digest("hex")</code> is reviewed against this spec and rewritten to <code>Bun.hash(x).toString(36)</code>.</li></ul>
+<p>The biome-check / typecheck hook does not enforce these substitutions automatically — that's a code-review concern, not a lint rule. A custom Biome lint rule could be added later if the pattern recurs.</p>
+<h2>Non-goals</h2>
+<ul><li><strong>Substitute every Node lib.</strong> This spec covers three concrete cases; the broader rule is in <code>.claude/rules/bun-native.md</code>.</li><li><strong>Block users from installing the Node alternatives.</strong> Users can pull in <code>chalk</code> or <code>archiver</code> in their own app code — the policy applies to <strong>framework and plugin code that ships in patties</strong>, not user code.</li><li><strong>Document every Bun primitive.</strong> Only the three primitives whose encoding this spec carries.</li></ul>
+<h2>Out of this spec</h2>
+<ul><li>Future Bun-builtin acceptances (e.g. if <code>Bun.Image</code> proves insufficient and a wrapper helper is needed) get their own spec or extension.</li><li>The bun-native rule itself (<code>.claude/rules/bun-native.md</code>) stays the canonical "always prefer Bun primitives" statement. This spec is its concrete application to three specific replacements.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

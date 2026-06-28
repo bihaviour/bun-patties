@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Label · Patties specs</title>
+<meta name="description" content="Form label that pairs with htmlFor. Mirrors shadcn Label. Built on @radix-ui/react-label.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/34-label.md</span></div>
+<h1>Label</h1>
+<p class="lede">Form label that pairs with htmlFor. Mirrors shadcn Label. Built on @radix-ui/react-label.</p>
+</header>
+<h2>Purpose</h2>
+<p>Form label that pairs with <code>htmlFor</code>. Mirrors shadcn <code>Label</code>. Built on <code>@radix-ui/react-label</code>.</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. Radix Label is pure presentational on the server — the only "JS" feature (preventing text selection on double-click of associated control) is a tiny <code>onPointerDown</code> handler. We accept the minor JS cost as part of the parent island when applicable; standalone Labels still render zero JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-label@^2.1</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Label(props: React.ComponentProps&lt;typeof LabelPrimitive.Root&gt;): JSX.Element
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>htmlFor</code> correctly associates label with control.</li><li>Clicking the label focuses the control (native browser behavior — no JS needed).</li><li>Bundle audit: zero JS when used standalone (Radix Label compiles away if its event handler is unused).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

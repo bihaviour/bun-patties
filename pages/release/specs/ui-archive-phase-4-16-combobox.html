@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Combobox · Patties specs</title>
+<meta name="description" content="Searchable single-select — Popover + Command + List. Mirrors shadcn Combobox (composed pattern, not a single primitive).">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-4/16-combobox.md</span></div>
+<h1>Combobox</h1>
+<p class="lede">Searchable single-select — Popover + Command + List. Mirrors shadcn Combobox (composed pattern, not a single primitive).</p>
+</header>
+<h2>Purpose</h2>
+<p>Searchable single-select — Popover + Command + List. Mirrors shadcn <code>Combobox</code> (composed pattern, not a single primitive).</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Filter, popover open-state, and active descendant tracking all need client JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-popover@^1.1</code></li><li><code>cmdk@^1</code></li><li><code>lucide-react@^0.400</code></li></ul>
+<h2>Public API</h2>
+<p>The Combobox is delivered as a <strong>composed example</strong> in <code>app/components/ui/combobox.tsx</code>, not as a tightly-wrapped primitive. Required pieces are imported from <a href="ui-archive-phase-4-17-command.html">17-command</a> and 39-popover:</p>
+<pre data-lang="ts"><code>export function Combobox&lt;T&gt;(props: {
+  options: Array&lt;{ value: string; label: string }&gt;
+  value?: string
+  onChange?: (value: string) =&gt; void
+  placeholder?: string
+  emptyMessage?: string
+  className?: string
+}): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>The whole Combobox is one island root — Popover + Command + List share state without crossing the SSR boundary.</li><li><code>options</code> must be JSON-serializable (strings only).</li><li>For very large lists (&gt;500 items), the spec recommends switching to a virtualized variant (out of scope here).</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Typing in the search filters options (cmdk substring match).</li><li><code>Enter</code> selects the active option; <code>Esc</code> closes the popover.</li><li>Selected option shows a check icon and the trigger label updates.</li><li>Closes on outside click and restores focus to the trigger.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

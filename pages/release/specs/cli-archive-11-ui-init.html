@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties ui init · Patties specs</title>
+<meta name="description" content="shadcn's init bootstraps components.json, installs base deps, writes CSS">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/11-ui-init.md</span></div>
+<h1>patties ui init</h1>
+<p class="lede">shadcn's init bootstraps components.json, installs base deps, writes CSS</p>
+</header>
+<h2>Purpose</h2>
+<p>shadcn's <code>init</code> bootstraps <code>components.json</code>, installs base deps, writes CSS vars, and sets up aliases — so the first <code>add</code> is purely a component copy. patties has no UI-init step: <code>tokens.css</code> and <code>_internal/</code> are created lazily on the first <code>patties add</code> (matrix §1, <code>init</code> — <strong>gap</strong>). That works, but it means a user's first <code>add</code> silently also does theme + helper + Tailwind setup, and there is no way to lay down theming <em>before</em> picking components.</p>
+<p><code>patties ui init</code> front-loads that one-time setup so it is explicit and reviewable on its own commit, and so a project can adopt the token model without stamping any component yet.</p>
+<h2>Usage</h2>
+<pre><code>patties ui init                 # idempotent: lay down tokens + helpers + Tailwind wiring
+patties ui init --dry-run       # print the plan, write nothing
+patties ui init --force         # overwrite existing tokens.css / _internal helpers
+</code></pre>
+<p>No interactive prompts (CLI pillar "one command, zero questions"). There is no style/baseColor/rsc question to ask — those are conventions, not config (see [[framework/25-ui-config-block]]).</p>
+<h2>Behavior</h2>
+<p>Resolves destinations via the same precedence as <code>patties add</code> — <code>config.ui</code> overrides, else convention defaults ([[framework/25-ui-config-block]]). Then, idempotently:</p>
+<ol><li><strong>Tokens.</strong> Merge <code>patties-ui/templates/tokens.css</code> into the resolved <code>tokensFile</code> (<code>app/styles/tokens.css</code> by default) using the existing idempotent merge (<code>tokens.ts</code>). Re-running adds only missing variables.</li><li><strong>Helpers.</strong> Stamp <code>_internal/cn.ts</code> (+ <code>clsx</code>, <code>tailwind-merge</code>) into the resolved <code>internalDir</code>. Slot/variants helpers are NOT pre-stamped — they arrive with the first component that needs them, to avoid dead files.</li><li><strong>Peer deps.</strong> Patch <code>package.json</code> with the base helper deps (<code>clsx</code>, <code>tailwind-merge</code>). Never runs <code>bun install</code> — prints the <code>bun install</code> reminder, matching <code>patties add</code>'s CI-safe stance (<code>add.ts:73</code>).</li><li><strong>Tailwind wiring check.</strong> If <code>app.css</code> (or the project's main stylesheet) does not already <code>@import</code> the tokens file and declare <code>@theme inline</code>, print a copy- pasteable snippet. Do <strong>not</strong> edit the user's <code>app.css</code> automatically — the overview scopes <code>@theme inline</code> wiring as living in the user's stylesheet (overview "Pillars"; matrix §5 marks it <strong>specced</strong>). <code>init</code> only reports.</li></ol>
+<p>Existing files are skipped (not overwritten) unless <code>--force</code>, identical to the stamper's default never-overwrite behavior.</p>
+<h2>Production guard</h2>
+<p>Inherits <code>patties add</code>'s guard: refuses to run with <code>NODE_ENV=production</code> (<code>add.ts:34</code>), exit <code>EXIT.USAGE</code>.</p>
+<h2>Relationship to <code>patties add</code></h2>
+<p><code>patties add &lt;component&gt;</code> remains fully self-bootstrapping — running <code>add</code> without ever running <code>init</code> works exactly as today (lazy creation). <code>init</code> is an optional convenience, not a prerequisite. Running <code>add</code> after <code>init</code> finds tokens + <code>cn</code> already present and skips them.</p>
+<h2>Output example</h2>
+<pre><code>$ patties ui init
+✓ tokens     app/styles/tokens.css (created)
+✓ helper     app/components/ui/_internal/cn.ts (created)
+  deps       + clsx@^2  + tailwind-merge@^3
+  tailwind   add to app.css:
+               @import "./styles/tokens.css";
+               @theme inline { /* … */ }
+done. Run `bun install` to fetch the new peer dependencies.
+</code></pre>
+<h2>Acceptance criteria</h2>
+<ul><li>In a fresh project, <code>patties ui init</code> creates <code>tokens.css</code> + <code>_internal/cn.ts</code> and patches <code>package.json</code>; no <code>bun install</code> is run.</li><li>Re-running <code>patties ui init</code> is a no-op (all "exists", exit <code>EXIT.OK</code>); <code>--force</code> re-stamps.</li><li><code>patties add button</code> immediately after <code>init</code> skips tokens/<code>cn</code> (already present) and only stamps <code>button.tsx</code>.</li><li><code>patties ui init</code> never edits <code>app.css</code>; it prints the wiring snippet only.</li><li>Honors <code>config.ui.componentsDir</code> / <code>tokensFile</code> overrides.</li><li>In <code>NODE_ENV=production</code>, exits <code>EXIT.USAGE</code> with the dev-only message.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

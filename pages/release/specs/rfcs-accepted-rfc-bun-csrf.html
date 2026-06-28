@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.CSRF — native CSRF token generation/verification in middleware · Patties specs</title>
+<meta name="description" content="Accept, depends on [[rfc-bun-cookies]] and (for renderer auto-injection) [[rfc-bun-htmlrewriter]].">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-csrf.md</span></div>
+<h1>Bun.CSRF — native CSRF token generation/verification in middleware</h1>
+<p class="lede">Accept, depends on [[rfc-bun-cookies]] and (for renderer auto-injection) [[rfc-bun-htmlrewriter]].</p>
+</header>
+<h2>Review verdict (2026-05-24)</h2>
+<p><strong>Accept, depends on [[rfc-bun-cookies]] and (for renderer auto-injection) [[rfc-bun-htmlrewriter]].</strong></p>
+<p>Scope split:</p>
+<ul><li><strong>Phase 1 (this RFC):</strong> <code>Bun.CSRF</code> exposed as <code>ctx.csrf.token()</code> / <code>ctx.csrf.verify(submitted)</code>. Users render the hidden input themselves in their forms. No renderer-side magic.</li><li><strong>Phase 2 (folded into HTMLRewriter RFC):</strong> opt-in auto-injection of <code>&lt;input type="hidden" name="_csrf"&gt;</code> into POST forms via the HTMLRewriter pipeline.</li></ul>
+<p>Edge-adapter parity (12): outside Bun, fall back to a WebCrypto HMAC implementation of the same scheme. Adapter responsibility.</p>
+<hr>
+<h2>Summary</h2>
+<p>Bun ships <code>Bun.CSRF.generate(secret, opts?)</code> and <code>Bun.CSRF.verify(token, secret, opts?)</code> — HMAC-signed CSRF tokens with optional expiration and <code>sameSite</code> semantics. Patties middleware (07) should expose a one-liner CSRF helper that wraps this API rather than telling users to bring <code>csurf</code> or roll their own HMAC.</p>
+<h2>Motivation</h2>
+<p>07-middleware leaves CSRF as an unanswered "where does this live" question. Any framework that ships forms (and Patties does, via 02b filesystem routes and 06 islands) needs an answer. <code>Bun.CSRF</code> is zero-dep, constant-time, and pairs naturally with <code>Bun.CookieMap</code> (see <code>rfc-bun-cookies.md</code>) and <code>Bun.secrets</code> for the signing secret.</p>
+<h2>Proposal</h2>
+<ul><li>07-middleware: add <code>ctx.csrf.token()</code> (generates + sets the cookie if absent) and <code>ctx.csrf.verify(submitted)</code> (returns boolean). Users render the hidden input in their forms in Phase 1.</li><li>03-render: opt-in renderer auto-injection of <code>&lt;input type="hidden" name="_csrf"&gt;</code> for POST forms — deferred to Phase 2 via [[rfc-bun-htmlrewriter]]. Opt-out attribute will be <code>&lt;form data-no-csrf&gt;</code>.</li><li>13-conventions: ban <code>csurf</code>, <code>lusca</code>.</li></ul>
+<p>Sample:</p>
+<pre data-lang="ts"><code>export const POST = async (ctx) =&gt; {
+  if (!ctx.csrf.verify(ctx.formData.get("_csrf"))) return new Response("403", { status: 403 });
+  // ...
+};
+</code></pre>
+<h2>Trade-offs</h2>
+<ul><li>Only meaningful for cookie-bearing browsers; pure JSON APIs called with bearer tokens skip CSRF — middleware must allow opt-out.</li><li>Adds an implicit cookie on first GET — surprise factor; documented in 07.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Secret source: <code>Bun.env.PATTIES_CSRF_SECRET</code> required, or auto-generated per process in dev?</li><li>Token rotation policy.</li><li>Edge adapter parity — <code>Bun.CSRF</code> ships in Bun runtime only; vendor adapters need a shim or fall back to WebCrypto HMAC.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

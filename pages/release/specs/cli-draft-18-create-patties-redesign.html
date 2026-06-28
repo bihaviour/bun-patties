@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>create-patties redesign — guided scaffold + agent handoff · Patties specs</title>
+<meta name="description" content="Spec 09 turned the scaffolder into a real interactive prompt with a working">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Draft</span> <span class="badge badge-id">cli/draft/18-create-patties-redesign.md</span></div>
+<h1>create-patties redesign — guided scaffold + agent handoff</h1>
+<p class="lede">Spec 09 turned the scaffolder into a real interactive prompt with a working</p>
+</header>
+<h2>Purpose</h2>
+<p>Spec 09 turned the scaffolder into a real interactive prompt with a working todo demo. This spec re-cuts the prompt flow around capabilities that did not exist when 09 was written: the <strong>Patties UI</strong> catalog (<code>patties add</code>, <code>patties ui init</code> — cli specs 11–15), <strong>monorepo</strong> project layout, <strong>container / edge</strong> deploy targets, and <strong>agent handoff</strong> — the scaffolder no longer tries to scaffold features itself. It ends at a runnable, correctly-shaped project and then points the user at their coding agent (<code>claude --permission-mode plan "/patties-init"</code>) for interactive, plan-mode feature scaffolding.</p>
+<p>The "project pattern" choices (auth-rbac, crm, task, pivot table, dashboard) are <strong>not CLI prompts</strong>. They are richer than a copy step and live behind the <code>/patties</code> skill and the <code>/patties-init</code> plan-mode flow (<a href="cli-draft-19-patties-agent-skill.html">spec 19</a>), driven by the agent after scaffold.</p>
+<h2>What changes from spec 09</h2>
+<ul><li>The prompt flow is reordered and gains two prompts: <strong>coding agent moves earlier</strong>, <strong>project type</strong> drives conditional sub-prompts (<strong>Patties UI</strong>, <strong>monorepo</strong>), and <strong>deploy target</strong> options now depend on project type.</li><li><code>--agent none</code> is surfaced in the TTY as <strong>"old school"</strong> (no agent files, no skill). The flag value stays <code>none</code>.</li><li>New: a <strong>monorepo</strong> option for full-stack projects — apps under <code>apps/&lt;app_name&gt;/</code>, shared code under <code>packages/</code>, a Bun workspace at the root (the same shape this framework repo itself uses).</li><li>New deploy target <strong>container / docker</strong> for full-stack.</li><li>New: when Patties UI is chosen, the scaffolder runs <code>patties ui init</code> and stamps a starter set so the demo renders with real components.</li><li>Rewritten next-steps output: alongside <code>patties dev</code>, it tells the user to open a <strong>new terminal</strong> and run <code>claude --permission-mode plan "/patties-init"</code> for interactive feature scaffolding.</li></ul>
+<p>Everything spec 09 fixed that this does not contradict — the generated README, the <code>{{...}}</code> templating pass, zero runtime dependencies, the "no Claude files under codex / no codex files under claude" rule, positional-name behavior — <strong>carries over unchanged</strong>.</p>
+<h2>Interactive flow</h2>
+<p>When stdin is a TTY and the corresponding flag was not passed, prompt in this order. Each maps to a flag for non-TTY / scripted runs.</p>
+<ol><li><strong>Project name</strong> — only when not given as the first positional arg. Default <code>my-patties-app</code>; validation <code>/^[a-z0-9][a-z0-9_-]*$/</code>.</li><li><strong>Coding agent</strong> — <em>"Which coding agent are you using?"</em> → <code>Claude</code> (default) / <code>Codex</code> / <code>old school</code>. Flag: <code>--agent</code> (<code>claude</code> / <code>codex</code> / <code>none</code>; <code>--template</code> retained as an alias).</li><li><strong>Project type</strong> — <em>"What kind of project are you building?"</em> → <code>Frontend</code> / <code>Backend</code> / <code>Full Stack</code> (default). Flag: <code>--type</code> (<code>frontend</code> / <code>backend</code> / <code>fullstack</code>). want a styled UI template (Patties UI)?"<em> → <code>Yes</code> (default) / <code>No</code>. Flag: <code>--ui</code> / <code>--no-ui</code>. (Backend has no UI surface — never asked, always <code>No</code>.) structure?"</em> → <code>Yes</code> / <code>No</code> (default <code>No</code>). Flag: <code>--monorepo</code> / <code>--no-monorepo</code>. Yes ⇒ apps under <code>apps/&lt;app_name&gt;/</code> (see <a href="#monorepo-layout">Monorepo layout</a>).<ul><li><strong>3.1 Patties UI</strong> — only when <code>type ∈ {frontend, fullstack}</code>: _"Do you</li><li><strong>3.2 Monorepo</strong> — only when <code>type = fullstack</code>: _"Do you want a monorepo</li></ul></li><li><strong>Deploy target</strong> — <em>"Where will you deploy?"</em>; options depend on type: <code>container / docker</code>. the spec-09 deploy-plugin sub-prompt (<code>cloudflare</code> / <code>vercel</code> / <code>deno</code> / <code>netlify</code> / <code>none</code>, flag <code>--deploy</code>) — optional, defaults to <code>none</code>.<ul><li><strong>4.1</strong> <code>type ∈ {frontend, backend}</code> → <code>bun</code> (default) / <code>worker / edge</code>.</li><li><strong>4.2</strong> <code>type = fullstack</code> → <code>bun</code> (default) / <code>worker / edge</code> /</li><li>Flag: <code>--target</code> (<code>bun</code> / <code>edge</code> / <code>container</code>). <code>worker / edge</code> may show</li></ul></li></ol>
+<p><code>--yes</code> / <code>-y</code> accepts every default and skips all prompts even in a TTY. Non-TTY runs require flags; missing values fall back to defaults silently. The <code>--yes</code> profile: <code>agent=claude</code>, <code>type=fullstack</code>, <code>ui=yes</code>, <code>monorepo=no</code>, <code>target=bun</code>. Theme is a flag only (<code>--theme</code>, default <code>neutral</code>; mirrors <code>patties ui init --theme</code>, cli spec 11) — not a prompt.</p>
+<h2>Project types</h2>
+<p>The project type selects the demo template, drives the UI / monorepo sub-prompts, and sets the deploy-target option set. It does not add a runtime concept to <code>patties.config.ts</code>; it is purely a scaffold-shaping choice.</p>
+<div class="table-wrap"><table><thead><tr><th>Type</th><th><code>app/routes</code></th><th><code>app/islands</code></th><th>API handlers</th><th>UI sub-prompt</th><th>Monorepo sub-prompt</th><th>Deploy options</th></tr></thead><tbody><tr><td><strong>Full Stack</strong> (default)</td><td>SSR pages</td><td>yes</td><td>sample <code>api/health.ts</code></td><td>asked (default Yes)</td><td>asked (default No)</td><td>bun · worker/edge · container/docker</td></tr><tr><td><strong>Frontend</strong></td><td>SSR pages</td><td>yes</td><td>none</td><td>asked (default Yes)</td><td>— (No)</td><td>bun · worker/edge</td></tr><tr><td><strong>Backend</strong></td><td>route handlers returning <code>Response</code> / <code>ctx.json()</code></td><td>none</td><td><code>api/</code> tree</td><td>— (No)</td><td>— (No)</td><td>bun · worker/edge</td></tr></tbody></table></div>
+<p>All three remain real, runnable Patties apps served by <code>Bun.serve</code>. Backend keeps <code>react</code> / <code>react-dom</code> in <code>dependencies</code> (the framework needs them) but scaffolds no React UI — the demo is API-only. The spec-09 todo demo is the Full-Stack demo; Frontend trims the API route; Backend replaces page+island with route handlers.</p>
+<h2>Patties UI integration</h2>
+<p>When the resolved Patties UI choice is <code>Yes</code> (Frontend / Full Stack only):</p>
+<ol><li>Add <code>patties-ui</code> to <code>devDependencies</code>. (<code>patties add</code> never installs — it edits <code>package.json</code>; the scaffolder's single <code>bun install</code> covers it, cli spec 14.)</li><li>Run <code>patties ui init --theme &lt;theme&gt;</code> to merge <code>app/styles/tokens.css</code> and stamp <code>_internal/</code> helpers (cli spec 11).</li><li>Stamp a starter set — <code>button</code>, <code>card</code>, <code>input</code>, <code>label</code> — so the demo page uses real components, not raw markup.</li><li>Ensure the app stylesheet imports <code>tokens.css</code> and Tailwind v4 per the <code>ui init</code> wiring instructions.</li></ol>
+<p>In a monorepo, all of the above targets the <strong>initial app's</strong> directory (<code>apps/&lt;app_name&gt;/</code>), resolving paths via that app's <code>patties.config.ts</code> / convention. <code>No</code> ⇒ none of this runs; the demo uses plain markup.</p>
+<p>Ordering: UI setup runs after the template copy + templating pass and after the agent overlay, but before the single <code>bun install</code>.</p>
+<h2>Monorepo layout</h2>
+<p>When <code>type = fullstack</code> and monorepo is <code>Yes</code>, scaffold a Bun workspace (same shape as this framework repo):</p>
+<pre><code>&lt;name&gt;/
+  package.json            // private, "workspaces": ["apps/*", "packages/*"]
+  biome.json
+  apps/
+    &lt;app_name&gt;/           // app_name defaults to the project name
+      app/                // routes, islands, server.ts (patties source root)
+      patties.config.ts
+      package.json
+  packages/               // shared code (created empty with a README)
+  &lt;agent overlay&gt;         // CLAUDE.md/.claude or AGENTS.md/.codex at the root
+</code></pre>
+<p>Notes:</p>
+<ul><li>The per-app source root stays <code>app/</code> (patties' routing convention); the app lives under <code>apps/&lt;app_name&gt;/</code>. The user's "src" intent maps to this <code>app/</code> dir — we do not rename patties' convention.</li><li>The initial <code>&lt;app_name&gt;</code> defaults to the project name; additional apps (e.g. a separate <code>api</code>) are added by the user later under <code>apps/</code>.</li><li><code>patties dev</code> / <code>patties build</code> run per-app (<code>bun --filter &lt;app&gt; ...</code> or from inside the app dir). The README documents both.</li><li>Non-monorepo full-stack keeps today's flat layout (<code>app/</code> at the root).</li><li>The monorepo is intentionally <strong>Bun-workspaces-only</strong> — no Turborepo / Nx is scaffolded. Bun gives topological <code>bun --filter</code> execution + catalogs natively; the remaining scale gap (task-output caching, affected detection) is proposed as a bun-native runner in [[rfc-bun-task-cache]], not a third-party orchestrator. Polyglot (Python/Go) is explicitly deferred.</li><li><strong>Framework prerequisite:</strong> the dev server's single-React resolution must be made workspace-aware before <code>--monorepo</code> ships (hoisted root <code>node_modules</code> otherwise loads two copies of React and crashes SSR). See [[framework/26-monorepo-react-resolution]].</li></ul>
+<h2>Deploy targets</h2>
+<div class="table-wrap"><table><thead><tr><th>Choice</th><th>Flag</th><th>Adapter</th><th>Artifacts</th></tr></thead><tbody><tr><td><strong>bun</strong> (default)</td><td><code>bun</code></td><td><code>bun</code> (<code>src/adapters/bun</code>)</td><td>long-running <code>Bun.serve</code> server</td></tr><tr><td><strong>worker / edge</strong></td><td><code>edge</code></td><td><code>edge</code> (<code>src/adapters/edge</code>)</td><td>portable Worker module; optional vendor plugin via <code>--deploy</code></td></tr><tr><td><strong>container / docker</strong></td><td><code>container</code></td><td><code>bun</code> + container</td><td>bun-adapter server <strong>plus</strong> a <code>Dockerfile</code> (+ <code>.dockerignore</code>) for <code>bun</code> runtime images; full-stack only</td></tr></tbody></table></div>
+<p><code>container</code> is the <code>bun</code> adapter packaged for a container — it does not introduce a third framework adapter. The chosen <code>target</code> is written to <code>patties.config.ts</code> (<code>bun</code> for both <code>bun</code> and <code>container</code>); container also emits the Dockerfile.</p>
+<h2>Agent overlays + handoff</h2>
+<div class="table-wrap"><table><thead><tr><th><code>--agent</code> (TTY label)</th><th><code>CLAUDE.md</code> / <code>.claude/</code></th><th><code>AGENTS.md</code> / <code>.codex/</code></th><th><code>/patties</code> skill + <code>/patties-init</code></th><th>Next-steps handoff line</th></tr></thead><tbody><tr><td><code>claude</code> (<strong>Claude</strong>, default)</td><td>scaffolded</td><td>—</td><td><code>.claude/skills/patties/</code>, <code>.claude/commands/patties-init.md</code></td><td><code>claude --permission-mode plan "/patties-init"</code></td></tr><tr><td><code>codex</code> (<strong>Codex</strong>)</td><td>—</td><td>scaffolded</td><td><code>.codex/rules/patties-patterns.md</code></td><td>open Codex and ask it to scaffold per the rule</td></tr><tr><td><code>none</code> (<strong>old school</strong>)</td><td>—</td><td>—</td><td>—</td><td>use <code>patties add &lt;component&gt;</code>; patterns are agent-only</td></tr></tbody></table></div>
+<p><code>AGENTS.md</code> is still generated on first <code>patties build</code> regardless of choice (framework spec 11). The codex overlay carries identical pattern guidance as a rule doc, never a <code>.claude/</code>-style file (spec 09 overlay-purity rule). The <code>/patties-init</code> command and <code>/patties</code> skill are defined in <a href="cli-draft-19-patties-agent-skill.html">spec 19</a>.</p>
+<h2>Next-steps output</h2>
+<p>After scaffolding, print terse guidance. Example for <code>claude</code>, full-stack, <code>ui=yes</code>:</p>
+<pre><code>✓ Created my-app
+
+  cd my-app
+  bun dev            → http://localhost:3000  (start the dev server)
+
+Patties UI is set up — components live in app/components/ui/.
+
+Want to scaffold features (auth, CRM, task board, dashboard, …)?
+Open a NEW terminal in this project and run:
+
+  claude --permission-mode plan "/patties-init"
+
+That starts an interactive, plan-mode session that designs and scaffolds
+your project with you before writing any files.
+</code></pre>
+<ul><li>Show the <code>bun install</code> line only when <code>--no-install</code> was used.</li><li><code>codex</code>: replace the handoff block with the Codex equivalent (open Codex, ask it to scaffold using the patterns rule).</li><li><code>none</code> ("old school"): omit the handoff block; instead point at <code>patties add &lt;component&gt;</code> and the docs for composing patterns by hand.</li><li>Monorepo: show <code>bun --filter &lt;app_name&gt; dev</code> (or <code>cd apps/&lt;app_name&gt; &amp;&amp; bun dev</code>) instead of bare <code>bun dev</code>.</li></ul>
+<h2>Flags (non-interactive)</h2>
+<pre><code>bunx create-patties [name]
+  --agent      claude | codex | none                 (default claude)
+  --type       frontend | backend | fullstack        (default fullstack)
+  --ui | --no-ui                                      (frontend/fullstack; default yes)
+  --monorepo | --no-monorepo                          (fullstack only; default no)
+  --target     bun | edge | container                (container = fullstack only; default bun)
+  --deploy     cloudflare | vercel | deno | netlify | none   (edge only)
+  --theme      neutral | slate | stone | zinc         (ui only, default neutral)
+  --yes, -y                                           (accept all defaults)
+  --no-install
+  --git
+</code></pre>
+<p><code>--template</code> remains an alias for <code>--agent</code> (05 / 09 back-compat).</p>
+<h2>Behavior</h2>
+<ol><li>Resolve options: flags → prompts (TTY) → defaults, in that precedence. Apply gating: <code>type=backend</code> ⇒ <code>ui=no</code>; <code>type≠fullstack</code> ⇒ <code>monorepo=no</code>, and <code>container</code> is not offered.</li><li>Validate <code>name</code>; refuse a non-empty target directory.</li><li>Copy the template for the chosen project type (+ monorepo skeleton when selected) into <code>./&lt;name&gt;/</code>; rename <code>gitignore</code>→<code>.gitignore</code>, <code>README-template.md</code>→<code>README.md</code>.</li><li>Run the templating pass over text files. Variable set extends 09 with <code>{{type}}</code>, <code>{{ui}}</code>, <code>{{monorepo}}</code>, <code>{{app_name}}</code>.</li><li>Patch <code>package.json</code> (root + per-app in monorepo; deps incl. <code>patties-ui</code> when <code>ui=yes</code>) and <code>patties.config.ts</code> (<code>target</code>).</li><li>Apply the agent overlay for <code>claude</code> / <code>codex</code> (incl. <code>/patties</code> skill + <code>/patties-init</code> command, or the codex rule). <code>none</code> applies nothing.</li><li>If <code>ui=yes</code>: <code>patties ui init --theme &lt;theme&gt;</code> + stamp the starter set into the (initial) app.</li><li>If <code>target=container</code>: emit <code>Dockerfile</code> + <code>.dockerignore</code>.</li><li>Unless <code>--no-install</code>, run <code>bun install</code>. Preserve 09's git behavior.</li><li>Print the next-steps output (see above), tailored to agent / type / monorepo / ui.</li></ol>
+<h2>Implementation notes</h2>
+<ul><li>Keep the package <strong>zero-dependency</strong> (09): Bun <code>prompt()</code> + string replace. The new prompts and conditionals add no libraries.</li><li><code>patties ui init</code> / <code>patties add</code> (step 7) invoke the <strong>project's own</strong> <code>patties</code> binary (resolved after deps land in <code>package.json</code>) or call the catalog's programmatic stamp API directly (cli specs 11–12). Either way, the starter components must exist before <code>bun dev</code>. Sequence against <code>bun install</code> accordingly.</li><li>Prefer a single layered <code>templates/default/</code> base with type / monorepo overlays over three near-identical trees, to avoid drift.</li><li>The <code>/patties-init</code> launch string in the output is <strong>informational text</strong> — there is no <code>--patties-init</code> claude flag; <code>/patties-init</code> is a custom command (spec 19) invoked via the initial-prompt argument.</li></ul>
+<h2>Tests</h2>
+<ul><li><code>tests/scaffold.test.ts</code> — per matrix cell: deploy options exclude <code>container</code>. <code>workspaces</code>, <code>apps/&lt;name&gt;/app/</code>, <code>packages/</code> present. <code>tokens.css</code> + <code>patties-ui</code> in deps (in the initial app for monorepo); <code>--no-ui</code> ⇒ none. is <code>bun</code>. <code>.claude/commands/patties-init.md</code>; <code>--agent codex</code> ⇒ <code>.codex/rules/patties-patterns.md</code> and no Claude files; <code>--agent none</code> ⇒ neither.<ul><li><code>--type backend</code> ⇒ no <code>app/islands/</code>, no <code>.tsx</code> page, never UI-prompted,</li><li><code>--type fullstack --monorepo</code> ⇒ root workspace <code>package.json</code> with</li><li><code>--ui</code> yes ⇒ <code>app/components/ui/{button,card,input,label}.tsx</code> +</li><li><code>--target container</code> ⇒ <code>Dockerfile</code> exists and <code>patties.config.ts</code> target</li><li><code>--agent claude</code> ⇒ <code>.claude/skills/patties/SKILL.md</code> +</li><li><code>--yes</code> deterministic regardless of TTY; matches the default profile.</li></ul></li><li>CI scaffold-smoke: for representative cells, scaffold, <code>bun install</code>, <code>bun dev</code> (or <code>--filter</code> for monorepo), curl <code>/</code> (or <code>/api/health</code> for backend); when <code>ui=yes</code>, confirm stamped components render.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>bunx create-patties</code> in a TTY asks the prompts in the order above, with the UI / monorepo / deploy sub-rules gated by project type, then scaffolds a project that boots with <code>bun dev</code>.</li><li><code>--type backend</code> never asks about Patties UI or monorepo and excludes <code>container</code> from deploy options.</li><li><code>--type fullstack --monorepo</code> produces a Bun workspace with the initial app under <code>apps/&lt;app_name&gt;/</code>.</li><li><code>--ui</code> (Frontend / Full Stack) yields a demo page importing stamped Patties UI components, themed per <code>--theme</code>, with no manual <code>ui init</code> step.</li><li><code>--target container</code> emits a <code>Dockerfile</code>; <code>worker / edge</code> writes the edge adapter target.</li><li>The next-steps output, for <code>claude</code>, prints the exact <code>claude --permission-mode plan "/patties-init"</code> handoff; for <code>codex</code>, the Codex equivalent; for <code>old school</code>, neither (points at <code>patties add</code>).</li><li>The pattern modules are never a CLI prompt or flag — only reachable via the <code>/patties</code> skill / <code>/patties-init</code> flow (spec 19).</li><li>Passing the name as the first positional arg behaves as today.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design Specifications · Patties</title>
+<meta name="description" content="The Patties design exploration: a thin modular-monolith convention built directly on Bun-native primitives — modules talk through a published public API, enforced by one build-time boundary check.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta">
+<span class="badge badge-status status-draft">Design exploration</span>
+</div>
+<h1>Design specifications</h1>
+<p class="lede">A design exploration: a <em>thin</em> modular-monolith convention for Patties, built directly on Bun-native primitives. A module is a folder with a public <code>index.ts</code>, wiring is a plain <code>import</code>, and the only new machinery is a build-time public-API boundary check plus a route-merge macro. No DI container, no decorators, no NestJS clone. The <a href="../release/index.html">Release</a> page tracks each spec's status.</p>
+</header>
+
+<section>
+<h2>The thesis in one line</h2>
+<p>A modular monolith is one deployable, partitioned into modules that communicate only through their <strong>public surface</strong>. That boundary is the whole value — everything else is ceremony Bun lets us delete. Bun's module graph already <em>is</em> a dependency graph; we lean on it and add one build-time rule: a module may only reach another module's public <code>index.ts</code>.</p>
+<div class="callout note">
+<p class="callout-title">Intended design only</p>
+<p>This section is a design exploration. The modular-monolith convention described here is proposed, not yet implemented — see the <a href="roadmap.html">delivery tracker</a> for status. The shipped framework behaviour is documented under <a href="../docs/index.html">Docs</a>.</p>
+</div>
+</section>
+
+<section>
+<h2>Deliberately thin</h2>
+<p>The goal is structure, not a framework that owns your code. Reach for a Bun or web primitive every time one exists.</p>
+<div class="xref-grid">
+<div class="xref">
+<span class="xref-title">✅ What it is</span>
+<span class="xref-desc">A module convention (a folder with a public <code>index.ts</code>), a boundary check (build error on deep imports), a discovery macro (<code>Bun.Glob</code> merges routes at build), and a scaffolder.</span>
+</div>
+<div class="xref">
+<span class="xref-title">❌ What it isn't</span>
+<span class="xref-desc">No DI container, no decorators / <code>reflect-metadata</code>, no guards / pipes / interceptors / filters, no new validation framework. Wiring is plain ES <code>import</code>; request flow is <code>compose()</code>.</span>
+</div>
+</div>
+<p>If you delete the framework, your modules are still just folders of plain functions. That's the test for "thin."</p>
+</section>
+
+<section>
+<h2>A module is a folder</h2>
+<p>Everything inside is private by default. The <code>index.ts</code> is the contract — the only thing other modules are allowed to import.</p>
+<pre data-lang="text"><code>app/
+  billing/
+    index.ts            ← public API (the front door)
+    routes.ts           ← HTTP surface: (req, ctx) => Response
+    invoice.service.ts  ← internal
+    invoice.schema.ts   ← internal (Zod, if you want it)
+  orders/
+    index.ts
+    routes.ts
+    order.service.ts    ← imports billing ONLY via ../billing</code></pre>
+<pre data-lang="ts"><code>// app/billing/index.ts — the public surface (and the ONLY import target)
+export { invoiceService } from "./invoice.service";
+export type { Invoice } from "./invoice.service";
+
+// app/orders/order.service.ts — cross-module wiring is just an import
+import { invoiceService } from "../billing";          // ✅ through the public index
+// import { ledger } from "../billing/invoice.service" // ❌ build error: internal</code></pre>
+</section>
+
+<section>
+<h2>Key rules</h2>
+<ul class="reqs">
+<li><span class="req-tag must">RULE 1</span><span><strong>Public API or nothing.</strong> A module may only import another module's <code>index.ts</code>. Deep imports into internals are a build error with <code>file:line</code>.</span></li>
+<li><span class="req-tag must">RULE 2</span><span><strong>Wiring is a plain import.</strong> Bun's module graph is the dependency graph. No container, no tokens, no <code>reflect-metadata</code>.</span></li>
+<li><span class="req-tag must">RULE 3</span><span><strong>Discover at build, serve frozen.</strong> A macro finds modules and inlines the merged route table. The production server runs <code>Bun.serve({ routes })</code> and scans nothing.</span></li>
+<li><span class="req-tag should">RULE 4</span><span><strong>Standards at the boundary.</strong> Handlers take a standard <code>Request</code> + a thin <code>ctx</code> and return a <code>Response</code>. Request flow is the existing <code>compose()</code> middleware.</span></li>
+<li><span class="req-tag must">RULE 5</span><span><strong>Bun-native only.</strong> <code>Bun.serve</code>, <code>Bun.Glob</code>, <code>Bun.build</code>, <code>bun --hot</code>. No Express, no chokidar, no Webpack.</span></li>
+<li><span class="req-tag should">RULE 6</span><span><strong>Libraries stay libraries.</strong> Validation, ORM, jobs — call them in a handler. The framework doesn't wrap them in phases or providers.</span></li>
+</ul>
+</section>
+
+<section>
+<h2>Explore the specs</h2>
+<div class="xref-grid">
+<a class="xref" href="architecture.html"><span class="xref-title">🏗️ Architecture &amp; diagrams</span><span class="xref-desc">The layer model, the build-time discovery macro that merges module routes, and how the boundary check works.</span></a>
+<a class="xref" href="features.html"><span class="xref-title">📦 Features</span><span class="xref-desc">The module convention &amp; public-API boundary, the data-ownership model, and the dependency-graph checker — in full.</span></a>
+<a class="xref" href="decisions.html"><span class="xref-title">⚖️ Decision records</span><span class="xref-desc">Why no DI container, why plain imports, why the boundary is the only new rule — and the open questions.</span></a>
+<a class="xref" href="guidelines.html"><span class="xref-title">📖 Using Patties</span><span class="xref-desc">create-patties, the framework + CLI, and Patties UI — how the pieces fit for someone building an app.</span></a>
+<a class="xref" href="roadmap.html"><span class="xref-title">🗺️ Delivery tracker</span><span class="xref-desc">Filterable epics, specs, and tasks with status and GitHub links.</span></a>
+<a class="xref" href="ui-frontend-stack.html"><span class="xref-title">🎨 Frontend &amp; UI stack</span><span class="xref-desc">The full frontend/UI layer breakdown — React 19, islands, and the Patties UI catalog.</span></a>
+</div>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="../docs/index.html">User docs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build · Patties specs</title>
+<meta name="description" content="Produce the client JavaScript bundle for islands and the deployable server bundle for the configured target. The only bundler is Bun.build.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-1/04-build.md</span></div>
+<h1>Build</h1>
+<p class="lede">Produce the client JavaScript bundle for islands and the deployable server bundle for the configured target. The only bundler is Bun.build.</p>
+</header>
+<h2>Purpose</h2>
+<p>Produce the client JavaScript bundle for islands and the deployable server bundle for the configured target. The only bundler is <code>Bun.build</code>.</p>
+<h2>Public surface</h2>
+<pre data-lang="ts"><code>export interface BuildResult {
+  clientManifest: ClientManifest   // island name → public URL
+  serverEntry: string              // path to built server entry
+  assets: BuiltAsset[]
+}
+
+export async function build(options: BuildOptions): Promise&lt;BuildResult&gt;
+</code></pre>
+<p><code>BuildOptions</code>:</p>
+<ul><li><code>appDir: string</code></li><li><code>outDir: string</code> — defaults to <code>.patties/</code>.</li><li><code>target: "bun" | "edge"</code> — from <a href="framework-archive-phase-2-08-config.html">08-config</a>. <code>"edge"</code> produces a portable WinterCG / <code>workerd</code>-style Worker module; vendor-specific deploy is a plugin concern.</li><li><code>mode: "development" | "production"</code>.</li></ul>
+<h2>Behavior</h2>
+<h3>Client bundle</h3>
+<ol><li>Discover islands by scanning <code>app/islands/**/*.tsx</code> (build-time scan — the single source of truth for "what islands exist"; the renderer does not perform runtime detection).</li><li>Generate a synthetic entry that imports every island and registers it with <code>createClient()</code> (see <a href="framework-archive-phase-1-06-client-islands.html">06</a>). The entry always runs <code>hydrateAll()</code> on load; when the rendered page has no <code>data-island</code> markers, <code>hydrateAll()</code> is a no-op.</li><li><code>Bun.build({ entrypoints: [entry], target: "browser", splitting: true, minify: mode === "production", outdir: outDir + "/client" })</code>.</li><li>Build the <code>ClientManifest</code>: <code>{ entry: "/_patties/client/&lt;hashed&gt;.js", islands: { [name]: "/_patties/client/&lt;chunk&gt;.js" } }</code>. The <code>entry</code> URL is what <code>&lt;script type="module"&gt;</code> references; per-island chunks are emitted by <code>splitting: true</code> and referenced internally.</li></ol>
+<h3>Server bundle</h3>
+<ol><li>Generate a server entry that imports <code>createServer</code>, <code>createRouter</code>, the user's <code>app/middleware.ts</code> if present, and <code>patties.config.ts</code>.</li><li>Inline the build-time route table via a <strong>Bun macro</strong>: the generated server entry contains <code>import { ROUTES } from "./routes.macro.ts" with { type: "macro" }</code>. The macro runs <code>scanRoutes()</code> at build time and returns a JSON array literal — the bundle ships with the route table baked in, no filesystem scan at runtime. Same trick for <code>env.public</code> values: a <code>patties/config-macro</code> returns the inlined record.</li><li><code>Bun.build({ entrypoints: [serverEntry], target: targetMap[target], outdir: outDir + "/server" })</code> where <code>targetMap</code> selects <code>bun</code> or <code>browser</code> (for the <code>edge</code> target — Workers/WinterCG conditions).</li><li>Emit any static assets from <code>app/public/</code> into <code>outDir + "/assets"</code>.</li></ol>
+<h3>Hashing</h3>
+<p>Asset filenames use <strong><code>Bun.CryptoHasher</code></strong> (<code>new Bun.CryptoHasher("xxh64")</code> — fast, non-cryptographic, stable across platforms; SHA-256 for things that need crypto-grade hashes like SRI). Never compute hashes in JS.</p>
+<h3>Single-binary executable (<code>bun</code> target only)</h3>
+<p>When <code>target: "bun"</code> and <code>mode: "production"</code>, the adapter (<a href="framework-archive-phase-2-12-edge-adapters.html">12</a>) can opt into <code>bun build --compile</code> to emit a <strong>single standalone executable</strong> that embeds the Bun runtime + bundle. The host machine no longer needs <code>bun</code> installed. Triggered by an adapter option (<code>bun.compile: true</code>), not by default — compile is slower and the binary is ~50MB.</p>
+<h3>Filesystem I/O</h3>
+<p>All build-time file reads use <code>Bun.file(path).text() / .json() / .bytes()</code>; all writes use <code>Bun.write(path, data)</code>. Never <code>node:fs/promises</code>. This is non-negotiable — see <a href="framework-archive-13-conventions.html">13-conventions</a>.</p>
+<h3>Macro policy</h3>
+<p>Bun's import attributes (<code>with { type: "macro" | "text" | "toml" | "json" | "file" | "sqlite" }</code>) are the framework's preferred way to pull build-time data into bundles. See [[rfc-bun-import-attributes]] for the full policy. Summary:</p>
+<p><strong>Required to be macros</strong> (compiler-enforced "no runtime read" guarantee):</p>
+<ul><li>Route table (<code>scanRoutes</code> output) — closes the "no <code>Bun.Glob</code> call in production bundle" promise.</li><li><code>env.public</code> values inlined into the client bundle.</li><li>Client manifest (island name → chunk URL).</li><li>AGENTS.md content hash for dev banner cache busting.</li></ul>
+<p><strong>Optional</strong> (may be import-attribute or runtime read; the framework neither requires nor forbids):</p>
+<ul><li>SQL files (<code>with { type: "text" }</code> preferred).</li><li>Email/HTML templates (<code>with { type: "text" }</code> preferred).</li><li>TOML config blobs (<code>with { type: "toml" }</code> preferred when known at build time).</li><li>SQLite seed databases (<code>with { type: "sqlite" }</code>).</li></ul>
+<p>Macros re-evaluate on <code>bun --hot</code> when their input files change (see <a href="framework-archive-phase-1-05-dev-hmr.html">05-dev-hmr</a>). When a macro depends on a file Bun's dep tracker doesn't follow, the macro source explicitly imports that file with <code>with { type: "file" }</code> to register the dependency.</p>
+<h2>Non-goals</h2>
+<ul><li>CSS pipelines beyond what <code>Bun.build</code> supports natively.</li><li>Source maps in production (configurable later via RFC).</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>A project with zero islands produces no client bundle and an empty manifest.</li><li>A project with one island produces exactly one chunk in <code>outDir/client/</code> referenced by the manifest.</li><li>Building with <code>target: "edge"</code> produces a portable <code>export default { fetch }</code> module compatible with <a href="framework-archive-phase-2-12-edge-adapters.html">12-edge-adapters</a> and any WinterCG / <code>workerd</code>-compliant runtime.</li><li>The built server bundle contains the route table as a literal JSON value (verifiable by grepping the output). No call to <code>Bun.Glob</code> or <code>scanRoutes</code> appears in the production server bundle.</li><li>With <code>bun.compile: true</code>, <code>patties build --target bun</code> produces a single executable file on disk.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Toggle · Patties specs</title>
+<meta name="description" content="Two-state button (pressed / unpressed). Mirrors shadcn Toggle. Built on @radix-ui/react-toggle.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-2/57-toggle.md</span></div>
+<h1>Toggle</h1>
+<p class="lede">Two-state button (pressed / unpressed). Mirrors shadcn Toggle. Built on @radix-ui/react-toggle.</p>
+</header>
+<h2>Purpose</h2>
+<p>Two-state button (pressed / unpressed). Mirrors shadcn <code>Toggle</code>. Built on <code>@radix-ui/react-toggle</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code> when controlled. Uncontrolled (<code>defaultPressed</code>) usage with no state observation can render as a static <code>&lt;button aria-pressed&gt;</code> with no JS — the build decides.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-toggle@^1.1</code></li><li><code>class-variance-authority@^0.7</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export type ToggleVariant = "default" | "outline"
+export type ToggleSize = "default" | "sm" | "lg"
+
+export function Toggle(props: Radix.ToggleProps &amp; { variant?: ToggleVariant; size?: ToggleSize; className?: string }): JSX.Element
+export const toggleVariants: (opts: { variant?: ToggleVariant; size?: ToggleSize }) =&gt; string
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li><code>toggleVariants</code> exported for use by 58-toggle-group.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Clicking flips <code>data-state</code> and <code>aria-pressed</code>.</li><li>Keyboard <code>Space</code> and <code>Enter</code> toggle.</li><li>Variants and sizes snapshot correctly.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview · Patties</title>
+<meta name="description" content="What Patties is and which problems it is optimized to solve.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>Overview</h1>
+<p class="lede">Patties is a Bun-native full-stack meta-framework that treats Bun as the foundation rather than as a compatibility target.</p>
+</header>
+<section>
+<h2>What Patties is</h2>
+<p>Patties is a Bun-native full-stack meta-framework that treats Bun as the foundation rather than as a compatibility target.</p>
+<p>The framework is built around:</p>
+<ul>
+<li><code>Bun.serve</code> for HTTP serving</li>
+<li><code>Bun.Glob</code> for filesystem scanning</li>
+<li><code>Bun.build</code> for client and server bundling</li>
+<li>React server rendering via <code>renderToReadableStream</code></li>
+<li>Bun-native dev workflows with <code>bun --hot</code> and <code>bun --watch</code></li>
+</ul>
+</section>
+<section>
+<h2>What Patties includes</h2>
+<ul>
+<li>Filesystem routing compiled to Bun route patterns</li>
+<li>React page rendering</li>
+<li>Client islands with on-demand hydration</li>
+<li>Dev-time HMR wiring</li>
+<li>Build output for Bun and edge targets</li>
+<li>Middleware composition and typed request context</li>
+<li>Config, environment, and dev-time secrets loading</li>
+<li>Optional AI primitives for agents, tools, and jobs</li>
+<li>Plugin hooks for build, dev, jobs, and <code>AGENTS.md</code></li>
+</ul>
+</section>
+<section>
+<h2>Core mental model</h2>
+<p>A Patties app is mostly a folder convention plus a small runtime:</p>
+<ul>
+<li>write route modules in <code>app/routes/</code></li>
+<li>place interactive islands in <code>app/islands/</code></li>
+<li>add middleware in <code>app/middleware.ts</code></li>
+<li>define config in <code>patties.config.ts</code></li>
+<li>use the CLI for dev, build, deploy, and secret management</li>
+</ul>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

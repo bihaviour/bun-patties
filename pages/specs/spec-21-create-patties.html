@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLI Spec 21 — create-patties: Modular Monolith Default · Patties</title>
+<meta name="description" content="Amends CLI Spec 18. Drops the ProjectType prompt and makes the modular monolith the default scaffold for every new Patties app. Every project becomes full-stack by default.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Roadmap</span></div>
+<h1>CLI Spec 21 — create-patties: Modular Monolith Default</h1>
+<p class="lede">Amends <strong>CLI Spec 18</strong>. Drops the <code>ProjectType</code> prompt (frontend / backend / fullstack) and makes the modular monolith the default scaffold for every new Patties app. Every project becomes full-stack by default.</p>
+</header>
+
+<div class="callout note">
+<p class="callout-title">Status: Draft</p>
+<p>Depends on <a href="spec-28-modular-monolith.html">Framework Spec 28</a> for the <code>modulesDirs</code> config key and scanner changes. Everything in CLI Spec 18 not contradicted here carries over unchanged.</p>
+</div>
+
+<section>
+<h2>What's dropped from Spec 18</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Removed</th><th>Replacement / reason</th></tr></thead>
+<tbody>
+<tr><td><code>--type frontend | backend | fullstack</code></td><td>Deleted. Every app is full-stack by default.</td></tr>
+<tr><td><code>_backend/</code> template overlay</td><td>Deleted. API-only work is an <code>api/</code> module inside a full-stack app.</td></tr>
+<tr><td>Monorepo gated on <code>type=fullstack</code></td><td>Monorepo is now asked unconditionally for all projects.</td></tr>
+<tr><td>Patties UI gated on <code>type ∈ {frontend, fullstack}</code></td><td>Patties UI is always offered — all apps can have UI.</td></tr>
+<tr><td><code>container</code> excluded from non-fullstack</td><td>All deploy targets available to every app.</td></tr>
+<tr><td><code>{{type}}</code> template variable</td><td>Removed from templating pass.</td></tr>
+<tr><td>Flat <code>app/routes/</code> in default template</td><td>Replaced by modular monolith layout.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout warning">
+<p class="callout-title">Warning</p>
+<p>Passing <code>--type</code> is now a <strong>hard error</strong> with a clear message: <em>"--type was removed; every patties app is full-stack by default."</em></p>
+</div>
+</section>
+
+<section>
+<h2>Updated interactive flow</h2>
+<p>Four prompts instead of five. The project-type prompt and its sub-gates are gone.</p>
+<ul class="reqs">
+<li><span class="req-tag stage">1. Project name</span><span>Positional arg or prompt. Default <code>my-patties-app</code>. Validation: <code>/^[a-z0-9][a-z0-9_-]*$/</code>.</span></li>
+<li><span class="req-tag stage">2. Coding agent</span><span><em>"Which coding agent are you using?"</em> → <strong>Claude</strong> (default) / Codex / old school. Flag: <code>--agent claude|codex|none</code>.</span></li>
+<li><span class="req-tag stage">3. Patties UI</span><span><em>"Do you want a styled UI? (Patties UI)"</em> → <strong>Yes</strong> (default) / No. Flag: <code>--ui</code> / <code>--no-ui</code>. Always asked — not gated.</span></li>
+<li><span class="req-tag stage">4. Monorepo</span><span><em>"Do you want a Bun workspace structure (multiple apps)?"</em> → <strong>No</strong> (default) / Yes. Flag: <code>--monorepo</code> / <code>--no-monorepo</code>. Always asked.</span></li>
+<li><span class="req-tag stage">5. Deploy target</span><span><em>"Where will you deploy?"</em> → <strong>bun</strong> (default) / worker/edge / container/docker. Flag: <code>--target bun|edge|container</code>. Edge shows optional deploy-plugin sub-prompt.</span></li>
+</ul>
+<div class="callout note">
+<p class="callout-title">The --yes profile</p>
+<p><code>agent=claude</code>, <code>ui=yes</code>, <code>monorepo=no</code>, <code>target=bun</code>. Deterministic, no prompts.</p>
+</div>
+</section>
+
+<section>
+<h2>New scaffold template structure</h2>
+<p>Replaces the flat <code>templates/default/app/</code> layout. Demonstrates two modules out of the box.</p>
+<h3>Directory tree</h3>
+<pre data-lang="text"><code>templates/default/
+├── app/
+│   ├── modules/
+│   │   ├── home/
+│   │   │   ├── routes/
+│   │   │   │   └── index.tsx        # GET / — demo landing page
+│   │   │   └── islands/
+│   │   │       └── Counter.tsx      # interactive island
+│   │   └── api/
+│   │       └── routes/
+│   │           └── api/
+│   │               └── health.ts    # GET /api/health → { ok: true }
+│   ├── _shared/
+│   │   └── .gitkeep
+│   └── middleware.ts
+├── patties.config.ts
+├── tsconfig.json
+├── package.json
+└── README-template.md</code></pre>
+<h3>Landing page</h3>
+<pre data-lang="tsx"><code>// app/modules/home/routes/index.tsx
+import { Island } from "patties/render"
+
+export default function Home() {
+  return (
+    &lt;main&gt;
+      &lt;h1&gt;{{name}}&lt;/h1&gt;
+      &lt;Island name="home/Counter" /&gt;
+    &lt;/main&gt;
+  )
+}
+// When --ui yes: imports &lt;Button&gt; and &lt;Card&gt; from stamped Patties UI components.</code></pre>
+<h3>Health route</h3>
+<pre data-lang="ts"><code>// app/modules/api/routes/api/health.ts
+import type { Handler } from "patties"
+
+export const GET: Handler = (_, ctx) =&gt; ctx.json({ ok: true })
+// Demonstrates the API module pattern — no UI needed to test.</code></pre>
+<h3>patties.config.ts</h3>
+<pre data-lang="ts"><code>// patties.config.ts (generated with modulesDirs pre-filled)
+import { defineConfig } from "patties/config"
+
+export default defineConfig({
+  target: "{{target}}",              // bun | edge
+  modulesDirs: ["app/modules"],      // ← always present in scaffold
+  server: { port: 3000 },
+})</code></pre>
+</section>
+
+<section>
+<h2>Monorepo (Bun workspace)</h2>
+<p>No longer gated on project type. When chosen, each app in the workspace is itself a modular monolith.</p>
+<pre data-lang="text"><code>&lt;name&gt;/
+  package.json            // private, "workspaces": ["apps/*", "packages/*"]
+  biome.json
+  apps/
+    &lt;app_name&gt;/
+      app/
+        modules/          // modular monolith layout per app
+          home/
+          api/
+        middleware.ts
+      patties.config.ts   // modulesDirs: ["app/modules"]
+      package.json
+  packages/               // shared libraries (empty with README)
+  &lt;agent overlay&gt;</code></pre>
+<div class="callout note">
+<p class="callout-title">Note</p>
+<p>Bun workspaces only — no Turborepo/Nx. Polyglot (Python/Go) deferred. Prerequisite: <strong>framework/26-monorepo-react-resolution</strong> must ship before this flag is released (hoisted <code>node_modules</code> can otherwise load two React copies and crash SSR).</p>
+</div>
+</section>
+
+<section>
+<h2>Agent overlay updates</h2>
+<p>The <code>_claude/</code> overlay gains the new rule file from Spec 28. The <code>/patties-init</code> command is updated to scaffold features as modules.</p>
+<ul class="reqs">
+<li><span class="req-tag stage">New file</span><span><code>.claude/rules/patties-modular-monolith.md</code> — the LLM rules from Spec 28 §9. Ships in all <code>--agent claude</code> scaffolds.</span></li>
+<li><span class="req-tag stage">/patties-init update</span><span>Command text updated: <em>"When adding a new feature, create <code>app/modules/&lt;domain&gt;/</code> with the relevant subdirectories. Never add files directly to the top-level <code>app/</code> unless they are global (<code>middleware.ts</code>) or shared (<code>_shared/</code>)."</em></span></li>
+<li><span class="req-tag stage">Codex overlay</span><span><code>.codex/rules/patties-patterns.md</code> gets the same modular monolith rules appended.</span></li>
+</ul>
+<div class="table-wrap">
+<table>
+<thead><tr><th><code>--agent</code></th><th>Files scaffolded</th><th>New in Spec 21</th></tr></thead>
+<tbody>
+<tr>
+<td><code>claude</code> (default)</td>
+<td><code>CLAUDE.md</code>, <code>.claude/rules/patties-patterns.md</code>, <code>.claude/rules/patties-modular-monolith.md</code>, <code>.claude/skills/patties/</code>, <code>.claude/commands/patties-init.md</code></td>
+<td><code>patties-modular-monolith.md</code> rule, updated <code>patties-init.md</code></td>
+</tr>
+<tr>
+<td><code>codex</code></td>
+<td><code>AGENTS.md</code>, <code>.codex/rules/patties-patterns.md</code></td>
+<td>Modular monolith rules appended to patterns file</td>
+</tr>
+<tr>
+<td><code>none</code> (old school)</td>
+<td>—</td>
+<td>No change</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section>
+<h2>Flags (non-interactive)</h2>
+<pre data-lang="bash"><code>bunx create-patties [name]
+  --agent      claude | codex | none            (default claude)
+  --ui | --no-ui                                (default yes)
+  --monorepo | --no-monorepo                    (default no)
+  --target     bun | edge | container           (default bun)
+  --deploy     cloudflare | vercel | deno | netlify | none   (edge only)
+  --theme      neutral | slate | stone | zinc   (ui only, default neutral)
+  --yes, -y
+  --no-install
+  --git
+
+# Removed
+# --type       REMOVED — hard error with clear message if passed
+# --template   still an alias for --agent (spec 09/18 back-compat)</code></pre>
+</section>
+
+<section>
+<h2>Scaffold behavior (ordered steps)</h2>
+<ol>
+<li>Resolve options: flags → prompts (TTY) → defaults. Hard error on <code>--type</code>.</li>
+<li>Validate name; refuse non-empty target directory.</li>
+<li>Copy <code>templates/default/</code> (modular monolith layout).</li>
+<li>Run templating pass: <code>{{name}}</code>, <code>{{target}}</code>, <code>{{app_name}}</code>, <code>{{ui}}</code>. (<code>{{type}}</code> no longer emitted.)</li>
+<li>Patch <code>package.json</code> (+ <code>patties-ui</code> when <code>ui=yes</code>) and <code>patties.config.ts</code> (<code>target</code>, <code>modulesDirs</code>).</li>
+<li>Apply agent overlay for <code>claude</code> / <code>codex</code> (including new modular monolith rule).</li>
+<li>If <code>ui=yes</code>: <code>patties ui init --theme &lt;theme&gt;</code> + stamp starter set (<code>button</code>, <code>card</code>, <code>input</code>, <code>label</code>).</li>
+<li>If <code>target=container</code>: emit <code>Dockerfile</code> + <code>.dockerignore</code>.</li>
+<li>If <code>monorepo=yes</code>: apply <code>_monorepo/</code> overlay; move <code>app/</code> into <code>apps/&lt;app_name&gt;/</code>.</li>
+<li>Unless <code>--no-install</code>: run <code>bun install</code>.</li>
+<li>Print next-steps output.</li>
+</ol>
+<h3>Next-steps output (claude, default)</h3>
+<pre data-lang="text"><code>✓ Created my-app  (modular monolith · bun target)
+
+  cd my-app
+  bun dev            → http://localhost:3000
+
+Modules live under app/modules/. Want to scaffold a feature?
+Open a NEW terminal in this project and run:
+
+  claude --permission-mode plan "/patties-init"
+
+That starts an interactive, plan-mode session that scaffolds domain
+modules with you before writing any files.</code></pre>
+</section>
+
+<section>
+<h2>Tests</h2>
+<ul>
+<li><code>--yes</code> ⇒ <code>app/modules/home/routes/index.tsx</code> and <code>app/modules/api/routes/api/health.ts</code> exist; <code>patties.config.ts</code> contains <code>modulesDirs</code>.</li>
+<li><code>--no-ui</code> ⇒ no <code>app/components/ui/</code>; demo page uses plain markup.</li>
+<li><code>--monorepo</code> ⇒ <code>apps/&lt;name&gt;/app/modules/</code> exists; root <code>package.json</code> has <code>workspaces</code>.</li>
+<li><code>--target container</code> ⇒ <code>Dockerfile</code> present; <code>target: "bun"</code> in config.</li>
+<li><code>--agent none</code> ⇒ no <code>.claude/</code> or <code>.codex/</code> directories.</li>
+<li><code>--agent claude</code> ⇒ <code>.claude/rules/patties-modular-monolith.md</code> exists.</li>
+<li>No test references <code>--type</code>. Passing <code>--type</code> exits with non-zero and prints the removal message.</li>
+<li>Remove existing tests that assert flat <code>app/routes/</code> / <code>app/islands/</code> output.</li>
+<li>CI scaffold-smoke: scaffold → <code>bun install</code> → <code>bun dev</code> → curl <code>/</code> and <code>/api/health</code> → both 200.</li>
+</ul>
+</section>
+
+<section>
+<h2>Acceptance criteria</h2>
+<ul>
+<li><code>bunx create-patties</code> has no project-type prompt. Every scaffolded app uses the modular monolith layout.</li>
+<li><code>/</code> and <code>/api/health</code> both return 200 from a freshly scaffolded app after <code>bun install &amp;&amp; bun dev</code>.</li>
+<li><code>patties.config.ts</code> in every scaffold includes <code>modulesDirs: ["app/modules"]</code>.</li>
+<li><code>--ui yes</code> yields components under the initial app's module directory, with the stamped Patties UI starter set.</li>
+<li><code>--monorepo yes</code> wraps the initial app inside <code>apps/&lt;name&gt;/</code> with a Bun workspace root.</li>
+<li><code>--agent claude</code> scaffolds include <code>.claude/rules/patties-modular-monolith.md</code>.</li>
+<li>Passing <code>--type</code> exits with a clear removal message and non-zero exit code.</li>
+</ul>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="roadmap.html">Delivery tracker</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

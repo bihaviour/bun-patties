@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Router · Patties specs</title>
+<meta name="description" content="Compile the user's app/routes/ directory into the routes: object consumed by 01-server. This spec is the integration point between the filesystem layout and …">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-0/02-router.md</span></div>
+<h1>Router</h1>
+<p class="lede">Compile the user's app/routes/ directory into the routes: object consumed by 01-server. This spec is the integration point between the filesystem layout and …</p>
+</header>
+<h2>Purpose</h2>
+<p>Compile the user's <code>app/routes/</code> directory into the <code>routes:</code> object consumed by <a href="framework-archive-phase-0-01-server.html">01-server</a>. This spec is the integration point between the filesystem layout and <code>Bun.serve</code>'s native dispatcher. There is no HTTP framework — the output is a plain <code>Record&lt;pattern, methodHandlers&gt;</code> plus a fallback handler.</p>
+<h2>Public surface</h2>
+<pre data-lang="ts"><code>export interface CompiledRouter {
+  routes: BunRoutes                          // shape consumed by Bun.serve({ routes })
+  fallback: (req: Request) =&gt; Promise&lt;Response&gt;
+}
+
+export async function createRouter(options: RouterOptions): Promise&lt;CompiledRouter&gt;
+</code></pre>
+<p><code>RouterOptions</code>:</p>
+<ul><li><code>appDir: string</code> — absolute path to user's <code>app/</code> folder.</li><li><code>middleware?: Middleware</code> — global middleware from <code>app/middleware.ts</code> (see <a href="framework-archive-phase-1-07-middleware.html">07-middleware</a>).</li><li><code>plugins?: Plugin[]</code> — resolved plugins from <a href="framework-archive-phase-4-09-plugins.html">09-plugins</a>.</li><li><code>renderer: Renderer</code> — from <a href="framework-archive-phase-0-03-render.html">03-render</a>.</li></ul>
+<h2>Behavior</h2>
+<p>Wiring order is fixed: <strong>user middleware → plugins → routes</strong>.</p>
+<ol><li>Read the build-time route table (in production, inlined via a Bun macro per <a href="framework-archive-phase-1-04-build.html">04-build</a>; in dev, computed at boot via <a href="framework-archive-phase-0-02b-filesystem-router.html">02b</a>).</li><li>Compose the middleware chain: <code>[userMiddleware, ...pluginMiddlewares].reduce(...)</code> produces a <code>wrap(handler)</code> function that returns a middleware-wrapped handler. This is the framework-owned composer (~50 lines) from <a href="framework-archive-phase-1-07-middleware.html">07</a>.</li><li>Iterate plugin <code>setup(server, ctx)</code> calls in declared order (<a href="framework-archive-phase-4-09-plugins.html">09</a>). Plugins register routes via <code>server.route(pattern, methodHandlers)</code>; the framework adds those routes to the same <code>routes</code> map <em>after</em> user middleware wrapping. Plugin-registered routes are wrapped by user middleware just like filesystem routes.</li><li>For each <code>RouteEntry</code>:<ul><li><strong>Page routes</strong> (<code>app/routes/**/*.tsx</code>): produce a <code>GET</code> handler that calls <code>renderer.renderPage(entry, req, ctx)</code>.</li><li><strong>API routes</strong> (<code>app/routes/api/**/*.ts</code>): import the module; for each exported HTTP method (<code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>DELETE</code>, <code>PATCH</code>, <code>OPTIONS</code>), wrap with the middleware composer and add to <code>routes[pattern][method]</code>.</li></ul></li><li>Return <code>{ routes, fallback }</code>. <code>fallback</code> is the middleware-wrapped 404 handler.</li></ol>
+<h2>Conventions enforced</h2>
+<ul><li>Dynamic segments: <code>[param].tsx</code> → <code>:param</code>, <code>[...rest].tsx</code> → <code>*</code> (Bun's catch-all).</li><li>Index files: <code>index.tsx</code> → trailing-slash-stripped parent path.</li><li><code>app/routes/api/*</code> always becomes <code>/api/*</code>.</li><li>Page routes only respond to <code>GET</code>; mutating verbs belong in API routes.</li><li>Pattern strings emitted match <code>Bun.serve({ routes })</code> syntax exactly (no custom matcher dialect).</li></ul>
+<h2>Method-not-allowed</h2>
+<p>Patterns that match the URL but lack the requested method return <code>405</code> automatically — <code>Bun.serve({ routes })</code> does this for us when a method-keyed object is provided and the method is missing.</p>
+<h2>Non-goals</h2>
+<ul><li>A handwritten path matcher on the Bun target. <code>Bun.serve({ routes })</code> is the matcher.</li><li>Route-level config files (<code>page.config.ts</code>) — defer to a future RFC.</li><li>Per-route middleware files — composition happens inside <code>app/middleware.ts</code> for now; a filesystem syntax is a future RFC.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Given <code>app/routes/index.tsx</code>, <code>GET /</code> invokes the renderer with that module's default export.</li><li>Given <code>app/routes/hotels/[city].tsx</code>, <code>GET /hotels/bali</code> resolves with <code>req.params.city === "bali"</code> (populated by Bun's native matcher).</li><li>Given <code>app/routes/api/revenue.ts</code> exporting <code>GET</code>, <code>GET /api/revenue</code> invokes that export through the middleware composer.</li><li>Unknown methods on a known API route return <code>405</code> (handled by <code>Bun.serve</code>, not by framework code).</li><li>The compiled <code>routes</code> object contains no closures over Hono types or any HTTP framework — it's a plain map of plain functions.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Server Render · Patties specs</title>
+<meta name="description" content="Render page route modules to HTML using React (react-dom/server). Stream the response by default; the renderer always returns a ReadableStream-backed Response.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-0/03-render.md</span></div>
+<h1>Server Render</h1>
+<p class="lede">Render page route modules to HTML using React (react-dom/server). Stream the response by default; the renderer always returns a ReadableStream-backed Response.</p>
+</header>
+<h2>Purpose</h2>
+<p>Render page route modules to HTML using React (<code>react-dom/server</code>). Stream the response by default; the renderer always returns a <code>ReadableStream</code>-backed <code>Response</code>.</p>
+<h2>Public surface</h2>
+<pre data-lang="ts"><code>export interface Renderer {
+  renderPage(entry: RouteEntry, req: Request, ctx: PattiesContext): Promise&lt;Response&gt;
+}
+
+export function createRenderer(options: RenderOptions): Renderer
+</code></pre>
+<p><code>PattiesContext</code> is defined in <a href="framework-archive-phase-1-07-middleware.html">07-middleware</a>. The renderer never sees a Hono <code>Context</code> — the framework has no HTTP framework dependency.</p>
+<p><code>RenderOptions</code>:</p>
+<ul><li><code>manifest?: ClientManifest</code> — produced by <a href="framework-archive-phase-1-04-build.html">04-build</a>; maps island name → bundled URL. Optional in pure-SSR contexts.</li><li><code>dev?: boolean</code> — when true, inject the HMR client script.</li></ul>
+<h2>Behavior</h2>
+<ol><li><code>import(entry.filePath)</code>; the module's default export is the page component.</li><li>Compute initial props (none in Phase 0; future RFC for loaders).</li><li>Read the page module's optional <code>head</code> / <code>meta</code> named exports (see "Head &amp; meta API" below) and build the <code>&lt;head&gt;</code> contents.</li><li>Call <code>renderToReadableStream</code> from <code>react-dom/server</code> (the Web Streams variant — never <code>renderToPipeableStream</code>, which is Node-only) wrapped in an <code>&lt;html&gt;</code> shell that:<ul><li>Includes the document <code>&lt;head&gt;</code> (title, meta, viewport, plus user-provided <code>head</code>/<code>meta</code>).</li><li>Mounts <code>&lt;div id="root"&gt;</code> containing the rendered tree.</li><li>Always injects <code>&lt;script type="module" src="/_patties/client/&lt;entry&gt;.js"&gt;</code> referencing the client entry from <a href="framework-archive-phase-1-04-build.html">04-build</a>. The entry is a no-op at runtime when the page rendered no <code>data-island</code> markers, so pages with zero islands ship the script tag but it short-circuits.</li><li>If <code>dev</code>, injects an inline <code>&lt;script&gt;</code> that opens the HMR WebSocket from <a href="framework-archive-phase-1-05-dev-hmr.html">05-dev-hmr</a>. <strong>Implementation note:</strong> React 19's <code>renderToReadableStream</code> already emits <code>&lt;!DOCTYPE html&gt;</code> when the rendered root is <code>&lt;html&gt;</code> — framework code MUST NOT prepend its own DOCTYPE (doing so produces <code>&lt;!DOCTYPE html&gt;&lt;!DOCTYPE html&gt;...</code>). The dev HMR <code>&lt;script&gt;</code> should be spliced in by a downstream <code>TransformStream</code> that inserts the snippet immediately before <code>&lt;/body&gt;</code>, rather than through React's raw-HTML escape hatch — this keeps a fixed framework string out of the React tree and side-steps the lint/safety rules that flag that escape hatch. Phase 2 will replace the splice with the HTMLRewriter pipeline ([[rfc-bun-htmlrewriter]]).</li></ul></li><li>Return <code>new Response(stream, { headers: { "Content-Type": "text/html; charset=utf-8" } })</code>. Crawler/SEO routes may <code>await stream.allReady</code> first to emit fully-buffered HTML; the default path streams as soon as the shell is ready.</li></ol>
+<p>JSX is configured via <code>tsconfig.json</code> (<code>"jsx": "react-jsx"</code>, <code>"jsxImportSource": "react"</code>). Pages import JSX implicitly through <code>react/jsx-runtime</code>; no manual <code>import React</code> is required.</p>
+<h2>Head &amp; meta API</h2>
+<p>Page modules may export, alongside the default component:</p>
+<pre data-lang="ts"><code>export const meta = {
+  title: "Bali Hotels",
+  description: "Find a place to stay in Bali.",
+  // any additional &lt;meta name|property&gt; pairs as a record
+}
+
+// OR — full control:
+export function head(): import("react").ReactNode {
+  return &lt;&gt;
+    &lt;title&gt;Bali Hotels&lt;/title&gt;
+    &lt;link rel="canonical" href="https://example.com/bali" /&gt;
+  &lt;/&gt;
+}
+</code></pre>
+<p>Rules:</p>
+<ul><li><code>meta</code> is the static, AGENTS.md-friendly form. It produces <code>&lt;title&gt;</code>, <code>&lt;meta name="description"&gt;</code>, and <code>&lt;meta name|property="…"&gt;</code> tags deterministically.</li><li><code>head</code> is escape-hatch JSX rendered into <code>&lt;head&gt;</code> — used when <code>meta</code> can't express what the page needs (canonical links, OpenGraph images, JSON-LD).</li><li>If both are exported, <code>meta</code> runs first; <code>head</code>'s output appears after, so users can override generated tags.</li><li>If neither is exported, the renderer emits a minimal <code>&lt;head&gt;</code> (charset, viewport, <code>&lt;title&gt;</code> defaulting to the URL path).</li></ul>
+<h2>Island awareness</h2>
+<p>Pages that import from <code>app/islands/*</code> must serialize each island's mount point with <code>data-island="&lt;name&gt;"</code> and serialized props as JSON. The runtime client (<a href="framework-archive-phase-1-06-client-islands.html">06</a>) reads these markers.</p>
+<p>Island presence is determined at <strong>build time</strong> by scanning <code>app/islands/</code> and statically analyzing page imports — not by inspecting rendered JSX. The renderer therefore does not need to walk the tree to detect islands; it relies on the build manifest.</p>
+<h2>Dev error UX</h2>
+<p>When <code>dev: true</code> and a page module fails to import or render (syntax error, runtime throw), the renderer catches the failure and returns a styled HTML error page built from Bun primitives:</p>
+<ul><li><strong>Error formatting</strong>: <code>Bun.inspect(error, { colors: false })</code> produces a clean text rendering of the error and its <code>.cause</code> chain. The renderer wraps it in <code>&lt;pre&gt;</code> for the page.</li><li><strong>Source snippets</strong>: read via <code>Bun.file(stackFrame.file).text()</code>, then 5 lines of context around the failing line. The snippet is escaped with <strong><code>Bun.escapeHTML</code></strong> before injection — error messages and source can contain <code>&lt;script&gt;</code> and must not become an XSS hole on the dev page.</li><li><strong>Open in editor</strong>: each stack frame renders as a clickable link to a <code>/__patties_open?file=...&amp;line=...</code> route. That route calls <code>Bun.openInEditor(file, { line })</code> and returns <code>204</code>. One-click jump from the error page to the offending line in VS Code / Cursor / etc.</li><li><strong>Reload hint</strong>: a footer line tells the user the page is HMR-connected and will refresh when the file is fixed.</li></ul>
+<p>In production (<code>dev: false</code>) the same failure returns a minimal <code>500 Internal Server Error</code> with no stack content and no source.</p>
+<h2>Non-goals</h2>
+<ul><li>Legacy <code>renderToString</code> — not used; we stream by default.</li><li><code>renderToPipeableStream</code> (Node Writable streams) — not used; we target WinterCG/Web Streams runtimes.</li><li>React Server Components — out of scope until Bun.build understands the <code>"use client"</code> directive. Islands remain the interactivity model.</li><li>Phase 2 will move shell injection (HMR script, client <code>&lt;script&gt;</code>, CSRF input) into an <code>HTMLRewriter</code> pipeline. See [[rfc-bun-htmlrewriter]]. Phase 0/1 keeps the documented string-injection approach.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Rendering a static page returns valid HTML with <code>Content-Type</code> set and a leading <code>&lt;!DOCTYPE html&gt;</code> — emitted exactly once. The renderer must not produce <code>&lt;!DOCTYPE html&gt;&lt;!DOCTYPE html&gt;</code> (React 19 already prepends the doctype when the root is <code>&lt;html&gt;</code>).</li><li>Rendering a page containing one <code>Counter</code> island emits exactly one <code>data-island="Counter"</code> marker plus a serialized props blob.</li><li>In <code>dev</code> mode, the HTML includes the HMR client snippet, and React emits no hydration-mismatch warnings for the default fixtures.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

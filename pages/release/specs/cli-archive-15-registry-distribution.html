@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registry distribution — remote/URL/namespaced installs + patties ui build · Patties specs</title>
+<meta name="description" content="shadcn resolves components from a built registry.json that can live at an">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/15-registry-distribution.md</span></div>
+<h1>Registry distribution — remote/URL/namespaced installs + patties ui build</h1>
+<p class="lede">shadcn resolves components from a built registry.json that can live at an</p>
+</header>
+<h2>Purpose</h2>
+<p>shadcn resolves components from a built <code>registry.json</code> that can live at an arbitrary URL, supports namespaced third-party registries (<code>@acme/...</code>), and is produced by <code>shadcn build</code>. patties resolves only by <strong>name</strong>, from the single local <code>patties-ui</code> registry installed in <code>node_modules</code> (<code>Bun.resolveSync("patties-ui/registry", cwd)</code>, <code>load-catalog.ts:20</code>). The matrix records the cluster: <code>add &lt;url&gt;</code>/<code>add &lt;local-path&gt;</code> (§1), namespaced and remote registries (§4), and a <code>build</code> step (§1, §4) — plus the <strong>divergence</strong> that <code>patties-ui</code> is <code>private: true</code> and not on npm (§4). All four were promoted from <code>spec-later</code> to <code>specced</code> on 2026-05-29 ([[rfc-patties-ui-registries]], accepted); they are the <strong>lowest-priority <code>specced</code> rows</strong> — implement after the diff/view/ path/init/theming/migrate work — but no longer gated on a third-party ecosystem existing first.</p>
+<h2>Divergence we keep</h2>
+<p>patties continues to refuse to run <code>npm/bun install</code> — it edits <code>package.json</code> and tells the user to run <code>bun install</code> (<code>add.ts:73</code>). Remote installs do <strong>not</strong> change that: source is fetched and stamped, deps are recorded, install stays the user's explicit step. This Bun-native, CI-safe stance is non-negotiable (matrix §1 "Divergent-by-design").</p>
+<h2>Source kinds for <code>patties add</code></h2>
+<p><code>add</code>'s positional argument is currently always a catalog name (<code>resolveNames</code>, <code>add.ts:78</code>). This spec classifies each positional into one of:</p>
+<ol><li><strong>name</strong> — <code>button</code>. Resolved from the local <code>patties-ui</code> catalog (today's path, unchanged default).</li><li><strong>namespaced name</strong> — <code>@acme/fancy-button</code>. Resolved from a registry registered under the <code>@acme</code> namespace (see config below).</li><li><strong>local path</strong> — <code>./vendor/widgets/registry.ts</code> or a path to a single component file. Loaded from disk via <code>Bun.file</code>. Useful for monorepo-internal catalogs.</li><li><strong>URL</strong> — <code>https://…/registry.json</code> or <code>…/component.json</code>. Fetched (see security below).</li></ol>
+<p>Classification: a leading <code>@ns/</code> is namespaced; a <code>./</code>,<code>../</code>,<code>/</code> or existing path is local; an <code>http(s)://</code> prefix is URL; otherwise a local-catalog name.</p>
+<h2>Registry config</h2>
+<p>Namespaces map to base URLs / local paths under the <code>ui</code> config block ([[framework/25-ui-config-block]]), extended here:</p>
+<pre data-lang="ts"><code>ui: {
+  registries: {
+    "@acme": "https://registry.acme.dev/r",   // remote
+    "@internal": "./packages/ui-catalog",      // local path
+  },
+}
+</code></pre>
+<p>The built-in <code>patties-ui</code> catalog is always available unprefixed; it needs no registry entry.</p>
+<h2>Remote fetch security</h2>
+<ul><li>HTTPS only; an <code>http://</code> URL is rejected unless <code>--allow-insecure</code>.</li><li>The fetched payload must validate against the <code>ComponentEntry</code> schema (<code>patties-ui/types</code>); malformed JSON/TS → <code>EXIT.USAGE</code>, nothing written.</li><li>Remote source is shown before stamping unless <code>--yes</code> (reuses the <code>--view</code> rendering from [[cli/13-add-view]]) — never silently execute fetched code; the stamped files are source the user reviews, not run at install time.</li><li>Fetched component source is treated as untrusted text: it is written verbatim to the destination, never <code>eval</code>/<code>import</code>-ed by the CLI.</li></ul>
+<h2><code>patties ui build</code></h2>
+<p>shadcn's <code>build</code> compiles <code>registry.json</code> from source. patties' registry is a hand- maintained TS module (<code>registry.ts</code>) by design (matrix §4 "hand-maintained by design for now"). <code>patties ui build</code> is the inverse-direction tool for <strong>registry authors</strong> (e.g. an <code>@acme</code> publisher): it reads a <code>registry.ts</code> + <code>templates/</code> dir and emits a static, fetchable <code>registry.json</code> + per-component JSON payloads that the remote-fetch path above consumes.</p>
+<pre><code>patties ui build --out dist/r            # emit dist/r/registry.json + dist/r/&lt;name&gt;.json
+</code></pre>
+<ul><li>Validates every entry against <code>ComponentEntry</code> and that each <code>files[].from</code> exists under <code>templates/</code>.</li><li>Inlines each template's source into its component JSON so a consumer needs one fetch per component, no directory walking.</li><li>Pure transform; no network, no install.</li></ul>
+<p>The first-party <code>patties-ui</code> stays hand-maintained TS and is <strong>not</strong> required to be built — <code>patties ui build</code> exists for third-party publishers, not for the core catalog.</p>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties add button</code> is unchanged: resolves from the local <code>patties-ui</code> catalog.</li><li><code>patties add ./vendor/widgets/card.tsx</code> stamps that local file into the resolved components dir.</li><li><code>patties add @acme/fancy-button</code> with <code>registries["@acme"]</code> set fetches/loads from that base, shows source, and stamps on confirmation; deps recorded, no install run.</li><li>A non-HTTPS URL is rejected without <code>--allow-insecure</code>.</li><li>A fetched payload that fails <code>ComponentEntry</code> validation writes nothing and exits <code>EXIT.USAGE</code>.</li><li><code>patties ui build --out dist/r</code> emits a schema-valid <code>registry.json</code> plus one JSON per component with inlined source; fails if a template <code>from</code> path is missing.</li><li>No code path runs <code>npm/bun install</code>; the <code>bun install</code> reminder is printed after any dep change (<code>add.ts:73</code>).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

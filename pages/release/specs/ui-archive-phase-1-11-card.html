@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card · Patties specs</title>
+<meta name="description" content="Container with header, content, footer slots. Mirrors shadcn Card.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/11-card.md</span></div>
+<h1>Card</h1>
+<p class="lede">Container with header, content, footer slots. Mirrors shadcn Card.</p>
+</header>
+<h2>Purpose</h2>
+<p>Container with header, content, footer slots. Mirrors shadcn <code>Card</code>.</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. Layout-only. Interactive children (Button, etc.) follow their own rules.</p>
+<h2>Peer dependencies</h2>
+<p>None.</p>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Card(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function CardHeader(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function CardTitle(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function CardDescription(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function CardAction(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function CardContent(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function CardFooter(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li><code>CardTitle</code> defaults to a <code>&lt;div&gt;</code> with <code>role="heading"</code> only if no semantic heading is provided as <code>asChild</code>. The recommended path is <code>&lt;CardTitle asChild&gt;&lt;h2&gt;…&lt;/h2&gt;&lt;/CardTitle&gt;</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>All seven slots snapshot correctly.</li><li>Bundle audit: zero JS.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

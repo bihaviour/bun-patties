@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties.config.ts — optional `ui` block · Patties specs</title>
+<meta name="description" content="shadcn centralizes UI scaffolding config in components.json. patties replaces">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/25-ui-config-block.md</span></div>
+<h1>patties.config.ts — optional `ui` block</h1>
+<p class="lede">shadcn centralizes UI scaffolding config in components.json. patties replaces</p>
+</header>
+<h2>Purpose</h2>
+<p>shadcn centralizes UI scaffolding config in <code>components.json</code>. patties replaces that with <strong>fixed conventions</strong> (<code>app/components/ui/</code>, <code>_internal/</code>, <code>app/styles/tokens.css</code>, CSS-vars always on, <code>lucide-react</code>, no RSC toggle). The parity matrix records that stance as a deliberate <strong>divergence</strong> — less surface, no config drift — but flags one real cost: shadcn's <code>--path</code> flexibility, the one hard-coded convention users miss immediately (matrix §3 "Takeaway", §2 <code>--path</code>).</p>
+<p>This spec adds a <em>narrow, optional</em> <code>ui</code> block to <code>patties.config.ts</code> so that the two paths that genuinely vary between projects — where component source is stamped and where tokens live — can be redirected, without reintroducing a full <code>components.json</code>. Everything not listed here stays convention, not config.</p>
+<h2>Non-goals (kept as convention, not config)</h2>
+<p>These remain fixed; we are not porting <code>components.json</code> wholesale:</p>
+<ul><li><strong><code>aliases</code></strong> — import paths are derived from <code>componentsDir</code>, not separately configurable. (matrix §3: divergent)</li><li><strong><code>cssVariables</code> on/off, <code>style</code>, <code>baseColor</code>, <code>rsc</code>, <code>tsx</code></strong> — patties is always CSS-vars-on, single-style, SSR-island, <code>.tsx</code>. (matrix §3: divergent)</li><li><strong><code>iconLibrary</code></strong> — <code>lucide-react</code> is fixed; userland swaps icons by editing stamped source. (matrix §3: n/a)</li></ul>
+<p>If a future RFC wants any of these configurable, it extends this block — but the default of "no config needed" must survive.</p>
+<h2>Schema</h2>
+<p>The <code>ui</code> block is fully optional. Absent config behaves exactly as today.</p>
+<pre data-lang="ts"><code>// src/config/schema.ts (Zod)
+const UiConfig = z
+  .object({
+    // Where `patties add` stamps component source. Default: "app/components/ui".
+    componentsDir: z.string().default("app/components/ui"),
+    // Where shared helpers (_internal/cn, slot, variants) are stamped.
+    // Default: "&lt;componentsDir&gt;/_internal".
+    internalDir: z.string().optional(),
+    // Where the token CSS is merged. Default: "app/styles/tokens.css".
+    tokensFile: z.string().default("app/styles/tokens.css"),
+  })
+  .strict()
+  .optional();
+</code></pre>
+<ul><li>All paths are resolved relative to the project root (the dir holding <code>patties.config.ts</code>), never absolute, never <code>..</code>-escaping the project — the loader rejects paths that resolve outside the project root (<code>EXIT.USAGE</code>).</li><li><code>internalDir</code> defaults to <code>&lt;componentsDir&gt;/_internal</code> so redirecting <code>componentsDir</code> keeps helpers co-located without a second setting.</li></ul>
+<h2>Resolution &amp; precedence</h2>
+<p><code>patties add</code> resolves effective paths in this order (first wins):</p>
+<ol><li><code>--path &lt;dir&gt;</code> CLI flag (per [[cli/14-add-path]]) — affects <code>componentsDir</code> only, for one invocation.</li><li><code>config.ui.componentsDir</code> / <code>internalDir</code> / <code>tokensFile</code>.</li><li>The hard-coded convention defaults above.</li></ol>
+<p>The add pipeline (<code>stamper.ts</code>, <code>internal.ts</code>, <code>tokens.ts</code>) currently hard-codes these destinations; this spec threads a resolved <code>UiPaths</code> object through them instead of string literals.</p>
+<h2>Manifest / agent-md</h2>
+<p>No manifest change. The <code>ui</code> block is read by the CLI add pipeline only; it is not part of route/island discovery and does not appear in the generated <code>CLAUDE.md</code> manifest section.</p>
+<h2>Acceptance criteria</h2>
+<ul><li>With no <code>ui</code> block, <code>patties add button</code> stamps to <code>app/components/ui/button.tsx</code> and <code>app/components/ui/_internal/cn.ts</code>, tokens to <code>app/styles/tokens.css</code> — byte-identical to today.</li><li>With <code>ui: { componentsDir: "src/ui" }</code>, <code>patties add button</code> stamps to <code>src/ui/button.tsx</code> and helpers to <code>src/ui/_internal/</code>.</li><li>With <code>ui: { tokensFile: "styles/theme.css" }</code>, the token merge targets that file and is idempotent on re-run.</li><li>A <code>componentsDir</code> that resolves outside the project root exits <code>EXIT.USAGE</code> with a one-line message; no files are written.</li><li><code>config.ui</code> is <code>.strict()</code> — an unknown key (e.g. <code>aliases</code>) is a config error, pointing the user at the convention it replaces.</li><li><code>bun run typecheck</code> passes; the config Zod schema infers the optional <code>ui</code> shape.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

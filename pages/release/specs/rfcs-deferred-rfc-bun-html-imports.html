@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun fullstack HTML imports — evaluate as alternative build path · Patties specs</title>
+<meta name="description" content="Reject for v1; keep as future-work RFC. The RFC itself frames the right question — &quot;is there any phase 0–4 use case that needs this?&quot; — and answers it correc…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Deferred</span> <span class="badge badge-id">rfcs/deferred/rfc-bun-html-imports.md</span></div>
+<h1>Bun fullstack HTML imports — evaluate as alternative build path</h1>
+<p class="lede">Reject for v1; keep as future-work RFC. The RFC itself frames the right question — "is there any phase 0–4 use case that needs this?" — and answers it correc…</p>
+</header>
+<h2>Review verdict (2026-05-24)</h2>
+<p><strong>Reject for v1; keep as future-work RFC.</strong> The RFC itself frames the right question — "is there any phase 0–4 use case that needs this?" — and answers it correctly: the custom pipeline is sufficient. Two HMR systems in dev (Bun's HTML-import HMR plus Patties' WebSocket-based HMR) would create confusing failure modes during the v1 stabilization window.</p>
+<p>Revisit when:</p>
+<ul><li>The Patties pipeline is stable and the team has bandwidth to support a second rendering mode.</li><li>A concrete use case appears that the SSR+islands pipeline doesn't cover (likely candidate: developer marketing pages bundled as static-with-islands shipped via the same project).</li></ul>
+<p><strong>Re-evaluation trigger (added 2026-05-27):</strong> [[framework/17-dev-island-bundler]] and [[framework/18-dev-island-bundler-impl]] introduce a hand-rolled dev-time <code>Bun.build</code> invocation in <code>src/dev/bundler.ts</code>. HTML imports could replace that module with effectively a one-liner. After spec 18 has been in users' hands for one release cycle without major bug reports, re-open this RFC and compare maintenance cost of <code>src/dev/bundler.ts</code> vs. running Bun's HTML-import HMR alongside the existing WebSocket HMR.</p>
+<p>No spec changes. File preserved as <code>status: deferred</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p>Bun supports passing HTML files directly to <code>Bun.serve</code>'s <code>routes:</code> (e.g. <code>"/": homepage</code> where <code>homepage</code> is the result of <code>import homepage from "./index.html"</code>). The bundler walks <code>&lt;script&gt;</code> and <code>&lt;link&gt;</code> tags, bundles the graph, and serves with native HMR. This is Bun's blessed fullstack pattern.</p>
+<h2>Motivation</h2>
+<p>04-build and 06-islands implement a from-scratch bundle pipeline: scan islands, call <code>Bun.build</code>, write manifest, inject scripts at render time. Bun's HTML-import mode would replace large parts of that with a one-liner. Worth evaluating — not necessarily adopting — because the hand-rolled pipeline gives us more control (per-route island manifests, dev/prod parity for SSR).</p>
+<h2>Proposal</h2>
+<ul><li>Spike: a parallel <code>app/html/**/*.html</code> convention where each HTML file is a single-page entry consumed by <code>Bun.serve</code> via HTML import. Useful for marketing pages, admin tools, status pages — places where SSR + islands is overkill.</li><li>Document trade-offs in 04-build: HTML import = no SSR, full Bun-managed HMR; existing pipeline = SSR + islands + custom manifest.</li><li>05-dev-hmr: if we adopt HTML imports anywhere, the dev server hosts <em>two</em> HMR systems (Bun's + ours). Either unify or namespace by URL prefix.</li></ul>
+<h2>Trade-offs</h2>
+<ul><li>Two build pipelines = two mental models. Could be confusing.</li><li>Bun's HMR for HTML imports doesn't cooperate with React Server Components or streaming SSR — adoption forces a "pick a rendering mode per route" story.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Does any phase 0–4 use case actually need this, or is custom-pipeline sufficient for v1?</li><li>If we adopt it, do we deprecate the custom client bundler or keep both?</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

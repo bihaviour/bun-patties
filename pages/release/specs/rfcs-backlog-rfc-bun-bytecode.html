@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>--bytecode flag — pre-compile JS to JSC bytecode at build · Patties specs</title>
+<meta name="description" content="bun build --bytecode pre-compiles JS to JavaScriptCore bytecode and embeds it in the bundle. Cuts parse time at startup.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Backlog</span> <span class="badge badge-id">rfcs/backlog/rfc-bun-bytecode.md</span></div>
+<h1>--bytecode flag — pre-compile JS to JSC bytecode at build</h1>
+<p class="lede">bun build --bytecode pre-compiles JS to JavaScriptCore bytecode and embeds it in the bundle. Cuts parse time at startup.</p>
+</header>
+<h2>Summary</h2>
+<p><code>bun build --bytecode</code> pre-compiles JS to JavaScriptCore bytecode and embeds it in the bundle. Cuts parse time at startup.</p>
+<h2>Why backlog</h2>
+<p>Patties build spec doesn't expose <code>--bytecode</code> today. There's no measured cold-start issue that justifies the added pipeline complexity.</p>
+<h2>Trigger to promote to draft</h2>
+<ul><li>Edge adapter cold-start benchmarks show JS parse time as ≥ 20% of startup, OR</li><li>Single-binary deploy (<code>--compile</code>) latency-sensitive use case.</li></ul>
+<h2>Bun-unique classification</h2>
+<p><strong>Bun-only</strong> — as a user-facing build-time flag this doesn't exist on Node. Next.js can't ship the equivalent because V8 doesn't expose it that way.</p>
+<h2>Open questions when promoted</h2>
+<ul><li>Source maps interaction — does <code>--bytecode</code> retain SourceMappingURL?</li><li>Per-target opt-in (bun adapter on, edge adapter off when target runtime doesn't support JSC bytecode) — likely Bun-target only.</li><li>Build-time cost vs runtime savings — measure before claiming.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

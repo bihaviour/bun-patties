@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markdown pages — .md/.mdx routes with islands-in-markdown · Patties specs</title>
+<meta name="description" content="This spec encodes [[rfc-bun-markdown]]. Mount .md and .mdx files">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">framework/archive/23-markdown-pages.md</span></div>
+<h1>Markdown pages — .md/.mdx routes with islands-in-markdown</h1>
+<p class="lede">This spec encodes [[rfc-bun-markdown]]. Mount .md and .mdx files</p>
+</header>
+<p>This spec encodes [[rfc-bun-markdown]]. Mount <code>.md</code> and <code>.mdx</code> files in <code>app/routes/</code> as React-rendered pages. Frontmatter parses to a typed object; markdown body renders via <code>Bun.markdown</code>; a constrained MDX dialect supports embedding patties islands inline.</p>
+<p>The patties value: <strong>first-class content pages without @next/mdx + remark + rehype + unified + ~12 plugin deps.</strong> Bun ships the CommonMark parser in core; the islands-in-markdown layer is a hundred-line transformer.</p>
+<h2>Goal</h2>
+<p>A user creates <code>app/routes/about.md</code> with frontmatter, writes markdown, and <code>GET /about</code> renders a fully-SSRed page wrapped in their layout. Switching to <code>.mdx</code> lets them embed island components (<code>&lt;Counter client:load /&gt;</code>) in the body without any other change.</p>
+<h2>Surface</h2>
+<h3>File convention</h3>
+<pre><code>app/routes/
+  index.tsx              # GET /
+  about.md               # GET /about      ← new
+  blog/
+    index.tsx            # GET /blog
+    hello-world.mdx      # GET /blog/hello-world  ← new
+app/_markdown-layout.tsx # default layout for all .md / .mdx routes
+</code></pre>
+<h3>Frontmatter</h3>
+<pre data-lang="markdown"><code>---
+title: About patties
+description: Why we built this
+date: 2026-05-27
+draft: false
+---
+
+# About
+
+Patties is a Bun-native meta-framework...
+</code></pre>
+<p>Frontmatter is parsed as YAML via <code>Bun.YAML</code> (internal use; this is distinct from the deferred [[rfc-bun-config-formats]] which concerns user-facing <code>patties.config.*</code> files). Required fields:</p>
+<ul><li><code>title: string</code></li></ul>
+<p>All other fields are user-defined and flow through to the layout as typed props. Type safety via an opt-in Zod schema at <code>app/_markdown-schema.ts</code> if present.</p>
+<h3>Layout component</h3>
+<pre data-lang="tsx"><code>// app/_markdown-layout.tsx
+import type { MarkdownPageProps } from "patties/render"
+
+export default function MarkdownLayout({ frontmatter, children, slug }: MarkdownPageProps) {
+  return (
+    &lt;html&gt;
+      &lt;head&gt;&lt;title&gt;{frontmatter.title}&lt;/title&gt;&lt;/head&gt;
+      &lt;body&gt;
+        &lt;header&gt;...&lt;/header&gt;
+        &lt;article&gt;{children}&lt;/article&gt;
+        &lt;footer&gt;...&lt;/footer&gt;
+      &lt;/body&gt;
+    &lt;/html&gt;
+  )
+}
+
+export type MarkdownPageProps = {
+  frontmatter: { title: string; [key: string]: unknown }
+  children: React.ReactNode
+  slug: string  // route path
+}
+</code></pre>
+<p>Per-directory layouts via <code>app/routes/&lt;dir&gt;/_markdown-layout.tsx</code> override the global. Resolution walks up the directory tree from the markdown file, picking the nearest layout.</p>
+<h2>Build behaviour</h2>
+<h3>Discovery</h3>
+<p>Filesystem-router scan ([[framework/archive/phase-0/02b-filesystem-router|spec 02b]]) is extended to recognize <code>.md</code> and <code>.mdx</code> files. Resolution priority: <code>.tsx</code> &gt; <code>.ts</code> &gt; <code>.mdx</code> &gt; <code>.md</code> when multiple files would match the same route.</p>
+<h3>Markdown transform (<code>.md</code>)</h3>
+<ol><li>Split file at the first <code>---</code> block boundary: frontmatter + body.</li><li>Parse frontmatter via <code>Bun.YAML</code>.</li><li>Render body via <code>Bun.markdown(body, { gfm: true })</code> → HTML string.</li><li>Validate frontmatter against <code>app/_markdown-schema.ts</code> if present.</li><li>Emit a synthetic route module <code>.patties/routes/markdown/&lt;slug&gt;.tsx</code>:</li></ol>
+<pre data-lang="tsx"><code>// generated
+import Layout from "&lt;resolved layout&gt;"
+import { Fragment } from "react"
+
+const FRONTMATTER = { /* parsed object */ } as const
+const HTML = `&lt;rendered HTML&gt;`
+
+export default function Page() {
+  return (
+    &lt;Layout frontmatter={FRONTMATTER} slug="&lt;route&gt;"&gt;
+      &lt;div dangerouslySetInnerHTML={{ __html: HTML }} /&gt;
+    &lt;/Layout&gt;
+  )
+}
+</code></pre>
+<p>The synthetic file is what the router compiles to a <code>Bun.serve</code> route entry — markdown files are invisible to the router after the build pass.</p>
+<h3>MDX transform (<code>.mdx</code>) — constrained dialect</h3>
+<p><code>Bun.markdown</code> does not parse JSX. The framework adds a thin <strong>island-extraction</strong> pass that runs before markdown rendering. v1 supports exactly one JSX shape:</p>
+<pre><code>&lt;IslandName client:directive [prop="..." | prop={number} | prop={true}] /&gt;
+</code></pre>
+<p>Where:</p>
+<ul><li><code>IslandName</code> must resolve to a component exported from <code>app/islands/&lt;IslandName&gt;.tsx</code>.</li><li><code>client:directive</code> is one of <code>client:load</code>, <code>client:idle</code>, <code>client:visible</code>, <code>client:media={"(min-width: 768px)"}</code>.</li><li>Props are limited to string literals, numeric literals, boolean literals — <strong>no JS expressions</strong> (e.g. <code>{frontmatter.title}</code> is not supported in body; pass dynamic values through the layout).</li><li>Self-closing only. No children. No nesting.</li></ul>
+<p>Pass implementation:</p>
+<ol><li>Scan body for matches of the island pattern (one regex).</li><li>Replace each with a unique HTML comment token: <code>&lt;!--ISLAND:0--&gt;</code>, <code>&lt;!--ISLAND:1--&gt;</code>, ...</li><li>Run <code>Bun.markdown</code> on the body-with-tokens — comments survive the parser as-is.</li><li>Generate the synthetic route module with the island list:</li></ol>
+<pre data-lang="tsx"><code>// generated
+import Layout from "..."
+import Counter from "../islands/Counter"
+import Subscribe from "../islands/Subscribe"
+
+const FRONTMATTER = { /* ... */ }
+const ISLANDS = [
+  { component: Counter,   props: {}, directive: "load" },
+  { component: Subscribe, props: { variant: "hero" }, directive: "visible" },
+]
+const HTML_PARTS = ["&lt;p&gt;Welcome...&lt;/p&gt;", "&lt;p&gt;Read more...&lt;/p&gt;"]
+
+export default function Page() {
+  return (
+    &lt;Layout frontmatter={FRONTMATTER} slug="..."&gt;
+      {interleave(HTML_PARTS, ISLANDS)}
+    &lt;/Layout&gt;
+  )
+}
+</code></pre>
+<p><code>interleave</code> is a framework helper that splits HTML on the <code>&lt;!--ISLAND:N--&gt;</code> markers and weaves in island JSX between fragments. It's pure-server JSX; islands hydrate per their existing spec-06 lifecycle.</p>
+<h3>Validation errors</h3>
+<p>Frontmatter parse failure, schema mismatch, missing island component, or unsupported JSX in body → <strong>build fails</strong> with a file:line:column error pointing at the offending <code>.md</code> / <code>.mdx</code> source. No silent renders.</p>
+<h2>Runtime behaviour</h2>
+<p>Once the synthetic route is generated, runtime is identical to a hand-written <code>.tsx</code> route. SSR, islands hydration, HMR all use existing spec-04/05/06 paths.</p>
+<h2>Dev mode (HMR)</h2>
+<p>The filesystem watcher already picks up <code>.tsx</code> changes (spec 05). Add <code>.md</code> / <code>.mdx</code> to the watched extensions: on change, re-run the transform pass for the single file and notify the HMR socket. The synthetic <code>.patties/routes/markdown/&lt;slug&gt;.tsx</code> updates; the existing HMR system picks it up like a route file change.</p>
+<h2>Frontmatter typing</h2>
+<p>Without a schema file, <code>frontmatter</code> is typed as <code>{ title: string; [key: string]: unknown }</code> — users cast or check at the layout level.</p>
+<p>With <code>app/_markdown-schema.ts</code>:</p>
+<pre data-lang="ts"><code>import { z } from "zod"
+export default z.object({
+  title: z.string(),
+  date: z.coerce.date(),
+  draft: z.boolean().default(false),
+  tags: z.array(z.string()).default([]),
+})
+</code></pre>
+<p>Build-time validation parses each file's frontmatter through the schema and <strong>fails the build</strong> on mismatch. The layout's <code>frontmatter</code> prop is typed as <code>z.infer&lt;typeof schema&gt;</code>.</p>
+<p>(Note: zod is an optional peer dep — same pattern as <code>@anthropic-ai/sdk</code>. The schema file is only loaded if present.)</p>
+<h2>Security model</h2>
+<p>The spec uses <code>dangerouslySetInnerHTML</code> to inject the markdown-rendered HTML. This is <strong>safe under the build-time trust model</strong> spelled out below — but the model has hard edges. Failing to respect them creates an XSS hole.</p>
+<h3>Trust model (v1)</h3>
+<p><code>.md</code> and <code>.mdx</code> files in <code>app/routes/</code> are <strong>developer-controlled source code</strong>, not runtime user input. They live in the repository, are reviewed by humans, and get rendered at build time. The HTML emitted by <code>Bun.markdown</code> is bundled into the synthetic route module — there is no request-time markdown rendering of user-supplied content via this spec.</p>
+<p>Under this model, <code>dangerouslySetInnerHTML</code> is acceptable because its input is no more privileged than any other code the developer wrote.</p>
+<h3>Hard edges (do not do)</h3>
+<p>The trust model breaks if any of these patterns appears:</p>
+<ul><li><strong>Runtime markdown rendering of user input.</strong> A handler that calls <code>Bun.markdown(req.body)</code> and pipes the result into <code>dangerouslySetInnerHTML</code> is an XSS vulnerability — even if the surrounding page came from this spec. Users who need to render user-supplied markdown must sanitize the HTML first (e.g. DOMPurify, or restrict <code>Bun.markdown</code> to a no-raw-HTML mode if Bun exposes one).</li><li><strong>Including user-uploaded markdown in <code>app/routes/</code></strong> via a build-time content sync. Anything that puts attacker-influenceable bytes into the build input retroactively undermines the "developer-controlled" assumption.</li></ul>
+<h3>Framework defenses</h3>
+<p>The framework MUST:</p>
+<ul><li><strong>Disable raw HTML pass-through in <code>Bun.markdown</code> by default</strong> — invoke as <code>Bun.markdown(body, { gfm: true, html: false })</code> (or the equivalent option Bun exposes) so that inline <code>&lt;script&gt;</code> / <code>&lt;iframe&gt;</code> / <code>&lt;img onerror&gt;</code> in a <code>.md</code> file are escaped to text, not rendered. A developer can opt back in per-file via a frontmatter flag (<code>unsafeHtml: true</code>) — that flag is the audit trail.</li><li><strong>Validate the <code>IslandName</code> in the MDX extraction pass against the actual exports of <code>app/islands/</code></strong>. Don't accept arbitrary component names from <code>.mdx</code> source — only names that resolve to a file in the islands directory. This stops a typo or malicious edit from instantiating an unintended component.</li></ul>
+<h3>Documentation requirement</h3>
+<p>The user-facing docs for this feature MUST state, in the introductory section, that markdown pages are build-time content and that runtime user-markdown requires explicit sanitization.</p>
+<h2>Non-goals</h2>
+<ul><li><strong>Arbitrary JSX in markdown.</strong> v1 supports only the island pattern. Custom React components, JS expressions, and full MDX semantics are explicit non-goals.</li><li><strong><code>@mdx-js/mdx</code> integration.</strong> Pulling in MDX as a dep defeats the "no-deps" premise. If the constrained dialect proves too limiting, a follow-up RFC can revisit.</li><li><strong>Imports inside markdown.</strong> No <code>import</code> statements in body.</li><li><strong>Components defined inline in MDX.</strong> No <code>export const Foo = ...</code> in body.</li><li><strong>Bun.markdown plugin/extension API.</strong> v1 uses Bun.markdown's default CommonMark + GFM; no remark-style plugin pipeline.</li><li><strong>Content collections.</strong> Astro-style typed collections with query APIs are out of scope. Future RFC can layer on top.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>app/routes/about.md</code> with frontmatter renders at <code>GET /about</code>, wrapped in <code>app/_markdown-layout.tsx</code>, with body markdown converted to HTML.</li><li><code>app/routes/blog/post.mdx</code> with <code>&lt;Counter client:load /&gt;</code> in the body SSRs the surrounding markdown + hydrates the Counter island when JS loads.</li><li>Frontmatter parse failure stops the build with a clear error.</li><li><code>app/_markdown-schema.ts</code> enforces schema at build; mismatched frontmatter fails the build.</li><li>Per-directory <code>_markdown-layout.tsx</code> overrides the global.</li><li>HMR on <code>.md</code> / <code>.mdx</code> save updates the rendered page without a full reload.</li></ul>
+<h2>Test plan</h2>
+<ul><li>Unit: extract frontmatter + body from a sample file.</li><li>Unit: Bun.markdown integration — assert HTML output for known CommonMark fixtures.</li><li>Unit: island-extraction regex — match supported patterns; reject unsupported (e.g. JS expression props).</li><li>Integration: build a fixture with <code>.md</code> + <code>.mdx</code> routes → assert synthetic route modules emitted.</li><li>Integration: full SSR of <code>.mdx</code> page → assert HTML structure + island markers present for hydration.</li><li>Negative: malformed frontmatter, missing island import → assert build error message includes file + position.</li></ul>
+<h2>Out of this spec</h2>
+<ul><li>Sitemap / RSS generation from markdown frontmatter — separate RFC.</li><li>Image embedding (<code>![](photo.jpg)</code>) gets resolved by the existing static-asset pipeline (spec 22 if Image is loaded for the route). No special markdown-image handling beyond passing the URL through.</li><li>Tag indexes / collection queries — out of scope; see Non-goals.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>
