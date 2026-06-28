@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties dev · Patties specs</title>
+<meta name="description" content="Start the local development server with hot reload, ready to use in one command.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/02-dev-command.md</span></div>
+<h1>patties dev</h1>
+<p class="lede">Start the local development server with hot reload, ready to use in one command.</p>
+</header>
+<h2>Purpose</h2>
+<p>Start the local development server with hot reload, ready to use in one command.</p>
+<h2>Usage</h2>
+<pre><code>patties dev [--port &lt;n&gt;] [--host &lt;h&gt;] [--cold] [--cwd &lt;path&gt;] [--config &lt;path&gt;]
+</code></pre>
+<h2>Behavior</h2>
+<ol><li>Load the resolved config (<a href="cli-archive-06-config-loading.html">06</a>).</li><li>Re-exec the dev runner under <strong><code>bun --hot</code></strong> (the default) — modules reload in place, <code>Bun.serve</code> is reused across reloads, and existing WebSockets survive. See framework spec 05-dev-hmr. The first invocation detects whether it is already the hot child via an env flag (e.g. <code>PATTIES_DEV_HOT=1</code>) to avoid an infinite re-exec loop.<ul><li><code>--cold</code> opts into <code>bun --watch</code> instead (full process restart on each save). Useful when modules carry init-only state that doesn't reload cleanly.</li></ul></li><li>Build (incremental) the client bundle once at start; subsequent reloads reuse cached chunks where possible.</li><li>Compile routes (framework 02) and start the server with <code>dev: true</code> (framework 01). Routing goes through <code>Bun.serve({ routes })</code> — no HTTP framework is loaded.</li><li>Print: <code>▲ Patties dev ready at http://&lt;host&gt;:&lt;port&gt;</code> and the project root.</li><li>Forward <code>SIGINT</code> / <code>SIGTERM</code> to shut down cleanly.</li></ol>
+<h2>Flags</h2>
+<ul><li><code>--port</code> — default from config, else <code>3000</code>.</li><li><code>--host</code> — default from config, else <code>0.0.0.0</code>.</li><li><code>--cold</code> — use <code>bun --watch</code> (process restart) instead of <code>bun --hot</code>.</li><li><code>--no-open</code> — reserved for future browser-open behavior; no-op today.</li></ul>
+<h2>Output</h2>
+<ul><li>One header line on boot.</li><li>Each request: <code>→ GET /hotels/bali  200  12ms</code> (color when TTY).</li><li>On error: stack with source mapped back to the user's file when possible.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties dev</code> in a fresh <code>bunx create-patties</code> project starts a server on <code>http://localhost:3000</code> rendering the seed page.</li><li>Editing <code>app/routes/index.tsx</code> causes the browser to reload within ~500ms.</li><li>Ctrl-C exits with code 0 and no orphaned processes.</li><li>An error in a route file prints a usable diagnostic and keeps the server up.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

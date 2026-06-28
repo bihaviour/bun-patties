@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edge Adapters · Patties specs</title>
+<meta name="description" content="Translate the framework's built server bundle into a form the target runtime can execute. The framework ships two built-in adapters — bun and edge — and stay…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-2/12-edge-adapters.md</span></div>
+<h1>Edge Adapters</h1>
+<p class="lede">Translate the framework's built server bundle into a form the target runtime can execute. The framework ships two built-in adapters — bun and edge — and stay…</p>
+</header>
+<h2>Purpose</h2>
+<p>Translate the framework's built server bundle into a form the target runtime can execute. The framework ships <strong>two built-in adapters</strong> — <code>bun</code> and <code>edge</code> — and stays vendor-neutral. Anything vendor-specific (wrangler.toml, vercel.json, deno.json, netlify.toml, deploy commands, vendor binding shapes) lives in a <strong>deploy plugin</strong> (<a href="framework-archive-phase-4-09-plugins.html">09-plugins</a>), not here.</p>
+<h2>Adapter contract</h2>
+<pre data-lang="ts"><code>export interface Adapter {
+  name: "edge" | "bun"
+  buildTarget: "browser" | "bun"           // passed to Bun.build
+  emit(result: BuildResult, ctx: AdapterContext): Promise&lt;EmittedArtifacts&gt;
+}
+</code></pre>
+<p>Note: no <code>deploy()</code> method. Deploying belongs to deploy plugins. Adapters produce portable artifacts; deploy plugins consume them.</p>
+<h2><code>edge</code> adapter (default for hosted deployment)</h2>
+<p>Goal: emit a <strong>portable WinterCG / <code>workerd</code>-style Worker module</strong> that runs unmodified on any compliant edge runtime — Cloudflare Workers, Deno Deploy, Vercel Edge, Netlify Edge, Bun's edge runtime, and whatever comes next.</p>
+<ol><li>Use <code>Bun.build</code> with <code>target: "browser"</code> and Workers/WinterCG conditions set (no <code>node:*</code> core unless polyfilled).</li><li>The Bun target dispatches via <code>Bun.serve({ routes })</code>, which is unavailable on most edge runtimes. The edge adapter compiles the same <code>RouteEntry[]</code> (from <a href="framework-archive-phase-0-02b-filesystem-router.html">02b</a>) into a small JS matcher (~30 lines): per-segment match, params extraction, method dispatch. Same handlers, same <code>ctx</code>, different entrypoint shape. Conformance with the Bun target is enforced by running the integration fixture set against both.</li><li>Wrap the built server entry in the standard Worker module shape: ``<code>ts export default { async fetch(request: Request, env: Record&lt;string, unknown&gt;, execCtx?: ExecutionContext): Promise&lt;Response&gt; { return matcher.dispatch(request, env, execCtx) } } </code>`<code> The </code>env<code> argument is the runtime's bindings object — its shape is vendor-specific, but the framework just forwards it to user code via </code>ctx.env`.</li><li>Emit <code>dist/worker.js</code> and <code>dist/assets/</code> (mirror of <code>app/public/</code> plus the built <code>/_patties/client/*</code> chunks). No <code>wrangler.toml</code>, no <code>vercel.json</code>, no vendor config of any kind.</li><li>The artifact is <strong>portable</strong>: the same <code>dist/worker.js</code> can be uploaded to multiple hosts. A user with no deploy plugin installed can hand the file to <code>wrangler deploy</code>, <code>vercel deploy --prebuilt</code>, <code>deployctl deploy</code>, etc.</li><li>Asset serving in production is <strong>the host's job</strong>. The Worker module does not stream static files — it expects the host to route <code>/_patties/client/*</code> and <code>/app/public/*</code> paths directly to a CDN / static bucket. Deploy plugins emit the vendor-specific config that makes this happen (e.g. Cloudflare Workers Assets block, Vercel <code>outputDirectory</code>, Netlify <code>[[redirects]]</code>, Deno Deploy static-file routing).</li><li><strong>Fallback</strong>: when no deploy plugin is installed, the Worker's catch-all <code>fetch</code> handler streams files from the bundled assets directory using a small ~20-line static reader (path normalize → check map → return <code>new Response(file, { headers })</code>). Functional but inefficient — deploy plugins disable it in favor of the host's native asset path.</li></ol>
+<h2><code>bun</code> adapter (self-hosted / long-running)</h2>
+<ul><li>Emit a <code>dist/server.js</code> runnable via <code>bun dist/server.js</code>.</li><li><strong>Static serving uses <code>Bun.serve</code>'s native <code>static</code> route map</strong> — the adapter pre-builds <code>Response</code> objects for every file in <code>./app/public</code> and <code>./.patties/client</code> (<code>new Response(Bun.file(path), { headers: { ... } })</code>) and passes them as <code>staticRoutes</code> to <code>createServer</code> (<a href="framework-archive-phase-0-01-server.html">01</a>). Matched paths never enter JS. The catch-all <code>fetch</code> handler streams files from disk only as a fallback for paths added at runtime; the static map handles everything known at build time.</li><li><strong>Unix sockets</strong> and <strong><code>reusePort</code></strong> are first-class options: <code>patties.config.ts</code> <code>server: { unix: "/tmp/patties.sock" }</code> or <code>server: { reusePort: true }</code> plumb straight to <code>Bun.serve</code>. Behind nginx, the unix-socket path avoids the loopback hop; with <code>reusePort</code> you can run N copies for N cores.</li><li><strong>Single-binary executable</strong> (opt-in): set <code>adapter.bun.compile: true</code> in <code>patties.config.ts</code>. The adapter invokes <code>bun build --compile --target=bun-${platform} --outfile=dist/server</code> to embed the runtime + bundle. The host machine no longer needs <code>bun</code> installed. The binary is ~50MB and takes longer to produce; off by default.</li><li>No deploy step in the adapter; document <code>bun run dist/server.js</code> (or <code>./dist/server</code> when compiled) as the run command. A deploy plugin (e.g. <code>@patties/deploy-bun</code>) may add Dockerfile / systemd / fly.io packaging if the user wants it.</li><li>Node is <strong>not</strong> a supported target — Bun runs everywhere Node does, and supporting Node would require polyfilling <code>Bun.serve</code>, <code>Bun.Glob</code>, <code>Bun.build</code>, and <code>--watch</code>, which contradicts the Bun-native pillar.</li></ul>
+<h2>Static assets across targets</h2>
+<div class="table-wrap"><table><thead><tr><th>Phase</th><th><code>bun</code> target</th><th><code>edge</code> target</th></tr></thead><tbody><tr><td>Dev (<code>patties dev</code>)</td><td><code>Bun.serve({ static })</code> map populated with <code>./app/public/*</code> and <code>./.patties/client/*</code> responses</td><td>Same as <code>bun</code> — the dev server is always Bun-hosted, regardless of build target</td></tr><tr><td>Built artifact</td><td><code>Bun.serve({ static })</code> map; the catch-all <code>fetch</code> handler streams files from disk only as a fallback for paths added at runtime</td><td>Host serves <code>dist/assets/</code> directly; in-process catch-all streaming is the fallback when no deploy plugin reconfigures it</td></tr></tbody></table></div>
+<p>This means <strong>dev parity</strong> is held against the <code>bun</code> adapter's behavior. Edge-host idiosyncrasies (cache headers, byte-range support, etc.) show up only after a deploy plugin is involved.</p>
+<h2>Deploy plugin contract (reference)</h2>
+<p>Deploy plugins are normal plugins (<a href="framework-archive-phase-4-09-plugins.html">09</a>) that hook into the build lifecycle:</p>
+<pre data-lang="ts"><code>definePlugin({
+  name: "deploy-&lt;vendor&gt;",
+  setup() {},                              // no runtime route mounts
+  hooks: {
+    onBuildEnd(result) {
+      // 1. Read result.serverEntry
+      // 2. Write vendor-specific config (wrangler.toml / vercel.json / etc.) into result.outDir
+      // 3. Optionally rewrite the worker entry to use vendor bindings
+    },
+  },
+  // Plugins may register CLI commands (RFC pending): `patties deploy` dispatches to the
+  // first deploy plugin whose `target` matches config.target, or errors if none is present.
+})
+</code></pre>
+<p>The framework does not bundle deploy plugins. Users install the one matching their host. Documentation will list community / official deploy plugins; none are blessed as "the reference."</p>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties build --target edge</code> produces a <code>dist/worker.js</code> whose <code>export default { fetch }</code> runs on any WinterCG-compliant runtime without modification.</li><li><code>patties build --target edge</code> succeeds with zero deploy plugins installed; the artifact is usable, just without vendor-specific config files.</li><li>Installing <code>@patties/deploy-cloudflare</code> and rebuilding adds <code>dist/wrangler.toml</code> and the Workers Assets config without changing the worker entry's behavior.</li><li>The same <code>dist/worker.js</code> produced by <code>patties build --target edge</code> can be deployed to two different hosts (e.g. Cloudflare + Vercel Edge) using only their respective deploy plugins — no source changes.</li><li><code>patties build --target bun</code> produces a single executable JS file runnable with <code>bun</code>.</li><li><code>patties build --target node</code> is rejected at config-validation time with a message naming the allowed targets (<code>bun</code>, <code>edge</code>).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

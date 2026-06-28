@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Features · Patties</title>
+<meta name="description" content="The three things the framework actually adds — a module convention with a public-API boundary, an explicit data-ownership model, and a dependency-graph checker — plus the frontend / UI stack.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Design spec</span></div>
+<h1>Features</h1>
+<p class="lede">Everything else is Bun and the web platform. The framework's own <em>backend</em> surface is exactly three features: a <strong>module convention</strong> with a public-API boundary, an <strong>explicit data-ownership model</strong> for the few shared structures, and a <strong>dependency-graph checker</strong> that keeps the module graph a DAG. A fourth section covers the <strong>frontend / UI stack</strong> — React 19 + <code>patties-ui</code> and the layers a modular monolith needs above it.</p>
+</header>
+
+<section>
+<h2>Modules &amp; the public-API boundary</h2>
+<p>A module is a folder with a public <code>index.ts</code>. Other modules may import that, and nothing deeper — the build enforces it. There is no DI container and no bespoke request lifecycle: wiring is a plain <code>import</code>, and a handler runs inside the <code>compose()</code> middleware patties already ships.</p>
+
+<h3>Module anatomy</h3>
+<p>Convention over configuration. The folder name is the module name; <code>index.ts</code> is its contract; <code>routes.ts</code> is its HTTP surface; everything else is private.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>The two named files</h3>
+<ul>
+<li><code>index.ts</code> — the <strong>public API</strong>. Re-exports the values/types other modules may use. The only legal import target.</li>
+<li><code>routes.ts</code> — exports a <code>routes</code> map in <code>Bun.serve</code> shape. Collected and merged at build.</li>
+</ul>
+</div>
+<div class="feature">
+<h3>Everything else is private</h3>
+<ul>
+<li>Services, schemas, helpers, db access — plain files, plain exports.</li>
+<li>Used freely <em>within</em> the module; invisible <em>across</em> modules unless re-exported from <code>index.ts</code>.</li>
+</ul>
+</div>
+</div>
+<pre data-lang="ts"><code>// app/billing/index.ts — the front door
+export { invoiceService } from "./invoice.service";
+export type { Invoice } from "./invoice.service";
+// note: ledger.ts is NOT re-exported → it stays private to billing/</code></pre>
+
+<h3>The boundary check — the one new rule</h3>
+<p>This is the entire "framework enforcement." A static read of import specifiers at build time: an import that resolves <em>inside</em> another module's folder but isn't its <code>index.ts</code> is a build error.</p>
+<pre data-lang="ts"><code>// app/orders/order.service.ts
+import { invoiceService } from "../billing";              // ✅ public index
+import { ledger }         from "../billing/ledger";       // ❌ build error
+//   ↳ orders/order.service.ts:2 — deep import into module 'billing'.
+//     Reach it through ../billing (its public index.ts) or export it there.
+
+// within the SAME module, anything goes:
+import { ledger } from "./ledger";                        // ✅ same module</code></pre>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    I["import specifier"] --> Q{"resolves inside<br/>another module's folder?"}
+    Q -->|no| OK1["✅ allow<br/>(core, npm, same module)"]
+    Q -->|yes| Q2{"is it that module's<br/>index.ts?"}
+    Q2 -->|yes| OK2["✅ allow"]
+    Q2 -->|no| BAD["❌ build error<br/>+ file:line + fix hint"]
+    classDef bad fill:#fee2e2,stroke:#ef4444,color:#7f1d1d;
+    class BAD bad;
+</pre>
+<div class="cap">No allow-list to maintain, no decorators to annotate. The rule derives entirely from folder layout and the import graph Bun already produces.</div>
+</div>
+
+<h3>Wiring &amp; lifetimes — without a container</h3>
+<p>"Dependency injection" in this design is just ES modules. A service is a module-level value; importing it gives you the one instance Bun caches. That covers the singleton case — which is nearly all of it.</p>
+<dl class="fields">
+<dt>Singleton</dt><dd><span class="pill green">Default, free</span> <code>export const invoiceService = new InvoiceService(db)</code> — module-cached, instantiated once on first import.</dd>
+<dt>Per-request</dt><dd><span class="pill">Plain code</span> Construct it in the handler, or read it off the thin <code>ctx</code>. No request-scope machinery in the framework.</dd>
+<dt>Configurable / swappable</dt><dd><span class="pill">Factory export</span> Export a <code>createX(opts)</code> factory; the composition root (or a test) calls it. Visible in the types, not hidden in a container.</dd>
+<dt>Testing</dt><dd><span class="pill">Standard tools</span> Swap with <code>bun test</code> module mocking, or pass fakes into the factory. No DI overrides to learn.</dd>
+</dl>
+<div class="callout warning">
+<p class="callout-title">Cycles are forbidden</p>
+<p>Cycles between modules are <strong>forbidden</strong>, not just inconvenient. Because wiring is plain imports, an inter-module cycle compiles silently — but it means you can't understand, test, or extract any module in the cycle without the others. See the <a href="#graph">graph checker</a> for the enforcement rule.</p>
+</div>
+
+<h3>Acyclic graph — no spaghetti paths</h3>
+<p>A→B is fine. A→B→C is fine. A→B→C→A is spaghetti: every module in the chain is now load-bearing for all the others. The rule is simple: the module dependency graph must be a DAG.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    subgraph OK["✅ Allowed — directed acyclic"]
+      A1["users"] --> B1["platform"]
+      orders1["orders"] --> B1
+      B1 --> C1["config"]
+    end
+    subgraph BAD["❌ Forbidden — cycle"]
+      A2["orders"] --> B2["billing"]
+      B2 --> C2["notifications"]
+      C2 -->|"❌ closes the cycle"| A2
+    end
+    classDef bad fill:#fee2e2,stroke:#ef4444,color:#7f1d1d,stroke-width:2px;
+    class BAD,C2 bad;
+</pre>
+<div class="cap">Left: any number of dependencies is fine as long as there's no loop. Right: three hops is all it takes to create spaghetti. <a href="#graph"><code>patties graph</code></a> reports the full chain with the closing edge highlighted.</div>
+</div>
+
+<h3>Request flow is the existing middleware</h3>
+<p>There are no guards, pipes, interceptors, or filters to map. A request flows through patties' <code>compose()</code> chain to the matched module handler and back. Cross-cutting concerns are middleware — exactly as today.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    REQ(["Request"]) --> MW["compose() middleware<br/>auth · logging · whatever you add"]
+    MW --> H["module handler<br/>(req, ctx) =&gt; Response"]
+    H --> MW2["middleware unwinds<br/>(timing, headers, errors)"]
+    MW2 --> RES(["Response"])
+    classDef h fill:#1d4ed8,color:#fff,stroke:#1e3a8a,stroke-width:2px;
+    class H h;
+</pre>
+<div class="cap">Validation, authz, serialization — each is either a middleware (cross-cutting) or a plain call inside the handler (local). The framework adds no phases of its own.</div>
+</div>
+
+<h3>Shared infrastructure &amp; shutdown</h3>
+<p>Things many modules need — a db pool, a cron scheduler — live in a small shared module (e.g. <code>app/_platform/</code>) that exposes them through its own public <code>index.ts</code>. The same boundary rule applies.</p>
+<pre data-lang="ts"><code>// app/_platform/index.ts
+export { db } from "./db";          // bun:sqlite / Bun.SQL — one pool, imported everywhere
+export { scheduler } from "./cron"; // patties' existing job primitives
+
+// app/billing/invoice.service.ts
+import { db } from "../_platform";  // ✅ public API of the platform module</code></pre>
+<p>Graceful shutdown is whatever the platform module registers on Bun's signal handling — not a framework-managed <code>onDestroy</code> ordering. Init order is module import order, which Bun already determines deterministically.</p>
+</section>
+
+<section>
+<h2>Data ownership — who owns what, and when</h2>
+<p>Shared mutable state is the primary way module boundaries erode over time. This feature assigns explicit ownership for every shared data structure in the framework, defines mutation windows, and shows which modules may read vs. write each structure.</p>
+
+<h3>The ownership model</h3>
+<p>One module creates a structure, freezes it at the end of its mutation window, and hands it to consumers as read-only. No other module mutates it after that. Swapping is always replace-the-reference, never mutate-in-place.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>Creator — writes</h3>
+<p>One module is responsible for constructing and populating a shared structure. No other module writes to it during this phase.</p>
+</div>
+<div class="feature">
+<h3>Freeze point</h3>
+<p>At the end of the creation phase the structure is frozen (<code>Object.freeze</code>). Any subsequent mutation attempt throws in strict mode.</p>
+</div>
+<div class="feature">
+<h3>Consumers — read only</h3>
+<p>All other modules receive the frozen value. They may read any property; they must not cast away <code>Readonly&lt;&gt;</code> or call <code>Object.assign</code> on it.</p>
+</div>
+</div>
+<div class="callout success">
+<p class="callout-title">Swap, don't mutate</p>
+<p>When a structure must change (e.g. dev island rebuild), the owning module creates a <em>new</em> instance and replaces the reference at the server level atomically. The old frozen object is garbage-collected; consuming modules never see a partially-updated state.</p>
+</div>
+
+<h3>ClientManifest</h3>
+<p>Maps island names to their public URLs. Created once per build; swapped (not mutated) on dev island rebuild.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    B["build/\ncreates + freezes"] -->|frozen ClientManifest| S["server/\nholds reference"]
+    S -->|read-only pass-through| R["render/\nreads per request"]
+    D["dev/\nrebuild completes"] -->|new frozen instance| S
+    P["plugin onBuildEnd\nhook"] -->|may add assets BEFORE freeze| B
+    classDef owner fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:2px;
+    classDef consumer fill:#f0fdf4,stroke:#16a34a,color:#14532d;
+    classDef swap fill:#fef9c3,stroke:#ca8a04,color:#713f12;
+    class B owner;
+    class R,S consumer;
+    class D swap;
+</pre>
+<div class="cap">Blue = owner (writes). Green = consumer (read-only). Yellow = swap path (new instance replaces the reference, old instance is not touched).</div>
+</div>
+<dl class="fields">
+<dt>Owner</dt><dd><code>build/</code></dd>
+<dt>Mutation window</dt><dd>Inside <code>build()</code>, and during the <code>onBuildEnd</code> plugin hook (before <code>Object.freeze</code> is called)</dd>
+<dt>Freeze point</dt><dd><code>build()</code> calls <code>Object.freeze(manifest.islands); Object.freeze(manifest)</code> before returning</dd>
+<dt>Consumers</dt><dd><code>server/</code> (holds reference), <code>render/</code> (reads per-request — never caches beyond one render call)</dd>
+<dt>Dev swap</dt><dd><code>dev/</code> creates a new <code>ClientManifest</code> after each island rebuild and atomically replaces the pointer held by <code>server/</code>. It never calls any method on the old manifest.</dd>
+</dl>
+<pre data-lang="ts"><code>// src/build/index.ts — the only place ClientManifest is created
+const manifest: ClientManifest = { entry: "...", islands: { ... } }
+Object.freeze(manifest.islands)
+Object.freeze(manifest)
+return { clientManifest: manifest, ... }
+
+// src/dev/bundler.ts — swap, never mutate
+const next = buildIslandManifest(rebuiltChunks)  // new frozen instance
+server.swapManifest(next)                         // replace reference atomically</code></pre>
+
+<h3>Route table</h3>
+<p>Scanned at build time via Bun macro, inlined into the server bundle, then frozen. The production server never re-scans the filesystem. Dev mode re-scans on file change and replaces the active router.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    subgraph BUILD["Build time"]
+      FS["router/filesystem\nscanRoutes() — Bun macro"]
+      GEN["build/\ngenerates server entry with\ninlined route literal"]
+    end
+    subgraph BOOT["Server boot"]
+      CR["router/\ncompileRouter(inlinedRoutes)\n→ CompiledRouter (frozen)"]
+      SRV["server/ + Bun.serve"]
+    end
+    subgraph DEV["Dev mode only"]
+      RESCAN["dev/\nfile change → re-scanRoutes()\n→ new CompiledRouter"]
+    end
+    FS --> GEN --> CR --> SRV
+    RESCAN -->|replace reference| SRV
+    classDef owner fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:2px;
+    class FS,GEN owner;
+</pre>
+<div class="cap">The production bundle ships with the route array baked in as a literal — no <code>Bun.Glob</code> at runtime. See the build-time-discovery rule.</div>
+</div>
+<dl class="fields">
+<dt>Owner</dt><dd><code>build/</code> (build time) → <code>server/</code> (runtime, read-only)</dd>
+<dt>Mutation window</dt><dd>Build-time macro only. Plugin routes (<code>server.route()</code>) are folded in during the boot phase, before the first request.</dd>
+<dt>Freeze point</dt><dd><code>router/compileRouter()</code> returns a frozen <code>CompiledRouter</code>. No route may be added or removed after boot.</dd>
+<dt>Dev swap</dt><dd><code>dev/</code> is the only module permitted to call <code>scanRoutes()</code>. On change it creates a new <code>CompiledRouter</code> and replaces the active one.</dd>
+</dl>
+
+<h3>Agent &amp; tool registries</h3>
+<p>Scanned once at boot (or build time via macro). Frozen immediately after the scan. <code>getAgent()</code> and <code>getTool()</code> are the only public accessors — they return read-only values.</p>
+<dl class="fields">
+<dt>Owner</dt><dd><code>ai/</code> — <code>AgentRegistry</code> and <code>ToolRegistry</code> singletons</dd>
+<dt>Mutation window</dt><dd>During <code>ai/scan.ts</code> boot scan only. The registries are populated from <code>app/agents/</code> and <code>app/tools/</code> before the first request is served.</dd>
+<dt>Freeze point</dt><dd>After scan completes. No post-boot registration.</dd>
+<dt>Duplicate names</dt><dd><span class="pill red">Boot error</span> Two agents or tools with the same name cause an immediate process exit with both conflicting file paths in the message. First-one-wins is not acceptable.</dd>
+<dt>Consumers</dt><dd><code>getAgent()</code> / <code>getTool()</code> return <code>Readonly&lt;AgentDefinition&gt;</code> / <code>Readonly&lt;ToolDefinition&gt;</code>. No module outside <code>ai/</code> may hold a direct registry reference.</dd>
+<dt>Plugin hook</dt><dd><code>onJobsCollect</code> receives a read-only <code>JobSummary[]</code> snapshot. It may not add jobs to the registry.</dd>
+</dl>
+
+<h3>Request-scoped state</h3>
+<p><code>PattiesContext</code> and <code>AiContext</code> are created fresh per request and destroyed when the response is returned. They must never be stored outside the synchronous handler chain.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>PattiesContext</h3>
+<ul>
+<li>Created by <code>server/</code> at the start of each request.</li>
+<li><code>ctx.vars</code> is the only mutable slot — for middleware to pass typed values downstream within the same request, not across requests.</li>
+<li><code>ctx.json()</code> / <code>ctx.html()</code> / <code>ctx.redirect()</code> are one-shot — calling them twice is a runtime error.</li>
+<li>Must not be stored in a module-level variable. Referencing it outside the handler chain is a boundary violation.</li>
+</ul>
+</div>
+<div class="feature">
+<h3>AiContext</h3>
+<ul>
+<li>Created by <code>ai/</code> per AI-enabled request, wrapping <code>PattiesContext</code>.</li>
+<li>Conversation history is scoped to this context — it must not be stored in a module-level variable.</li>
+<li>Destroyed when the streaming response completes.</li>
+<li>Never passed to middleware. Middleware receives only <code>PattiesContext</code>.</li>
+<li>Persistence (session-backed history) is a user concern via a storage adapter, not a framework concern.</li>
+</ul>
+</div>
+</div>
+<div class="callout warning">
+<p class="callout-title">Don't close over context</p>
+<p>Storing a <code>PattiesContext</code> or <code>AiContext</code> in a variable outside the handler (e.g., for logging or caching) leaks request state across requests and breaks the ownership model. Extract the data you need (<code>ctx.params.id</code>, a header value) — not the context object itself.</p>
+</div>
+
+<h3>Mutation windows at a glance</h3>
+<p>Every shared structure has exactly one owner, one mutation window, and one freeze point. After the freeze, any write throws.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Structure</th>
+<th>Owner</th>
+<th>Mutation window</th>
+<th>Frozen by</th>
+<th>Consumers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ClientManifest</code></td>
+<td><code>build/</code></td>
+<td>Inside <code>build()</code> + <code>onBuildEnd</code> hook</td>
+<td><code>build()</code> before return</td>
+<td><code>server/</code>, <code>render/</code> (read-only)</td>
+</tr>
+<tr>
+<td>Route table (<code>RouteEntry[]</code>)</td>
+<td><code>build/</code> → <code>server/</code></td>
+<td>Build-time macro + plugin <code>setup()</code> during boot</td>
+<td><code>router/compileRouter()</code></td>
+<td><code>server/</code> (read-only at runtime)</td>
+</tr>
+<tr>
+<td><code>AgentRegistry</code></td>
+<td><code>ai/</code></td>
+<td>Boot scan only</td>
+<td>After scan completes</td>
+<td><code>ai/getAgent()</code> (read-only)</td>
+</tr>
+<tr>
+<td><code>ToolRegistry</code></td>
+<td><code>ai/</code></td>
+<td>Boot scan only</td>
+<td>After scan completes</td>
+<td><code>ai/getTool()</code> (read-only)</td>
+</tr>
+<tr>
+<td><code>PattiesContext</code></td>
+<td>Request handler</td>
+<td>Single request cycle (<code>ctx.vars</code> only)</td>
+<td>Response returned</td>
+<td>Middleware chain (read + limited write to <code>vars</code>)</td>
+</tr>
+<tr>
+<td><code>AiContext</code></td>
+<td><code>ai/</code></td>
+<td>Single request cycle</td>
+<td>Response stream ends</td>
+<td><code>ai/</code> only</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="callout note">
+<p class="callout-title">Note</p>
+<p>The <a href="#graph">dependency graph checker</a> (<code>patties graph --strict</code>) detects module-level variables of type <code>PattiesContext</code> or <code>AiContext</code> declared outside <code>src/server/</code> and <code>src/ai/</code> respectively, and reports them as ownership violations.</p>
+</div>
+</section>
+
+<section>
+<h2 id="graph"><code>patties graph</code> — no cycles, no spaghetti</h2>
+<p>A static import-graph analyser that enforces two invariants: every cross-module import goes through a public <code>index.ts</code>, and the module dependency graph is a DAG — no A&thinsp;→&thinsp;B&thinsp;→&thinsp;C&thinsp;→&thinsp;A. Build errors catch the obvious cases; this command catches the subtle ones and acts as the CI gate.</p>
+
+<h3>Why a dedicated checker</h3>
+<p>The build-time boundary check (in the route-merge macro) catches deep imports. But it runs only during <code>patties build</code>, only for module roots, and only for cross-module paths it can resolve at that point. A cycle spanning three modules, a private import inside a test helper, or a deep import introduced via a re-export barrel — these all need a second pass.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>Similar to <code>bun typecheck</code></h3>
+<p>Runs outside the build pipeline — no bundle produced. Reports structural issues in the source tree. Fast enough to run on every push.</p>
+</div>
+<div class="feature">
+<h3>Not a linter</h3>
+<p>Biome owns style and code-quality rules. <code>patties graph</code> only knows about module boundaries and import direction. No overlap.</p>
+</div>
+<div class="feature">
+<h3>Works on user apps too</h3>
+<p>Runs on <code>app/modules/</code> by default. Use <code>--framework</code> to check the framework source tree itself (useful when contributing to patties).</p>
+</div>
+<div class="feature">
+<h3>Bun-native</h3>
+<p>Import extraction via <code>Bun.Transpiler</code>. Module resolution via <code>Bun.resolve()</code>. Graph walk in plain TypeScript. No extra deps.</p>
+</div>
+</div>
+
+<h3>The acyclic rule — A&thinsp;→&thinsp;B, never A&thinsp;→&thinsp;B&thinsp;→&thinsp;C&thinsp;→&thinsp;A</h3>
+<p>A direct dependency is fine. A transitive dependency is fine. A dependency that loops back — however many hops away — is not.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    subgraph OK["✅ Allowed — acyclic"]
+      A1["users"] --> B1["platform"]
+      B1 --> C1["config"]
+    end
+    subgraph BAD["❌ Forbidden — cycle detected"]
+      A2["orders"] --> B2["billing"]
+      B2 --> C2["notifications"]
+      C2 -->|"depends on orders"| A2
+    end
+    classDef bad fill:#fee2e2,stroke:#ef4444,color:#7f1d1d,stroke-width:2px;
+    class BAD bad;
+    class C2 bad;
+</pre>
+<div class="cap">The forbidden case: <code>orders → billing → notifications → orders</code>. Each hop may be individually reasonable, but the chain as a whole creates spaghetti — you can't understand, test, or extract any of these modules without the others.</div>
+</div>
+<div class="callout success">
+<p class="callout-title">The one rule</p>
+<p>Module A may depend on module B. Module B may depend on module C. Module C must not depend on module A (or on anything that transitively depends on A). The dependency graph is a directed acyclic graph (DAG). A topological sort must exist.</p>
+</div>
+<p>Intra-module file cycles (files cycling within the same module directory) produce a <span class="pill amber">warning</span>, not a failure — they often arise from mutually-recursive type definitions. Inter-module cycles are always a <span class="pill red">failure</span>.</p>
+
+<h3>What the checker detects</h3>
+<dl class="fields">
+<dt><span class="pill red">Fail</span> Cycle</dt>
+<dd>An inter-module circular dependency. The full cycle path is printed — every module in the chain, with the closing edge highlighted. Even a two-module cycle (A → B → A) is caught.</dd>
+<dt><span class="pill red">Fail</span> Deep import</dt>
+<dd>An import that resolves inside another module's folder but isn't its <code>index.ts</code>. Example: <code>import { x } from "../billing/invoice.service"</code> from inside <code>orders/</code>.</dd>
+<dt><span class="pill red">Fail</span> Internal access</dt>
+<dd>An import from a path containing <code>/internal/</code> or <code>/_internal/</code> that originates outside the owning module. Example: <code>import { y } from "../build/internal/templates"</code>.</dd>
+<dt><span class="pill red">Fail</span> Layer violation</dt>
+<dd>An import that goes in the wrong direction in the canonical dependency order. Example: <code>config/</code> importing from <code>build/</code> (higher-level depending downward on a lower-level module that itself depends on <code>config/</code>).</dd>
+<dt><span class="pill amber">Warn</span> Intra-module cycle</dt>
+<dd>Two files within the same module that import each other. Does not fail by default; use <code>--strict</code> to promote to failure.</dd>
+<dt><span class="pill amber">Warn</span> Type-only deep import</dt>
+<dd><code>import type { X } from "../billing/types"</code> — vanishes at runtime but is still a style violation. Warn; fix by re-exporting from <code>billing/index.ts</code>.</dd>
+</dl>
+
+<h3>Output &amp; exit codes</h3>
+<p>One aligned report grouped by check type. Each finding includes the file, line, and a one-line fix hint. <code>--json</code> for CI consumption.</p>
+<h4>Clean project</h4>
+<pre data-lang="text"><code>patties graph
+
+  Module graph (app/modules/ — 8 modules, 47 files)
+    ✓ No circular dependencies
+    ✓ No boundary violations
+    ✓ No layer violations
+
+  0 failed, 0 warnings, 3 passed</code></pre>
+<h4>With violations</h4>
+<pre data-lang="text"><code>patties graph
+
+  Module graph (app/modules/ — 8 modules, 47 files)
+    ✗ Circular dependency
+        orders/order.service.ts
+        → billing/index.ts
+        → notifications/index.ts
+        → orders/order.service.ts    ← closes the cycle
+        Fix: extract the shared concept to a new module both can import.
+
+    ✗ Deep import  app/modules/orders/order.service.ts:3
+        import { ledger } from "../billing/ledger"
+        → app/modules/billing/index.ts (its public surface)
+
+    ⚠  Intra-module cycle  app/modules/billing/
+        invoice.service.ts ↔ invoice.types.ts
+        Fix: move shared types to a dedicated types.ts with no imports.
+
+  2 failed, 1 warning, 1 passed</code></pre>
+<h4><code>patties graph --json</code></h4>
+<pre data-lang="json"><code>// patties graph --json
+{
+  "summary": { "failed": 2, "warnings": 1, "passed": 1 },
+  "checks": [
+    {
+      "id": "cycle",
+      "status": "fail",
+      "chain": ["orders/order.service.ts", "billing/index.ts",
+                "notifications/index.ts", "orders/order.service.ts"],
+      "remedy": "Extract the shared concept to a new module."
+    },
+    {
+      "id": "deep-import",
+      "status": "fail",
+      "file": "app/modules/orders/order.service.ts",
+      "line": 3,
+      "specifier": "../billing/ledger",
+      "remedy": "app/modules/billing/index.ts"
+    }
+  ]
+}</code></pre>
+<dl class="fields">
+<dt>Exit 0</dt><dd>All checks passed (warnings allowed unless <code>--strict</code>)</dd>
+<dt>Exit 1</dt><dd>One or more checks failed</dd>
+<dt>Exit 2</dt><dd>Could not run — not inside a patties project, or <code>bun</code> missing</dd>
+</dl>
+
+<h3>How it works</h3>
+<p>Three passes over the source tree using Bun primitives. No bundling; no type-checking; pure import-graph analysis.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    GLOB["Bun.Glob\napp/modules/**/*.ts(x)"]
+    EXTRACT["Bun.Transpiler\nextract import specifiers\nper file"]
+    RESOLVE["Bun.resolve()\nspecifier → absolute path"]
+    GRAPH["build directed graph\nfile → Set of file deps"]
+    MODULE["collapse to module graph\nfile → module via folder name"]
+    CYCLE["DFS cycle detection\ncolor marking (white/grey/black)"]
+    BOUNDARY["boundary check\ncross-module non-index imports"]
+    REPORT["aligned report\n+ --json"]
+    GLOB --> EXTRACT --> RESOLVE --> GRAPH --> MODULE
+    MODULE --> CYCLE
+    MODULE --> BOUNDARY
+    CYCLE --> REPORT
+    BOUNDARY --> REPORT
+</pre>
+<div class="cap">All passes are read-only. No files are written. The whole check runs in the same process — no <code>bun build</code> subprocess needed.</div>
+</div>
+<h4>Cycle detection — DFS with colour marking</h4>
+<p>Each module node is coloured: <strong>white</strong> (unvisited), <strong>grey</strong> (on the current DFS stack), <strong>black</strong> (fully processed). An edge from grey to grey is a cycle. When detected, the checker walks back up the stack to reconstruct the full cycle path before reporting it.</p>
+<pre data-lang="ts"><code>// pseudo-code — the actual implementation uses Bun.Transpiler + Bun.resolve
+function dfs(node, stack, color) {
+  color.set(node, "grey")
+  stack.push(node)
+  for (const dep of graph.get(node)) {
+    if (color.get(dep) === "grey") {
+      reportCycle(stack.slice(stack.indexOf(dep)))  // the cycle chain
+    } else if (color.get(dep) === "white") {
+      dfs(dep, stack, color)
+    }
+  }
+  stack.pop()
+  color.set(node, "black")
+}</code></pre>
+
+<h3>CI integration</h3>
+<p><code>patties graph</code> is part of the full validation gate alongside <code>bun typecheck</code> and <code>bun test</code>. Run it as a required check on every PR.</p>
+<pre data-lang="ts"><code># package.json scripts
+{
+  "scripts": {
+    "check":    "biome check &amp;&amp; tsc --noEmit",
+    "graph":    "patties graph --strict",
+    "validate": "bun run check &amp;&amp; bun run graph &amp;&amp; bun test &amp;&amp; knip"
+  }
+}
+
+# patties.config.ts — optional per-project module root override
+export default defineConfig({
+  modules: {
+    root: "app/modules",          // default
+    layers: ["platform", "core", "features", "api"]  // optional ordering
+  }
+})</code></pre>
+<div class="callout note">
+<p class="callout-title">Note</p>
+<p>When <code>layers</code> are configured, the checker enforces that a module in layer N may only import from layers 0..N-1. This makes the layer model explicit and machine-enforced rather than a convention in a README.</p>
+</div>
+
+<h3>Fixing violations</h3>
+<dl class="fields">
+<dt>Deep import</dt><dd>Move the import to point at the owning module's <code>index.ts</code>. If the value isn't re-exported there, add the re-export. If you don't want to expose it, it's a signal that the dependency is a design smell — the consumer may need to move.</dd>
+<dt>Internal access</dt><dd>Same as deep import, but stronger: if the code is in <code>internal/</code>, it was deliberately hidden. Either promote it to the public API (re-export from <code>index.ts</code>) or move the consuming code inside the owning module.</dd>
+<dt>Cycle (two modules)</dt><dd>A ↔ B usually means one of them shouldn't know about the other. Extract the shared concept (a type, an interface, a small utility) into a third module that both import. Neither A nor B imports the other.</dd>
+<dt>Cycle (three+ modules)</dt><dd>A → B → C → A is spaghetti. Find the edge that shouldn't exist: which dependency is really a <em>reaction</em> (an event or callback) rather than a direct call? Replace the direct import with an event/callback interface that the owning module accepts as a parameter. The direction of the dependency flips.</dd>
+<dt>Intra-module cycle</dt><dd>Usually mutual type references. Extract shared types into a <code>types.ts</code> file with no imports, or consolidate the two files. If both files genuinely need each other's <em>implementation</em>, they should be one file.</dd>
+</dl>
+<div class="callout note">
+<p class="callout-title">The adapter pattern for stubborn cycles</p>
+<p>If module A needs to trigger behaviour in module B, but B also depends on A: declare an interface in a shared module, have B implement it, and have A accept it as a constructor argument. A never imports B; B still knows about A's interface. Dependency direction becomes explicit in the type signature.</p>
+</div>
+</section>
+
+<section>
+<h2>Frontend &amp; UI — React 19 + <code>patties-ui</code></h2>
+<p>The frontend answer is <strong>React 19 + the <code>patties-ui</code> copy-in catalog</strong>, and that is the right and sufficient <em>primitive</em> layer — swapping frameworks is not a frontend choice, it is a different framework. The real question is the three layers <em>above</em> the primitives, and where each lives.</p>
+
+<h3>A UI is four layers — a catalog is only the first</h3>
+<p>A copy-in catalog (buttons, dialogs, inputs) is the primitive layer. A modular monolith needs three more that shadcn-style catalogs deliberately don't ship. A DataTable, not a styled <code>&lt;Input&gt;</code>, is what a back-office app lives or dies on.</p>
+<dl class="fields">
+<dt><span class="pill green">Ships</span> ① Primitives</dt><dd><code>patties-ui</code> — 60 copy-in components, <code>radix-ui</code> + Tailwind v4, SSR-first with <code>island: true | false | "subtree"</code>. This layer is done.</dd>
+<dt><span class="pill amber">Draft</span> ② Forms &amp; mutations</dt><dd>Form state + <code>zod</code> validation + a server-action mutation primitive. Touches <code>PattiesContext</code> and the standards boundary → belongs in <strong>patties core</strong>.</dd>
+<dt><span class="pill amber">Draft</span> ③ Composed blocks</dt><dd>DataTable, dashboard shell, command palette, auth screens — a "blocks" tier in the <code>patties-ui</code> registry, built on the 60 primitives and stamped by <code>patties add</code>.</dd>
+<dt><span class="pill">Opt-in</span> ④ Client data cache</dt><dd>TanStack Query per interactive island only — not framework-mandated, keeping the zero-JS-by-default story for the static majority.</dd>
+</dl>
+<div class="callout success">
+<p class="callout-title">Don't change frontend frameworks</p>
+<p>React 19 + <code>patties-ui</code> is correct and sufficient as the primitive layer. The work is the forms primitive (core), the blocks tier (<code>patties-ui</code>), and an opt-in client cache.</p>
+</div>
+<p>Full breakdown — the four layers, design constraints, and where each one lives — on the <a href="ui-frontend-stack.html">Frontend &amp; UI stack detail page →</a></p>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="../docs/index.html">User docs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script type="module" src="../assets/mermaid-init.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

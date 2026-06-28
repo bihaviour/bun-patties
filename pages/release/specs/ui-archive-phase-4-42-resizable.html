@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resizable · Patties specs</title>
+<meta name="description" content="Drag-to-resize panel splitter. Mirrors shadcn Resizable. Built on react-resizable-panels.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-4/42-resizable.md</span></div>
+<h1>Resizable</h1>
+<p class="lede">Drag-to-resize panel splitter. Mirrors shadcn Resizable. Built on react-resizable-panels.</p>
+</header>
+<h2>Purpose</h2>
+<p>Drag-to-resize panel splitter. Mirrors shadcn <code>Resizable</code>. Built on <code>react-resizable-panels</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Pointer drag and persisted sizes need client JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>react-resizable-panels@^2</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export const ResizablePanelGroup: typeof PanelGroup
+export const ResizablePanel: typeof Panel
+export function ResizableHandle(props: { withHandle?: boolean; className?: string }): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li><code>autoSaveId</code> persists to <code>localStorage</code>; SSR renders the configured <code>defaultSize</code> so no layout shift on hydration.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>SSR renders panels at their <code>defaultSize</code>.</li><li>Drag adjusts sizes; <code>autoSaveId</code> round-trips across reloads.</li><li>Keyboard handle accepts arrow keys to nudge sizes.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

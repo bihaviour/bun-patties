@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Filesystem Router · Patties specs</title>
+<meta name="description" content="Scan app/routes/ with Bun.Glob and produce a sorted, deterministic list of RouteEntry records consumed by 02-router.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-0/02b-filesystem-router.md</span></div>
+<h1>Filesystem Router</h1>
+<p class="lede">Scan app/routes/ with Bun.Glob and produce a sorted, deterministic list of RouteEntry records consumed by 02-router.</p>
+</header>
+<h2>Purpose</h2>
+<p>Scan <code>app/routes/</code> with <code>Bun.Glob</code> and produce a sorted, deterministic list of <code>RouteEntry</code> records consumed by <a href="framework-archive-phase-0-02-router.html">02-router</a>.</p>
+<h2>Public surface</h2>
+<pre data-lang="ts"><code>export interface RouteEntry {
+  filePath: string         // absolute path
+  bunPattern: string       // Bun.serve({ routes }) pattern, e.g. "/hotels/:city" or "/files/*"
+  kind: "page" | "api"
+  segments: Segment[]      // parsed form, useful for sorting
+}
+
+export async function scanRoutes(appDir: string): Promise&lt;RouteEntry[]&gt;
+</code></pre>
+<h2>Behavior</h2>
+<ol><li>Use <code>new Bun.Glob("**/*.{ts,tsx}").scan({ cwd: appDir + "/routes" })</code>.<ul><li>If <code>app/routes/</code> does not exist (fresh scaffold, no routes yet), return <code>[]</code>. The scanner catches the <code>ENOENT</code>-style failure from <code>scan()</code> and treats a missing routes dir identically to an empty one. Any other glob failure must propagate.</li></ul></li><li>Skip files starting with <code>_</code> (private) or matching <code>*.test.ts(x)</code>.</li><li>Classify: paths under <code>routes/api/</code> are <code>api</code>; <code>.tsx</code> elsewhere are <code>page</code>; <code>.ts</code> outside <code>api/</code> is an error.</li><li>Translate to a <code>Bun.serve({ routes })</code> pattern:<ul><li><code>index</code> → <code>""</code> (joined with parent path).</li><li><code>[name]</code> → <code>:name</code>.</li><li><code>[...name]</code> → <code>*</code> (Bun's catch-all; the matched suffix is exposed via <code>req.params["*"]</code>).</li></ul></li><li>Sort entries so static segments outrank dynamic, and shorter patterns outrank catch-alls. Determinism matters for HMR diffing.</li></ol>
+<h2>Dependencies</h2>
+<ul><li><code>Bun.Glob</code> only — no <code>fast-glob</code>, no <code>globby</code>.</li><li>All file existence/metadata checks use <code>Bun.file(path).exists()</code> and <code>Bun.file(path).size</code>. Never <code>node:fs.stat</code> or <code>fs.access</code>.</li></ul>
+<h2>Build-time vs runtime</h2>
+<p>In dev (<code>patties dev</code>), <code>scanRoutes</code> runs at boot and on <code>bun --watch</code> restarts.</p>
+<p>In production builds, the scanner runs once at <strong>build time</strong> (<a href="framework-archive-phase-1-04-build.html">04-build</a>) and its output is inlined into the server bundle via a Bun macro (<code>import { ROUTES } from "./routes.macro" with { type: "macro" }</code>). The runtime server reads <code>ROUTES</code> directly — no filesystem scan happens after <code>Bun.serve</code> boots. On the <code>edge</code> target this eliminates a ~30–80ms cold-start penalty per Worker isolate.</p>
+<h2>Non-goals</h2>
+<ul><li>Watching the filesystem (that's <a href="framework-archive-phase-1-05-dev-hmr.html">05-dev-hmr</a>).</li><li>Loading the modules — scanner returns paths; the router decides when to <code>import()</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Empty <code>routes/</code> returns <code>[]</code>.</li><li>Missing <code>routes/</code> directory entirely (no <code>app/routes/</code> at all) also returns <code>[]</code> — no thrown error.</li><li>Two files producing the same pattern raise a clear conflict error naming both paths.</li><li>The output is stable across runs for the same input tree.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Input Group · Patties specs</title>
+<meta name="description" content="Input flanked by addons (leading/trailing icons or buttons). Mirrors shadcn InputGroup.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/30-input-group.md</span></div>
+<h1>Input Group</h1>
+<p class="lede">Input flanked by addons (leading/trailing icons or buttons). Mirrors shadcn InputGroup.</p>
+</header>
+<h2>Purpose</h2>
+<p>Input flanked by addons (leading/trailing icons or buttons). Mirrors shadcn <code>InputGroup</code>.</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. Layout-only; children follow their own rules.</p>
+<h2>Peer dependencies</h2>
+<p>None.</p>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function InputGroup(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function InputGroupAddon(props: { align?: "inline-start" | "inline-end" | "block-start" | "block-end" } &amp; React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function InputGroupInput(props: React.InputHTMLAttributes&lt;HTMLInputElement&gt;): JSX.Element
+export function InputGroupText(props: React.ComponentProps&lt;"span"&gt;): JSX.Element
+export function InputGroupButton(props: ButtonProps): JSX.Element
+
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Uses logical CSS properties (<code>inline-start</code>/<code>inline-end</code>) so RTL just works without JS.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Addons render flush with the input borders.</li><li><code>align="block-start"</code> works for stacked layouts.</li><li>Bundle audit: zero JS for the group itself.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

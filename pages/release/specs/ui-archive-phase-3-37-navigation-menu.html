@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Navigation Menu · Patties specs</title>
+<meta name="description" content="Top-bar nav with hoverable mega-menu panels. Mirrors shadcn NavigationMenu. Built on @radix-ui/react-navigation-menu.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/37-navigation-menu.md</span></div>
+<h1>Navigation Menu</h1>
+<p class="lede">Top-bar nav with hoverable mega-menu panels. Mirrors shadcn NavigationMenu. Built on @radix-ui/react-navigation-menu.</p>
+</header>
+<h2>Purpose</h2>
+<p>Top-bar nav with hoverable mega-menu panels. Mirrors shadcn <code>NavigationMenu</code>. Built on <code>@radix-ui/react-navigation-menu</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Open-state coordination and the indicator animation need JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-navigation-menu@^1.2</code></li><li><code>lucide-react@^0.400</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function NavigationMenu(props: Radix.NavigationMenuProps &amp; { viewport?: boolean }): JSX.Element
+export const NavigationMenuList: typeof Radix.List
+export const NavigationMenuItem: typeof Radix.Item
+export function NavigationMenuTrigger(props: Radix.NavigationMenuTriggerProps &amp; { className?: string }): JSX.Element
+export function NavigationMenuContent(props: Radix.NavigationMenuContentProps &amp; { className?: string }): JSX.Element
+export function NavigationMenuLink(props: Radix.NavigationMenuLinkProps): JSX.Element
+export function NavigationMenuIndicator(props: Radix.NavigationMenuIndicatorProps &amp; { className?: string }): JSX.Element
+export function NavigationMenuViewport(props: Radix.NavigationMenuViewportProps &amp; { className?: string }): JSX.Element
+
+export const navigationMenuTriggerStyle: () =&gt; string
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Bare links (without a content panel) render as plain <code>&lt;a&gt;</code> so navigation works without JS.</li><li>Removes <code>forwardRef</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Top-level links work as anchors without JS.</li><li>After hydration, hovering a trigger reveals the panel with the indicator animation.</li><li>Mobile fallback: the same component degrades to a stack of links if pointer is coarse.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

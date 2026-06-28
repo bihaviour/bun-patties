@@ -1,0 +1,45 @@
+name: Pages
+
+# Build the static site under pages/ and deploy it to GitHub Pages.
+# The specs section (pages/release/specs/) is regenerated from agent_specs/
+# on every run so the deployed archive always matches the committed source.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "pages/**"
+      - "agent_specs/**"
+      - "scripts/build-specs.ts"
+      - "scripts/serve-pages.ts"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one in-flight deploy at a time; let it finish rather than cancelling.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: build & deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./.github/actions/setup
+      - name: Generate specs site from agent_specs/
+        run: bun run build:specs
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: pages
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

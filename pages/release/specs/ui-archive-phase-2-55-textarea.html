@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Textarea · Patties specs</title>
+<meta name="description" content="Styled &lt;textarea&gt;. Mirrors shadcn Textarea.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-2/55-textarea.md</span></div>
+<h1>Textarea</h1>
+<p class="lede">Styled &lt;textarea&gt;. Mirrors shadcn Textarea.</p>
+</header>
+<h2>Purpose</h2>
+<p>Styled <code>&lt;textarea&gt;</code>. Mirrors shadcn <code>Textarea</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code> if controlled. Native uncontrolled mode (server form) ships no JS.</p>
+<h2>Peer dependencies</h2>
+<p>None.</p>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Textarea(props: React.TextareaHTMLAttributes&lt;HTMLTextAreaElement&gt; &amp; { className?: string }): JSX.Element
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li>No auto-resize by default; an opt-in <code>autoResize</code> prop installs a tiny ResizeObserver-based island.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Native form submission works without JS.</li><li><code>disabled</code> and <code>aria-invalid</code> styles applied.</li><li><code>autoResize</code> grows the textarea to fit content; respects <code>maxRows</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tooltip · Patties specs</title>
+<meta name="description" content="Hover/focus tooltip. Mirrors shadcn Tooltip. Built on @radix-ui/react-tooltip.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/59-tooltip.md</span></div>
+<h1>Tooltip</h1>
+<p class="lede">Hover/focus tooltip. Mirrors shadcn Tooltip. Built on @radix-ui/react-tooltip.</p>
+</header>
+<h2>Purpose</h2>
+<p>Hover/focus tooltip. Mirrors shadcn <code>Tooltip</code>. Built on <code>@radix-ui/react-tooltip</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Hover delay, focus events, and portal positioning need JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-tooltip@^1.1</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export const TooltipProvider: typeof Radix.Provider
+export const Tooltip: typeof Radix.Root
+export const TooltipTrigger: typeof Radix.Trigger
+export function TooltipContent(props: Radix.TooltipContentProps &amp; { className?: string }): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Mount one <code>TooltipProvider</code> per root island. <code>delayDuration</code> defaults to <code>200ms</code>.</li><li>Removes <code>forwardRef</code>.</li><li>For purely-decorative tooltips, the spec recommends <code>title</code> attribute instead — zero JS.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Hover and focus reveal the tooltip after the delay.</li><li>Touch devices suppress hover-only tooltips (Radix default).</li><li>SSR renders only the trigger.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Typography · Patties specs</title>
+<meta name="description" content="Prose primitives — H1/H2/H3/H4, P, Blockquote, InlineCode, Lead, Large, Small, Muted, List. Mirrors shadcn Typography (which is itself a set of recipes, not …">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/60-typography.md</span></div>
+<h1>Typography</h1>
+<p class="lede">Prose primitives — H1/H2/H3/H4, P, Blockquote, InlineCode, Lead, Large, Small, Muted, List. Mirrors shadcn Typography (which is itself a set of recipes, not …</p>
+</header>
+<h2>Purpose</h2>
+<p>Prose primitives — <code>H1</code>/<code>H2</code>/<code>H3</code>/<code>H4</code>, <code>P</code>, <code>Blockquote</code>, <code>InlineCode</code>, <code>Lead</code>, <code>Large</code>, <code>Small</code>, <code>Muted</code>, <code>List</code>. Mirrors shadcn <code>Typography</code> (which is itself a set of recipes, not a tightly-bound primitive).</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. Pure presentational.</p>
+<h2>Peer dependencies</h2>
+<p>None.</p>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function H1(props: React.ComponentProps&lt;"h1"&gt;): JSX.Element
+export function H2(props: React.ComponentProps&lt;"h2"&gt;): JSX.Element
+export function H3(props: React.ComponentProps&lt;"h3"&gt;): JSX.Element
+export function H4(props: React.ComponentProps&lt;"h4"&gt;): JSX.Element
+export function P(props: React.ComponentProps&lt;"p"&gt;): JSX.Element
+export function Blockquote(props: React.ComponentProps&lt;"blockquote"&gt;): JSX.Element
+export function InlineCode(props: React.ComponentProps&lt;"code"&gt;): JSX.Element
+export function Lead(props: React.ComponentProps&lt;"p"&gt;): JSX.Element
+export function Large(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function Small(props: React.ComponentProps&lt;"small"&gt;): JSX.Element
+export function Muted(props: React.ComponentProps&lt;"p"&gt;): JSX.Element
+export function List(props: React.ComponentProps&lt;"ul"&gt;): JSX.Element
+
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Exports are individual semantic components rather than a single <code>Typography</code> wrapper, to encourage correct heading hierarchy.</li><li>A separate <code>prose</code> Tailwind class chain is documented for <code>@tailwindcss/typography</code>-rendered Markdown content; the primitives above are for non-prose contexts.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Each primitive renders the correct HTML element with the expected token classes.</li><li>Heading sizes follow a clear visual scale at every breakpoint.</li><li>Bundle audit: zero JS.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

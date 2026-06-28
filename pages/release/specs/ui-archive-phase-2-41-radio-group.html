@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radio Group · Patties specs</title>
+<meta name="description" content="Mutually-exclusive option group. Mirrors shadcn RadioGroup. Built on @radix-ui/react-radio-group.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-2/41-radio-group.md</span></div>
+<h1>Radio Group</h1>
+<p class="lede">Mutually-exclusive option group. Mirrors shadcn RadioGroup. Built on @radix-ui/react-radio-group.</p>
+</header>
+<h2>Purpose</h2>
+<p>Mutually-exclusive option group. Mirrors shadcn <code>RadioGroup</code>. Built on <code>@radix-ui/react-radio-group</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code> when controlled. With <code>name</code> and native form, the build downgrades to native <code>&lt;input type="radio"&gt;</code> wrappers and ships no JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-radio-group@^1.2</code></li><li><code>lucide-react@^0.400</code> (Circle)</li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function RadioGroup(props: Radix.RadioGroupProps &amp; { className?: string }): JSX.Element
+export function RadioGroupItem(props: Radix.RadioGroupItemProps &amp; { className?: string }): JSX.Element
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li>A <code>nativeForm</code> prop forces native-input mode.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Native mode: form submission carries the selected radio value with no JS.</li><li>Controlled mode: arrow keys move selection per WAI-ARIA pattern.</li><li><code>aria-required</code> and <code>aria-invalid</code> propagate to items.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

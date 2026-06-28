@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-003 — Encapsulation = a public-API boundary check at build · Patties</title>
+<meta name="description" content="Encapsulation is enforced by a build-time check: a module is imported only via its index.ts.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">ADR</span> <span class="pill green">accepted</span></div>
+<h1>ADR-003 — Encapsulation = a public-API boundary check at build</h1>
+<p class="lede">Encapsulation is enforced by a build-time check: a module is imported only via its <code>index.ts</code>.</p>
+</header>
+<section>
+<h2>Context</h2>
+<p>The defining property of a modular monolith is that modules communicate through published interfaces and keep internals private. Without enforcement, that erodes into a big ball of mud.</p>
+</section>
+<section>
+<h2>Decision</h2>
+<p>The build macro statically checks import specifiers: a module may only import another module's <code>index.ts</code>, never a deeper path. Violations are build errors with <code>file:line</code> and a fix hint.</p>
+</section>
+<section>
+<h2>Consequences</h2>
+<p>The architecture is enforced, not just documented — cheaply, with no runtime cost and no annotations. Cost: the check must understand the module-root convention and resolve relative/aliased paths correctly; barrel-file gymnastics could be used to dodge it (a lint rule, not a guarantee).</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="decisions.html">All decisions</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

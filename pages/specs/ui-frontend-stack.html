@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frontend &amp; UI stack · Patties</title>
+<meta name="description" content="The frontend and UI stack for a modular monolith — React 19 + patties-ui as the primitive layer, and the three layers (forms, composed blocks, client cache) that sit on top.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Design spec</span></div>
+<h1>Frontend &amp; UI stack</h1>
+<p class="lede">The framework's frontend answer is <strong>React 19 + the <code>patties-ui</code> copy-in catalog</strong> — and that is the right and sufficient <em>primitive</em> layer. The open question is never "which frontend framework"; it's <strong>which three layers sit on top of the primitives</strong>, and where each one lives relative to patties. This page answers that.</p>
+</header>
+
+<div class="callout note">
+<p class="callout-title">Status: Draft — intended design only</p>
+<p>No code exists for the forms/mutations primitive or the composed-blocks tier yet. This page records the decision and the layering; the <code>patties-ui</code> primitive catalog (60 components) already ships.</p>
+</div>
+
+<section>
+<h2>React 19 + <code>patties-ui</code> is the right primitive layer</h2>
+<p>"Is React &amp; shadcn-alike enough?" — for the primitive layer, yes. Swapping the frontend framework is not a frontend choice; it is a different framework. Three reasons it stays React.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>Patties is committed to React 19</h3>
+<p>SSR is <code>renderToReadableStream</code>; the island runtime, the web-standards boundary, and the whole <code>patties-ui</code> catalog are built on it. Svelte/Solid/Vue would mean rewriting all three.</p>
+</div>
+<div class="feature">
+<h3>Copy-in is the correct model</h3>
+<p>shadcn-style stamping (no versioned UI package) lets each module own and diverge its components. That is exactly what a modular monolith wants — no shared-package coupling across module boundaries.</p>
+</div>
+<div class="feature">
+<h3>SSR-first, island by opt-in</h3>
+<p><code>island: true | false | "subtree"</code> means most of a back-office/CRUD monolith renders static and ships zero JS. That beats a default-everything-hydrates SPA framework for this app shape.</p>
+</div>
+</div>
+<div class="callout success">
+<p class="callout-title">The framework + primitive layer is not the problem</p>
+<p>React 19 + <code>radix-ui</code> primitives + Tailwind v4 tokens is a modern, defensible stack. "Enough?" is the wrong question for the framework; it's the right question for the <em>layers above</em> the primitives.</p>
+</div>
+</section>
+
+<section>
+<h2>A UI is four layers — a catalog is only the first</h2>
+<p>A copy-in catalog (buttons, dialogs, inputs) is the <strong>primitive</strong> layer. A real modular-monolith app needs three more layers that shadcn-style catalogs deliberately do not ship. The friction is here — not in the choice of React.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    APP(["Modular-monolith app<br/>(back-office · CRUD · dashboards)"])
+    L4["④ Client data cache<br/>optimistic updates · revalidation"]
+    L3["③ Composed blocks<br/>DataTable · dashboard shell · command-k · auth screens"]
+    L2["② Forms &amp; mutations<br/>form state · zod validation · server actions"]
+    L1["① Primitives<br/>patties-ui — 60 components, radix + Tailwind v4"]
+    APP --> L4 --> L3 --> L2 --> L1
+    classDef have fill:#f0fdf4,stroke:#16a34a,color:#14532d,stroke-width:2px;
+    classDef gap fill:#fef9c3,stroke:#ca8a04,color:#713f12,stroke-width:2px;
+    class L1 have;
+    class L2,L3,L4 gap;
+</pre>
+<div class="cap">Green = ships today (<code>patties-ui</code>). Yellow = the three layers still to design. A DataTable, not a styled <code>&lt;Input&gt;</code>, is what a monolith lives or dies on.</div>
+</div>
+</section>
+
+<section>
+<h2>① Primitives — ships today</h2>
+<p>This layer is done. <code>patties-ui</code> is the source of truth (<code>src/registry.ts</code>), all 60 components are <code>status: "completed"</code>, and <code>patties add &lt;component&gt;</code> stamps verbatim source into <code>app/components/ui/</code>.</p>
+<dl class="fields">
+<dt><span class="pill green">Done</span> Surface</dt><dd>60 copy-in components — buttons, inputs, dialogs, selects, popovers, etc. — React 19 style (no <code>forwardRef</code>, refs as plain props), <code>radix-ui</code> unified import.</dd>
+<dt>SSR contract</dt><dd>Every file exports <code>island: true | false | "subtree"</code> so the build decides what ships to the client. No top-level <code>window</code>/<code>document</code>/<code>process</code>.</dd>
+<dt>Theming</dt><dd>Tailwind v4 + CSS variables in <code>app/styles/tokens.css</code>; dark mode via <code>.dark</code> on <code>&lt;html&gt;</code>, no JS theming dep. Theme presets via <code>--theme neutral|slate|stone|zinc</code>.</dd>
+<dt>Boundary</dt><dd>CI-safe and Bun-native: refuses <code>NODE_ENV=production</code>, never runs <code>install</code>, edits <code>package.json</code> and tells the user to <code>bun install</code>.</dd>
+</dl>
+<div class="callout note">
+<p class="callout-title">Note</p>
+<p>See the UI catalog rule (<code>.claude/rules/ui-catalog.md</code>) for the full <code>patties-ui</code> contract. Nothing in this layer needs new design — it is the foundation the next three build on.</p>
+</div>
+</section>
+
+<section>
+<h2>② Forms &amp; mutations — the biggest core gap</h2>
+<p>shadcn gives you a styled <code>&lt;Input&gt;</code>, not form state, validation wiring, or a server-mutation convention. This layer touches <code>PattiesContext</code>, server actions, and the standards boundary — so it almost certainly belongs in <strong>patties core</strong>, not the catalog.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>What's missing</h3>
+<ul>
+<li>Form state + binding (the <code>react-hook-form</code> role).</li>
+<li>Schema validation already in reach — <code>zod</code> is in the toolchain.</li>
+<li>A <strong>server-action / mutation</strong> primitive: submit → validate → run handler → return typed result or field errors, over a standard <code>Request</code>/<code>Response</code>.</li>
+<li>Progressive enhancement: the form posts and works before the island hydrates.</li>
+</ul>
+</div>
+<div class="feature">
+<h3>Design constraints</h3>
+<ul>
+<li>Keep <code>PattiesContext</code> thin — do not grow it into a Next.js-style request abstraction (web-standards-boundary rule).</li>
+<li>Validation is a plain <code>zod</code> call in the handler or a shared schema, not framework magic.</li>
+<li>The mutation result shape must round-trip an island and an SSR no-JS submit identically.</li>
+</ul>
+</div>
+</div>
+<div class="callout success">
+<p class="callout-title">Lives in core</p>
+<p>A patties-native form-action primitive (zod-validated, server-action backed, island-and-no-JS symmetric) is the highest-value missing piece. It is a framework concern because it is the seam between a standard <code>Request</code> and the React island.</p>
+</div>
+</section>
+
+<section>
+<h2>③ Composed blocks — a <code>patties-ui</code> higher tier</h2>
+<p>Primitives compose into <em>patterns</em>. shadcn ships these as blocks/examples, not registry components — but a monolith needs them as first-class, stampable entries built <em>on</em> the 60 primitives.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>The patterns that matter</h3>
+<ul>
+<li><strong>DataTable</strong> — sorting, filtering, pagination, selection. The single most load-bearing block in a back-office app.</li>
+<li><strong>Dashboard shell</strong> — sidebar + topbar + content slots, responsive.</li>
+<li><strong>Command palette</strong> (⌘K) — cross-module navigation.</li>
+<li><strong>Auth screens</strong> — login, register, multi-step flows.</li>
+</ul>
+</div>
+<div class="feature">
+<h3>How it fits the catalog</h3>
+<ul>
+<li>New registry entries with <code>status</code> + an <code>island</code> flag, same schema (<code>ComponentEntrySchema</code>).</li>
+<li>Stamped by the same <code>patties add</code> — diff-aware, verbatim, never executed.</li>
+<li>Built from primitives already in the catalog, so a stamp pulls its deps.</li>
+<li>Mostly <code>"subtree"</code> islands: a static shell with a nested interactive island (e.g. the DataTable body).</li>
+</ul>
+</div>
+</div>
+<div class="callout note">
+<p class="callout-title">Lives in <code>patties-ui</code></p>
+<p>These are composition, not framework surface — a "blocks" tier in the registry, above the primitives. A module stamps a DataTable and adapts it locally, exactly the copy-in model the primitives already use.</p>
+</div>
+</section>
+
+<section>
+<h2>④ Client data cache — opt-in, per island</h2>
+<p>For the island parts that need optimistic updates and revalidation, a client cache (TanStack Query is the standard) helps. But in a heavily-SSR patties app, most of this is pushed to the server — which is the better monolith story, not a worse one.</p>
+<dl class="fields">
+<dt>Default</dt><dd><span class="pill green">Server-rendered</span> Read data on the server, render it into the page. No client cache needed for the static majority of a CRUD monolith.</dd>
+<dt>Interactive islands</dt><dd><span class="pill">Opt-in</span> An island that needs optimistic mutation or background revalidation pulls in TanStack Query <em>locally</em> — it is not framework-mandated and not shipped to static pages.</dd>
+<dt>Mutations</dt><dd>Prefer the core form-action primitive (layer ②) + revalidate-on-success over a bespoke client mutation cache wherever the SSR round-trip is fast enough.</dd>
+</dl>
+<div class="callout success">
+<p class="callout-title">Not framework-mandated</p>
+<p>The client cache is an island-level dependency, opt-in where interactivity demands it. Keeping it out of the framework default preserves the zero-JS-by-default story for the bulk of the app.</p>
+</div>
+</section>
+
+<section>
+<h2>Where each layer lives — relative to patties</h2>
+<p>The decision is not "what to add" but "where it belongs." Three different homes, one per layer above the primitives.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Home</th>
+<th>Status</th>
+<th>Why there</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① Primitives</td>
+<td><code>patties-ui</code> registry</td>
+<td><span class="pill green">Ships</span></td>
+<td>Copy-in catalog, 60 components completed.</td>
+</tr>
+<tr>
+<td>② Forms &amp; mutations</td>
+<td><strong>patties core</strong></td>
+<td><span class="pill amber">Draft</span></td>
+<td>Seam between standard <code>Request</code>, server actions, and the island — a framework concern.</td>
+</tr>
+<tr>
+<td>③ Composed blocks</td>
+<td><code>patties-ui</code> "blocks" tier</td>
+<td><span class="pill amber">Draft</span></td>
+<td>Composition over primitives; stamped, adapted per-module. Not framework surface.</td>
+</tr>
+<tr>
+<td>④ Client data cache</td>
+<td>Per-island dependency</td>
+<td><span class="pill">Opt-in</span></td>
+<td>Interactivity-only; keeping it out of the default preserves zero-JS SSR.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section>
+<h2>Decision</h2>
+<div class="callout success">
+<p class="callout-title">Do not change frontend frameworks</p>
+<p>React 19 + <code>patties-ui</code> is the correct, sufficient primitive layer for a modular monolith. The work is in the three layers above it:</p>
+<ul>
+<li>Spec a <strong>forms / server-action primitive</strong> in patties core (zod-validated, island-and-no-JS symmetric).</li>
+<li>Add a <strong>"blocks" tier</strong> to <code>patties-ui</code> — DataTable, dashboard shell, command-k, auth screens — as registry entries built on the 60 primitives.</li>
+<li>Leave the <strong>client data cache</strong> opt-in, per island.</li>
+</ul>
+</div>
+<p>Per the repo's RFC → spec workflow, each of the two "draft" rows above becomes its own new spec rather than an edit to an archived one. This page is the framing they share.</p>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="../docs/index.html">User docs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script type="module" src="../assets/mermaid-init.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

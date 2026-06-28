@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>--smol flag — memory-constrained runtime mode · Patties specs</title>
+<meta name="description" content="bun --smol runs Bun with a smaller initial allocator footprint. Trades throughput for memory headroom.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Backlog</span> <span class="badge badge-id">rfcs/backlog/rfc-bun-smol.md</span></div>
+<h1>--smol flag — memory-constrained runtime mode</h1>
+<p class="lede">bun --smol runs Bun with a smaller initial allocator footprint. Trades throughput for memory headroom.</p>
+</header>
+<h2>Summary</h2>
+<p><code>bun --smol</code> runs Bun with a smaller initial allocator footprint. Trades throughput for memory headroom.</p>
+<h2>Why backlog</h2>
+<p>Patties hasn't published a recommended deploy size yet. Default deploy targets (Cloudflare Workers, generic edge) handle the memory question themselves.</p>
+<h2>Trigger to promote to draft</h2>
+<p>A deploy adapter targets a memory-constrained runtime that the user can choose to opt into (e.g. tiny Fly VMs).</p>
+<h2>Bun-unique classification</h2>
+<p><strong>Bun-only</strong> — Node has no equivalent runtime mode. <code>--max-old-space-size</code> is the opposite direction (upper bound, not lower-allocator tuning).</p>
+<h2>Open questions when promoted</h2>
+<ul><li>Does this go in <code>patties.config.ts</code> as a deploy target option, or is it purely a <code>bun</code> CLI flag users add themselves?</li><li>Edge adapter doesn't run Bun, so the flag is meaningless there.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

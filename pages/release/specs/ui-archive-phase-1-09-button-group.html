@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Button Group · Patties specs</title>
+<meta name="description" content="Horizontal cluster of buttons that share borders. Mirrors shadcn ButtonGroup.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/09-button-group.md</span></div>
+<h1>Button Group</h1>
+<p class="lede">Horizontal cluster of buttons that share borders. Mirrors shadcn ButtonGroup.</p>
+</header>
+<h2>Purpose</h2>
+<p>Horizontal cluster of buttons that share borders. Mirrors shadcn <code>ButtonGroup</code>.</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. Layout-only wrapper; the contained buttons follow their own island rules.</p>
+<h2>Peer dependencies</h2>
+<p>None.</p>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function ButtonGroup(props: {
+  orientation?: "horizontal" | "vertical"
+  className?: string
+  children?: React.ReactNode
+} &amp; React.HTMLAttributes&lt;HTMLDivElement&gt;): JSX.Element
+
+export function ButtonGroupSeparator(props: { className?: string }): JSX.Element
+
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Uses <code>role="group"</code> on the root with <code>aria-orientation</code>.</li><li>Pure flex container — no JS-driven first/last detection. Uses Tailwind <code>[&amp;&gt;*:first-child]:rounded-l-md</code> style selectors.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Horizontal and vertical orientations produce the correct rounded-corner pattern.</li><li>Nested buttons retain their variant classes; only borders are merged via group selectors.</li><li>Bundle audit: zero JS contributed by this component.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

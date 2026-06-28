@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTMLRewriter — streaming HTML transforms for SSR + edge · Patties specs</title>
+<meta name="description" content="Accept, Phase 2 — not blocking Phase 0/1. Architecturally correct (same API on Bun and Workers). The &quot;unlocks streaming SSR&quot; framing in the summary is overst…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-htmlrewriter.md</span></div>
+<h1>HTMLRewriter — streaming HTML transforms for SSR + edge</h1>
+<p class="lede">Accept, Phase 2 — not blocking Phase 0/1. Architecturally correct (same API on Bun and Workers). The "unlocks streaming SSR" framing in the summary is overst…</p>
+</header>
+<h2>Review verdict (2026-05-24)</h2>
+<p><strong>Accept, Phase 2 — not blocking Phase 0/1.</strong> Architecturally correct (same API on Bun and Workers). The "unlocks streaming SSR" framing in the summary is overstated — <code>renderToReadableStream</code> is already streaming and the shell injection happens around it, not inside it. The real wins are: (1) safer than string concat against minified shells, (2) becomes the prerequisite for [[rfc-bun-csrf]]'s renderer auto-injection of CSRF inputs, (3) cleaner extension point for user-supplied rewriters.</p>
+<p>Phase 0/1 spec 03 stays with the documented string-injection approach until this lands.</p>
+<hr>
+<h2>Summary</h2>
+<p><code>HTMLRewriter</code> is Bun's (and Cloudflare's) streaming HTML rewriter. It transforms HTML as a <code>Response</code> body streams through it, without buffering. Patties should use it for the dev HMR script injection, island bootstrap markup, and any user-defined response transforms — replacing today's string-concat injection.</p>
+<h2>Motivation</h2>
+<p>03-render currently concatenates <code>&lt;script&gt;</code> tags onto the rendered HTML string before returning a Response. That:</p>
+<ol><li>forces full buffering (defeats React streaming SSR),</li><li>requires careful <code>&lt;/body&gt;</code> matching that breaks on minified shells,</li><li>duplicates work for the edge adapter (12).</li></ol>
+<p><code>HTMLRewriter</code> lets us declare "inject this script before <code>&lt;/body&gt;</code>" and "set this attribute on <code>&lt;html&gt;</code>" as element handlers and stream the result. It's the same API on Bun and on Cloudflare Workers, so 12-edge gets it for free.</p>
+<h2>Proposal</h2>
+<ul><li>03-render: replace the string-injection path with an <code>HTMLRewriter</code> pipeline. The renderer produces a Response from <code>react-dom/server.renderToReadableStream</code>, then pipes through one rewriter that adds the HMR script (dev) and island bootstrap.</li><li>06-islands: island hydration script becomes an HTMLRewriter element handler attached to elements with <code>data-island</code>.</li><li>12-edge-adapters: document that the same rewriter ships unchanged to Cloudflare/Workerd.</li></ul>
+<p>Sample:</p>
+<pre data-lang="ts"><code>const rewriter = new HTMLRewriter()
+  .on("body", { element(el) { el.append(hmrScript, { html: true }); } });
+return rewriter.transform(ssrResponse);
+</code></pre>
+<h2>Trade-offs</h2>
+<ul><li>Adds a streaming transform stage — slightly higher per-request overhead than a string concat, but unlocks streaming SSR.</li><li>Non-Bun, non-CF runtimes (Vercel Node) need a polyfill — adapter problem, not core.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Order of rewriters when users add their own (middleware extension point)?</li><li>Does <code>HTMLRewriter</code> interact correctly with React's <code>&lt;Suspense&gt;</code> boundary chunks? Needs a streaming benchmark.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

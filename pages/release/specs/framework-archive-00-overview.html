@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patties Framework — Overview · Patties specs</title>
+<meta name="description" content="Patties is a Bun-native full-stack meta-framework with React for UI and Bun's own Bun.serve for HTTP, in a single bun dev command, deployable to the edge wit…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/00-overview.md</span></div>
+<h1>Patties Framework — Overview</h1>
+<p class="lede">Patties is a Bun-native full-stack meta-framework with React for UI and Bun's own Bun.serve for HTTP, in a single bun dev command, deployable to the edge wit…</p>
+</header>
+<h2>Mission</h2>
+<p>Patties is a Bun-native full-stack meta-framework with React for UI and Bun's own <code>Bun.serve</code> for HTTP, in a single <code>bun dev</code> command, deployable to the edge without configuration.</p>
+<h2>Pillars (non-negotiable)</h2>
+<ol><li><strong>Bun-native</strong> — use Bun primitives (<code>Bun.serve</code>, <code>Bun.Glob</code>, <code>Bun.build</code>, <code>bun --hot</code>). Never reach for Node.js <code>http</code>, <code>chokidar</code>, <code>webpack</code>, or <code>vite</code>. No HTTP framework dependency — <code>Bun.serve({ routes })</code> is the router.</li><li><strong>Standard Web APIs at the boundary</strong> — handlers receive a <code>Request</code>, return a <code>Response</code>. A thin framework-owned <code>ctx</code> carries params, cookies (<code>Bun.CookieMap</code>), env, and the AI context.</li><li><strong>React for rendering</strong> — server uses <code>react-dom/server</code> (<code>renderToReadableStream</code>); islands use <code>react-dom/client</code> (<code>hydrateRoot</code>). Bun runs both natively; we never reach for Node-only React APIs like <code>renderToPipeableStream</code>.</li><li><strong>Edge-first, vendor-neutral</strong> — the default deploy artifact is a portable WinterCG / <code>workerd</code>-style Worker module (<code>export default { fetch }</code>). It runs on any compliant edge runtime — Cloudflare Workers, Deno Deploy, Vercel Edge, Netlify Edge, Bun's own edge runtime, etc. The framework picks no vendor; vendor-specific deploy lives in plugins.</li><li><strong>AI-native</strong> — agents and MCP tools are first-class directories, not plugins. <code>AGENTS.md</code> is generated on every build.</li></ol>
+<h2>Non-goals</h2>
+<ul><li>Compatibility with the <code>next</code> import surface.</li><li>Node.js as a runtime target. Supported targets are <code>bun</code> and <code>edge</code>.</li><li>Bundling vendor-specific deploy config (wrangler.toml, vercel.json, deno.json, netlify.toml) into the framework core. Those live in deploy plugins so we never become a Cloudflare-only — or any-single-vendor — framework.</li><li>A custom bundler — <code>Bun.build</code> is the only bundler.</li><li>A custom file watcher — <code>bun --watch</code> is the only watcher.</li></ul>
+<h2>Package layout</h2>
+<p>Patties ships as a single npm package (<code>patties</code>) with subpath exports:</p>
+<ul><li><code>patties</code> — <code>createServer</code>, <code>createRouter</code>, <code>createRenderer</code>, core types.</li><li><code>patties/config</code> — <code>defineConfig</code>, config schema.</li><li><code>patties/ai</code> — <code>defineAgent</code>, <code>defineTool</code>, <code>getAgent</code>, <code>getTool</code>, <code>streamText</code>, <code>streamObject</code>, <code>createAiContext</code>.</li><li><code>patties/client</code> — <code>createClient</code>, hydration runtime.</li><li><code>patties/plugin</code> — <code>definePlugin</code>, plugin types.</li></ul>
+<p>One package, one version, one changelog. No <code>@patties/*</code> scope at launch.</p>
+<h2>Subsystem map</h2>
+<div class="table-wrap"><table><thead><tr><th>Spec</th><th>File</th><th>Replaces</th></tr></thead><tbody><tr><td><a href="framework-archive-phase-0-01-server.html">01-server</a></td><td><code>server/index.ts</code></td><td><code>http.createServer</code>, Hono</td></tr><tr><td><a href="framework-archive-phase-0-02-router.html">02-router</a></td><td><code>router/index.ts</code></td><td>Next router, Hono</td></tr><tr><td><a href="framework-archive-phase-0-02b-filesystem-router.html">02b-filesystem-router</a></td><td><code>router/filesystem.ts</code></td><td><code>fast-glob</code></td></tr><tr><td><a href="framework-archive-phase-0-03-render.html">03-render</a></td><td><code>server/render.tsx</code></td><td>— (uses <code>react-dom/server</code>)</td></tr><tr><td><a href="framework-archive-phase-1-04-build.html">04-build</a></td><td><code>build/index.ts</code></td><td>webpack/vite config</td></tr><tr><td><a href="framework-archive-phase-1-05-dev-hmr.html">05-dev-hmr</a></td><td><code>dev/watcher.ts</code></td><td><code>chokidar</code></td></tr><tr><td><a href="framework-archive-phase-1-06-client-islands.html">06-client-islands</a></td><td><code>client/index.ts</code></td><td>— (uses <code>react-dom/client</code>)</td></tr><tr><td><a href="framework-archive-phase-1-07-middleware.html">07-middleware</a></td><td><code>app/middleware.ts</code></td><td>Next middleware</td></tr><tr><td><a href="framework-archive-phase-2-08-config.html">08-config</a></td><td><code>patties.config.ts</code></td><td><code>next.config.js</code></td></tr><tr><td><a href="framework-archive-phase-4-09-plugins.html">09-plugins</a></td><td><code>plugins/index.ts</code></td><td>Next plugin system</td></tr><tr><td><a href="framework-archive-phase-3-10-agents-and-tools.html">10-agents-and-tools</a></td><td><code>app/agents/</code>, <code>app/tools/</code></td><td>— (net new)</td></tr><tr><td><a href="framework-archive-phase-3-11-agents-md-generator.html">11-agents-md-generator</a></td><td>build step</td><td>— (net new)</td></tr><tr><td><a href="framework-archive-phase-2-12-edge-adapters.html">12-edge-adapters</a></td><td>adapters</td><td>— (net new)</td></tr><tr><td><a href="framework-archive-13-conventions.html">13-conventions</a></td><td>repo-wide</td><td>—</td></tr><tr><td><a href="framework-archive-phase-1-14-testing.html">14-testing</a></td><td><code>tests/fixtures/</code></td><td>—</td></tr><tr><td><a href="framework-archive-phase-0-15-claude-code-scaffold.html">15-claude-code-scaffold</a></td><td><code>CLAUDE.md</code>, <code>.claude/</code> (opt-in)</td><td>— (net new)</td></tr><tr><td>17-dev-island-bundler</td><td><code>src/dev/bundler.ts</code> (planned)</td><td>— (net new; design decision)</td></tr><tr><td>18-dev-island-bundler-impl</td><td><code>src/dev/bundler.ts</code> (planned)</td><td>— (net new; implementation of 17)</td></tr></tbody></table></div>
+<h2>Phase alignment</h2>
+<ul><li>Phase 0 ships: 01, 02, 02b, 03, 13 (minimal), 15 (scaffold contents).</li><li>Phase 1 ships: 04, 05, 06, 07, 14.</li><li>Phase 2 ships: 08, 12.</li><li>Phase 3 ships: 10, 11.</li><li>Phase 4 ships: 09.</li><li>Dev-DX (post-launch): 17 (decision), 18 (impl), 26 (monorepo React single-copy resolution — prerequisite for <code>create-patties --monorepo</code>, cli/18), 27 (<code>patties run</code> task runner + output cache — encodes <code>rfc-bun-task-cache</code>) — see <code>framework/draft/</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

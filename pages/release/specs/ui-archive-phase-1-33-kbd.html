@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kbd · Patties specs</title>
+<meta name="description" content="Inline keyboard-shortcut badge — e.g. ⌘ K. Mirrors shadcn Kbd.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/33-kbd.md</span></div>
+<h1>Kbd</h1>
+<p class="lede">Inline keyboard-shortcut badge — e.g. ⌘ K. Mirrors shadcn Kbd.</p>
+</header>
+<h2>Purpose</h2>
+<p>Inline keyboard-shortcut badge — e.g. <code>⌘ K</code>. Mirrors shadcn <code>Kbd</code>.</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. Pure presentational.</p>
+<h2>Peer dependencies</h2>
+<p>None.</p>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Kbd(props: React.ComponentProps&lt;"kbd"&gt;): JSX.Element
+export function KbdGroup(props: React.ComponentProps&lt;"span"&gt;): JSX.Element
+
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Renders as a <code>&lt;kbd&gt;</code> element (not a <code>&lt;span&gt;</code>) for screen-reader semantics.</li><li><code>KbdGroup</code> is a thin <code>&lt;span&gt;</code> with <code>inline-flex</code> to space multiple <code>&lt;kbd&gt;</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Renders <code>&lt;kbd&gt;</code> with platform-specific keys (mod = ⌘ on macOS, Ctrl elsewhere). Detection runs in a small companion island only when needed; the default SSR is the literal label passed in.</li><li>Bundle audit: zero JS by default.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

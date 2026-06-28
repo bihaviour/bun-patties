@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Routing · Patties</title>
+<meta name="description" content="Filesystem routing and server bootstrap.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>Routing</h1>
+<p class="lede">Patties uses filesystem routing compiled into Bun route patterns.</p>
+</header>
+<section>
+<h2>Expected app structure</h2>
+<ul>
+<li><code>app/routes/</code> holds page routes and API handlers</li>
+<li><code>app/islands/</code> holds interactive client components</li>
+</ul>
+<p>Example route shapes already used in the test fixtures include:</p>
+<ul>
+<li><code>app/routes/index.tsx</code> -&gt; <code>/</code></li>
+<li><code>app/routes/about.tsx</code> -&gt; <code>/about</code></li>
+<li><code>app/routes/hotels/[city].tsx</code> -&gt; <code>/hotels/:city</code></li>
+<li><code>app/routes/api/ping.ts</code> -&gt; <code>/api/ping</code></li>
+</ul>
+</section>
+<section>
+<h2>Runtime flow</h2>
+<p>Typical server bootstrap code looks like this:</p>
+<pre data-lang="ts"><code>import { createRenderer, createRouter, startServer } from "patties";
+
+const renderer = createRenderer({ dev: true });
+const { routes, fallback } = await createRouter({
+  appDir: import.meta.dir + "/app",
+  renderer,
+});
+
+startServer({ routes, fallback, dev: true });</code></pre>
+<p><code>createRouter</code> builds the route table from the filesystem and <code>startServer</code> serves the resulting handlers.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

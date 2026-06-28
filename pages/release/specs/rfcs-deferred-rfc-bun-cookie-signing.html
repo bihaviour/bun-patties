@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.Cookie signing — HMAC-signed cookies for sessions / auth · Patties specs</title>
+<meta name="description" content="Stays deferred — not promoted, not dismissed. The blessed auth story is">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Deferred</span> <span class="badge badge-id">rfcs/deferred/rfc-bun-cookie-signing.md</span></div>
+<h1>Bun.Cookie signing — HMAC-signed cookies for sessions / auth</h1>
+<p class="lede">Stays deferred — not promoted, not dismissed. The blessed auth story is</p>
+</header>
+<h2>Reaffirmed deferred (2026-05-31)</h2>
+<p><strong>Stays deferred — not promoted, not dismissed.</strong> The blessed auth story is bring-your-own backend (spec 19 scaffolds auth as a UI+mock-data <em>pattern</em> and puts the real backend out of scope), with <strong>better-auth</strong> the likely choice. better-auth owns its own session cookies, signing, and CSRF — so a first-party <code>ctx.cookies.sign()</code> is <strong>not needed for auth</strong> and would duplicate it. Kept in <code>deferred/</code> (not out-of-scope) for the one residual case it could still serve: <strong>non-auth</strong> signed cookies — flash messages, signed preferences — independent of any auth library. Revisit if that concrete need appears, or if patties ever ships a first-party auth/session spec. Original deferral verdict below.</p>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Reject for v1; keep as future-work RFC.</strong> Building a signed-cookies API without a real auth/session consumer in the codebase risks shipping API surface that no one actually uses — exactly what the project conventions warn against ("Don't add features ... beyond what the task requires"). The basic cookies surface ([[rfc-bun-cookies]]) already shipped; users who need signing today can compose <code>Bun.CryptoHasher</code> + <code>ctx.cookies</code> themselves in ~10 lines of middleware. The cost of that workaround is low; the cost of shipping the wrong signing API and walking it back is high.</p>
+<p>Revisit when:</p>
+<ul><li>A first-party auth/session spec is being drafted (would consume signed cookies as its session-token primitive), OR</li><li>A user opens an issue showing a real-world pattern they can't ergonomically express with the current cookies API + <code>Bun.CryptoHasher</code>.</li></ul>
+<p><strong>Re-evaluation trigger:</strong> Each revisit should re-confirm the secret-source decision (<code>Bun.secrets</code> vs env var vs config field) — that landscape may have shifted by the time signing becomes urgent. The "encrypted cookies (AES)" variant is a separate, larger concern and explicitly out of scope for this RFC's revisit.</p>
+<p>No spec changes. File preserved as <code>status: deferred</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p>Add HMAC-signed cookies to <code>ctx.cookies</code>. Likely shape: <code>ctx.cookies.sign(name, value)</code> and <code>ctx.cookies.verify(name)</code> returning the unsigned value or <code>null</code> on tamper.</p>
+<h2>Motivation</h2>
+<p>Sessions / auth is a real future need but nothing in the framework currently consumes signed cookies. The original cookies RFC ([[rfc-bun-cookies]]) explicitly deferred signing so we could ship the basic cookie surface first. Without an auth/session consumer, the signing API has no concrete shape to validate against.</p>
+<h2>Proposal (sketch — not yet refined)</h2>
+<ul><li>Add <code>ctx.cookies.sign(name, value)</code> and <code>ctx.cookies.verify(name)</code> methods.</li><li>Secret source: precedence <code>Bun.secrets</code> → env var → config field. Multiple secrets for rotation (Remix pattern) by default.</li><li>Opt-in per cookie (not auto-sign-all) to keep the contract small.</li><li>HMAC via <code>Bun.CryptoHasher</code>; algorithm fixed at HMAC-SHA256.</li></ul>
+<h2>Trade-offs</h2>
+<ul><li>New API surface that wraps <code>Bun.CryptoHasher</code> — saves users from reaching for <code>iron-session</code> / <code>jose</code>.</li><li>Secret-source bikeshed is real: <code>Bun.secrets</code> is Bun-only KV-style, env vars are universal, config fields are user-explicit.</li><li>Auto-sign-all vs opt-in: opt-in keeps the contract small but requires users to remember to call <code>.sign()</code> for each cookie.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Where does the signing secret live — config field, <code>Bun.secrets</code>, env var, or all with precedence?</li><li>Multiple secrets for rotation (Remix's pattern)? Default yes.</li><li>Encrypted cookies (AES) vs only signed — encrypted is a separate, larger RFC.</li><li>Auto-sign all cookies vs opt-in per name — opt-in keeps the contract small.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

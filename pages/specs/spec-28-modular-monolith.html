@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 28 — Modular Monolith Convention · Patties</title>
+<meta name="description" content="The canonical app shape for Patties: a single deployable Bun app organised by domain module first, type second. One Bun.serve, one build, one patties.config.ts.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Roadmap</span></div>
+<h1>Spec 28 — Modular Monolith Convention</h1>
+<p class="lede">The canonical app shape for Patties: a single deployable Bun app organised by domain module first, type second. One <code>Bun.serve</code>, one build, one <code>patties.config.ts</code>. Modules are colocation units — not deployment units.</p>
+</header>
+
+<div class="callout note">
+<p class="callout-title">Status: Draft</p>
+<p>Depends on <a href="spec-21-create-patties.html">CLI Spec 21</a> for the scaffold changes. Framework changes needed: <code>modulesDirs</code> config key, island scanner key generation, agents-md grouping.</p>
+</div>
+
+<section>
+<h2>Purpose &amp; motivation</h2>
+<p>Today's flat layout works for tutorials; it doesn't scale for products.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>Today — type-first flat layout</h3>
+<p>All routes in <code>app/routes/</code>, all islands in <code>app/islands/</code>, all agents in <code>app/agents/</code>. Every domain crosses every top-level directory. Adding a feature scatters files across the tree.</p>
+</div>
+<div class="feature">
+<h3>Spec 28 — domain-first modular monolith</h3>
+<p>Each domain has one home: <code>app/modules/&lt;domain&gt;/</code>. Routes, islands, agents, tools, and jobs live together. Adding a feature is adding a folder.</p>
+</div>
+</div>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    subgraph TODAY["Type-first (today)"]
+      R["app/routes/auth/login.tsx"]
+      I["app/islands/LoginForm.tsx"]
+      A["app/agents/auth.ts"]
+    end
+    subgraph SPEC28["Domain-first (spec 28)"]
+      direction TB
+      M["app/modules/auth/"]
+      MR["  routes/auth/login.tsx"]
+      MI["  islands/LoginForm.tsx"]
+      MA["  agents/auth.ts"]
+      ML["  _lib/session.ts"]
+      M --> MR
+      M --> MI
+      M --> MA
+      M --> ML
+    end
+    TODAY -. migrate .-> SPEC28
+      </pre>
+<div class="cap">No new runtime machinery. Modules are folders; the existing filesystem router, island scanner, and agent scan all gain subdirectory awareness.</div>
+</div>
+</section>
+
+<section>
+<h2>Canonical directory layout</h2>
+<pre data-lang="text"><code>app/
+├── modules/
+│   ├── home/                   # landing / marketing module
+│   │   ├── routes/
+│   │   │   ├── index.tsx       # GET /
+│   │   │   └── about.tsx       # GET /about
+│   │   └── islands/
+│   │       └── HeroSection.tsx # client island for this module
+│   ├── auth/                   # authentication module
+│   │   ├── routes/
+│   │   │   ├── login.tsx       # GET/POST /auth/login
+│   │   │   └── signup.tsx      # GET/POST /auth/signup
+│   │   ├── islands/
+│   │   │   └── LoginForm.tsx
+│   │   └── _lib/               # module-private (underscore = not scanned)
+│   │       └── session.ts
+│   ├── api/                    # API-only module (no islands)
+│   │   └── routes/
+│   │       └── api/
+│   │           └── health.ts   # GET /api/health
+│   └── ai/                     # optional AI module
+│       ├── agents/
+│       │   └── concierge.ts
+│       └── tools/
+│           └── search.ts
+├── _shared/                    # cross-module shared code
+│   ├── db.ts
+│   └── types.ts
+└── middleware.ts               # global entry</code></pre>
+
+<h3>URL mapping rule</h3>
+<p>The <code>modules/</code> and <code>&lt;mod&gt;/routes/</code> prefix segments are stripped; only the path below <code>routes/</code> becomes the URL. The module name is <strong>not</strong> inferred as a URL prefix — the developer declares it explicitly.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>File path</th><th>URL</th><th>Note</th></tr></thead>
+<tbody>
+<tr><td><code>modules/home/routes/index.tsx</code></td><td><code>/</code></td><td>Root of home module</td></tr>
+<tr><td><code>modules/home/routes/about.tsx</code></td><td><code>/about</code></td><td>No module prefix in URL</td></tr>
+<tr><td><code>modules/auth/routes/auth/login.tsx</code></td><td><code>/auth/login</code></td><td>Explicit namespace subdirectory</td></tr>
+<tr><td><code>modules/api/routes/api/health.ts</code></td><td><code>/api/health</code></td><td>API module with explicit prefix</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout tip">
+<p class="callout-title">Convention</p>
+<p>If a module owns a URL namespace, its route files sit in a same-name subdirectory (<code>modules/auth/routes/auth/</code>). The URL is a contract — don't hide the namespace in the filesystem path.</p>
+</div>
+</section>
+
+<section>
+<h2>Island naming in subdirectories</h2>
+<p>The island scanner must produce unique, collision-free registry keys. Two modules can each define a <code>LoginForm</code> island; the key must include the module name.</p>
+<ul class="reqs">
+<li><span class="req-tag stage">File path</span><span><code>app/modules/auth/islands/LoginForm.tsx</code></span></li>
+<li><span class="req-tag stage">Registry key</span><span><code>auth/LoginForm</code></span></li>
+<li><span class="req-tag stage">Usage in route</span><span><code>&lt;Island name="auth/LoginForm" /&gt;</code></span></li>
+<li><span class="req-tag stage">Framework change</span><span><code>src/build/scan-islands.ts</code> — strip <code>app/modules/&lt;mod&gt;/islands/</code> as root, emit <code>&lt;mod&gt;/&lt;ComponentName&gt;</code>. The <code>&lt;Island name="…"&gt;</code> API already accepts any string; only scanner + registry generation change.</span></li>
+</ul>
+<pre data-lang="tsx"><code>// modules/home/routes/index.tsx
+import { Island } from "patties/render"
+
+export default function Home() {
+  return (
+    &lt;main&gt;
+      &lt;Island name="home/HeroSection" /&gt;    {/* ← module-prefixed key */}
+      &lt;Island name="auth/LoginForm" /&gt;      {/* ← sibling module island */}
+    &lt;/main&gt;
+  )
+}</code></pre>
+</section>
+
+<section>
+<h2>Module anatomy</h2>
+<p>A module is a directory under <code>app/modules/</code>. Every subdirectory has a defined role. Underscore-prefixed dirs are skipped by all scanners.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Subdirectory</th><th>Purpose</th><th>Scanned by</th></tr></thead>
+<tbody>
+<tr><td><code>routes/</code></td><td>Route handlers and page components</td><td>Router (build time)</td></tr>
+<tr><td><code>islands/</code></td><td>Client-side React components</td><td>Island scanner (build time)</td></tr>
+<tr><td><code>agents/</code></td><td><code>defineAgent()</code> exports</td><td>AI scan (build time)</td></tr>
+<tr><td><code>tools/</code></td><td><code>defineTool()</code> exports</td><td>AI scan (build time)</td></tr>
+<tr><td><code>jobs/</code></td><td><code>defineJob()</code> exports</td><td>AI scan (build time)</td></tr>
+<tr><td><code>_lib/</code></td><td>Module-private logic — any name starting with <code>_</code> works</td><td>Not scanned</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section>
+<h2>Cross-module dependency rule</h2>
+<p>The only legitimate cross-module import is through <code>app/_shared/</code>. No module barrels, no re-exports to siblings.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>✓ Allowed</h3>
+<pre data-lang="ts"><code>// modules/dashboard/routes/dashboard/index.tsx
+import { db } from "../../_shared/db"
+import { User } from "../../_shared/types"</code></pre>
+</div>
+<div class="feature">
+<h3>✗ Not allowed</h3>
+<pre data-lang="ts"><code>// modules/dashboard/routes/dashboard/index.tsx
+// reaching into a sibling's private lib
+import { sessionStore } from "../auth/_lib/session"</code></pre>
+</div>
+</div>
+<div class="callout warning">
+<p class="callout-title">Warning</p>
+<p>There is no <code>index.ts</code> barrel per module — modules are not packages; they do not export to each other. If module A needs something from module B, that thing belongs in <code>_shared/</code>. This keeps coupling visible and intentional.</p>
+</div>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph AUTH["modules/auth/"]
+      AS["_lib/session.ts (private)"]
+    end
+    subgraph DASH["modules/dashboard/"]
+      DR["routes/dashboard/index.tsx"]
+    end
+    subgraph SHARED["_shared/"]
+      DB["db.ts"]
+      UT["types.ts"]
+    end
+    DR -->|"✅ import ../../_shared/db"| DB
+    DR -. "❌ import ../auth/_lib/session" .-x AS
+    classDef bad fill:#fee2e2,stroke:#ef4444,color:#7f1d1d;
+    class AS bad;
+      </pre>
+<div class="cap">If dashboard needs auth session data, move the relevant logic to <code>_shared/</code> — never reach across module boundaries.</div>
+</div>
+</section>
+
+<section>
+<h2><code>modulesDirs</code> config key</h2>
+<p>One new optional field in <code>patties.config.ts</code>. The flat layout remains the default; both layouts coexist during migration.</p>
+<pre data-lang="ts"><code>// patties.config.ts
+import { defineConfig } from "patties/config"
+
+export default defineConfig({
+  target: "bun",
+  modulesDirs: ["app/modules"],   // ← new field; default: []
+  server: { port: 3000 },
+})</code></pre>
+<ul class="reqs">
+<li><span class="req-tag stage">Type</span><span><code>string[]</code> — one or more module root directories</span></li>
+<li><span class="req-tag stage">Default</span><span><code>[]</code> — flat layout is unchanged when absent</span></li>
+<li><span class="req-tag stage">Router behaviour</span><span>Globs <code>&lt;modulesDir&gt;/*</code> to discover module roots; scans <code>routes/</code> per root, stripping <code>&lt;mod&gt;/routes/</code> as base</span></li>
+<li><span class="req-tag stage">Island scanner</span><span>Scans <code>islands/</code> per module root; key prefix = <code>&lt;mod&gt;/</code></span></li>
+<li><span class="req-tag stage">AI scan</span><span>Scans <code>agents/</code>, <code>tools/</code>, <code>jobs/</code> per module root</span></li>
+<li><span class="req-tag stage">Coexistence</span><span>Flat <code>appDir/routes/</code> still scanned alongside module routes; route conflict detection spans both</span></li>
+</ul>
+</section>
+
+<section>
+<h2>Dropped concepts</h2>
+<div class="feature-grid">
+<div class="feature">
+<h3>ProjectType removed</h3>
+<p><code>frontend / backend / fullstack</code> scaffold choice is gone. Every Patties app is full-stack. A developer who wants API-only routes adds an <code>api/</code> module with no islands. See <a href="spec-21-create-patties.html">CLI Spec 21</a>.</p>
+</div>
+<div class="feature">
+<h3>Flat default template retired</h3>
+<p>The scaffold's <code>templates/default/app/routes/</code> flat structure is replaced by the modular monolith layout. The <code>_backend/</code> overlay template is deleted.</p>
+</div>
+</div>
+</section>
+
+<section>
+<h2>agents-md manifest grouped by module</h2>
+<p>When <code>modulesDirs</code> is set, the generated <code>CLAUDE.md</code> groups routes, islands, agents, tools, and jobs by module — the LLM context mirrors the developer's mental model.</p>
+<pre data-lang="text"><code>&lt;!-- patties:manifest-start --&gt;
+## Routes
+
+### home
+| Pattern | File |
+|---|---|
+| GET / | modules/home/routes/index.tsx |
+| GET /about | modules/home/routes/about.tsx |
+
+### auth
+| Pattern | File |
+|---|---|
+| GET /auth/login | modules/auth/routes/auth/login.tsx |
+| POST /auth/login | modules/auth/routes/auth/login.tsx |
+
+### api
+| Pattern | File |
+|---|---|
+| GET /api/health | modules/api/routes/api/health.ts |
+&lt;!-- patties:manifest-end --&gt;</code></pre>
+</section>
+
+<section>
+<h2>LLM rules overlay</h2>
+<p>Ships as <code>.claude/rules/patties-modular-monolith.md</code> in scaffolded projects via the <code>_claude/</code> agent overlay in <code>create-patties</code>.</p>
+<pre data-lang="text"><code># Patties modular monolith rules
+
+This is a single deployable Bun app. Features are domain modules under
+`app/modules/`. One `Bun.serve`, one build, one `patties.config.ts`.
+Modules are colocation units, not deployment units.
+
+**Adding a feature = adding a module.**
+Create `app/modules/&lt;domain&gt;/` with routes/, islands/, etc.
+Never scatter a feature across the root-level directories.
+
+**Cross-module code lives in `app/_shared/`.**
+If two modules share logic, move it to `_shared/`. Never import from a
+sibling module's `_lib/`. If you find `../auth/_lib/session`, move it.
+
+**Islands are keyed by module.**
+`app/modules/auth/islands/LoginForm.tsx` → `&lt;Island name="auth/LoginForm"&gt;`.
+Always use the `&lt;module&gt;/&lt;Component&gt;` key, not a bare component name.
+
+**API routes are a module, not a separate backend.**
+`app/modules/api/routes/` holds JSON handlers. There is no separate app.
+The same Bun process handles pages and API calls.
+
+**Never split into a separate repo for a feature.**
+A Patties modular monolith handles one product domain. Add modules.
+
+**Register the modules root in patties.config.ts.**
+  export default defineConfig({ modulesDirs: ["app/modules"] })</code></pre>
+</section>
+
+<section>
+<h2>Migration path (flat → modular)</h2>
+<p>Flat and modular layouts coexist during migration. Move one domain at a time.</p>
+<ul>
+<li>Add <code>modulesDirs: ["app/modules"]</code> to <code>patties.config.ts</code>.</li>
+<li>Create <code>app/modules/&lt;domain&gt;/routes/</code> and move relevant route files.</li>
+<li>Create <code>app/modules/&lt;domain&gt;/islands/</code> and move islands — update all <code>&lt;Island name="…"&gt;</code> to use the <code>&lt;domain&gt;/</code> prefix.</li>
+<li>Move module-private logic into <code>app/modules/&lt;domain&gt;/_lib/</code>.</li>
+<li>Move shared logic into <code>app/_shared/</code>.</li>
+<li>Delete empty <code>app/routes/</code> and <code>app/islands/</code> when migration is complete.</li>
+</ul>
+</section>
+
+<section>
+<h2>Acceptance criteria</h2>
+<ul>
+<li>A project with <code>modulesDirs: ["app/modules"]</code> runs <code>patties dev</code> and correctly serves routes from all module <code>routes/</code> subtrees.</li>
+<li>Islands under <code>app/modules/&lt;mod&gt;/islands/</code> register with keys <code>&lt;mod&gt;/&lt;ComponentName&gt;</code> and hydrate correctly when referenced as <code>&lt;Island name="&lt;mod&gt;/&lt;ComponentName&gt;"&gt;</code>.</li>
+<li><code>patties build</code> integration tests pass for both flat and modular layouts.</li>
+<li>Route conflict detection spans module boundaries.</li>
+<li>The agents-md manifest groups by module when <code>modulesDirs</code> is set.</li>
+<li>A project with no <code>modulesDirs</code> behaves exactly as today — zero regression.</li>
+</ul>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="roadmap.html">Delivery tracker</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script type="module" src="../assets/mermaid-init.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

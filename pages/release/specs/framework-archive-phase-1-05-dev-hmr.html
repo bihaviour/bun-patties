@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dev / HMR · Patties specs</title>
+<meta name="description" content="Provide the dev-time feedback loop: reload changed modules in place and tell connected browsers to refresh. The dev runner is bun --hot by default (state-pre…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-1/05-dev-hmr.md</span></div>
+<h1>Dev / HMR</h1>
+<p class="lede">Provide the dev-time feedback loop: reload changed modules in place and tell connected browsers to refresh. The dev runner is bun --hot by default (state-pre…</p>
+</header>
+<h2>Purpose</h2>
+<p>Provide the dev-time feedback loop: reload changed modules in place and tell connected browsers to refresh. The dev runner is <strong><code>bun --hot</code></strong> by default (state-preserving, keeps WebSockets alive across reloads); <code>bun --watch</code> is opt-in via <code>patties dev --cold</code> for the rare "I want a clean process every save" case. The wake-up signal to the browser is a WebSocket.</p>
+<h2>Public surface</h2>
+<pre data-lang="ts"><code>export interface DevServer {
+  fetch: (req: Request) =&gt; Response | Promise&lt;Response&gt;
+  websocket: WebSocketHandler
+  notifyChange(path: string): void
+}
+
+export function createDevServer(options: DevOptions): DevServer
+</code></pre>
+<h2>Behavior</h2>
+<ol><li>The CLI's <code>patties dev</code> runs the process under <strong><code>bun --hot</code></strong> so modules reload in place — no <code>fs.watch</code>, no <code>chokidar</code>, no process restart. The same <code>Bun.serve</code> instance keeps running across reloads; existing WebSocket connections survive.</li><li>On boot, mount a WebSocket endpoint at <code>/__patties_hmr</code>. Each connected browser calls <code>ws.subscribe("hmr")</code> on <code>open</code>. The server holds no manual <code>Set&lt;ServerWebSocket&gt;</code> — Bun's native <strong>WebSocket pub/sub topics</strong> manage the subscriber list, and dead sockets are removed automatically on close.</li><li>The dev server registers <code>import.meta.hot.accept(() =&gt; server.publish("hmr", ...))</code> so that whenever Bun finishes a hot module reload, the connected browsers receive the appropriate <code>reload</code> or <code>update</code> message — without any WebSocket teardown.</li><li>For islands, publish <code>{ type: "update", island: "&lt;name&gt;" }</code> on topic <code>"hmr"</code> when the changed file lives under <code>app/islands/</code>. The client may re-hydrate that island only.</li><li>For everything else, publish <code>{ type: "reload" }</code> and let the page do a full refresh.</li><li>Macro inputs (route files, <code>env.public</code>, island manifest sources — see <a href="framework-archive-phase-1-04-build.html">04-build</a>) re-run their macros on <code>--hot</code> reload. If a change touches a path Bun's dep tracker doesn't follow, the dev server falls back to a full refresh; document the affected paths in the dev log.</li><li><strong><code>patties dev --cold</code></strong> opts into <code>bun --watch</code> (full process restart) instead. Useful when modules carry init-only state that doesn't reload cleanly. The HMR client's reconnect path (below) handles the WebSocket teardown.</li></ol>
+<h2>Client snippet</h2>
+<p>Injected by <a href="framework-archive-phase-0-03-render.html">03-render</a> in dev mode. ~30 lines: opens the WebSocket and dispatches <code>reload</code> / <code>update</code> messages from the server.</p>
+<h3>Reconnect behavior</h3>
+<p>Under the default <code>bun --hot</code>, the WebSocket survives reloads and reconnect logic rarely fires. Under <code>patties dev --cold</code> (<code>bun --watch</code>), the server process restarts and all WebSockets close — the reconnect path below is the recovery mechanism.</p>
+<ul><li>On <code>close</code>, the client retries <code>/__patties_hmr</code> with exponential backoff: starts at 250 ms, doubles each attempt, capped at 5 s.</li><li>Backoff resets to 250 ms on each successful open.</li><li>On successful (re)open the <em>server</em> immediately sends <code>{ type: "reload" }</code> so the page reflects the new build. The client does <strong>not</strong> decide to reload on reconnect; it waits for the server signal so a transient connection blip doesn't trigger a reload.</li><li>If the reconnect attempt is refused (server still booting), the client keeps retrying silently — no console noise until 5 consecutive failures, then one warning.</li></ul>
+<h2>Dev error pages</h2>
+<p>When a page module throws during import or render, the renderer (<a href="framework-archive-phase-0-03-render.html">03</a>) returns a styled HTML error page instead of letting the process crash. The HMR client snippet on that page stays connected, so the next save reloads it once the user fixes the error.</p>
+<h2>Non-goals</h2>
+<ul><li>React Fast Refresh — not used; we use coarse-grained island re-hydration.</li><li>File watching ourselves — Bun handles it.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Editing <code>app/routes/index.tsx</code> reloads the open browser within ~500ms.</li><li>Editing <code>app/islands/counter.tsx</code> re-hydrates the counter without a full reload (best-effort; full reload is acceptable fallback).</li><li>Killing the dev server and starting a new one causes the browser to reconnect and reload automatically.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

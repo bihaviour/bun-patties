@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Toast (deprecated; prefer Sonner) · Patties specs</title>
+<meta name="description" content="Radix-based toast primitives. Mirrors shadcn Toast. Marked deprecated by upstream in favor of 50-sonner; kept for parity and for users who want first-party R…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/56-toast.md</span></div>
+<h1>Toast (deprecated; prefer Sonner)</h1>
+<p class="lede">Radix-based toast primitives. Mirrors shadcn Toast. Marked deprecated by upstream in favor of 50-sonner; kept for parity and for users who want first-party R…</p>
+</header>
+<h2>Purpose</h2>
+<p>Radix-based toast primitives. Mirrors shadcn <code>Toast</code>. <strong>Marked deprecated by upstream in favor of <a href="ui-archive-phase-3-50-sonner.html">50-sonner</a>;</strong> kept for parity and for users who want first-party Radix instead of <code>sonner</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Toaster portal + imperative API need JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-toast@^1.2</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export const ToastProvider: typeof Radix.Provider
+export const ToastViewport: typeof Radix.Viewport
+export const Toast: typeof Radix.Root
+export const ToastTitle: typeof Radix.Title
+export const ToastDescription: typeof Radix.Description
+export const ToastClose: typeof Radix.Close
+export const ToastAction: typeof Radix.Action
+
+export function useToast(): {
+  toasts: ToastInstance[]
+  toast: (opts: ToastOptions) =&gt; { id: string; dismiss: () =&gt; void; update: (opts: ToastOptions) =&gt; void }
+  dismiss: (id?: string) =&gt; void
+}
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li><code>useToast</code> is exported from a single island module that owns a small in-memory store.</li><li>The <code>ToastProvider</code>/<code>ToastViewport</code> must be mounted once at the root island.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>toast({ title, description })</code> shows the toast and auto-dismisses after timeout.</li><li>Multiple toasts stack in the viewport.</li><li>Keyboard <code>F8</code> focuses the toast region (Radix default).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-008 — The module dependency graph must be a DAG; cycles are build failures · Patties</title>
+<meta name="description" content="The module dependency graph must be a DAG; inter-module cycles fail the build.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">ADR</span> <span class="pill blue">draft</span></div>
+<h1>ADR-008 — The module dependency graph must be a DAG; cycles are build failures</h1>
+<p class="lede">The module dependency graph must be a DAG; inter-module cycles fail the build.</p>
+</header>
+<section>
+<h2>Context</h2>
+<p>Because wiring is plain ES imports (<a href="adr-002.html">ADR-002</a>), an inter-module cycle compiles silently. Bun surfaces circular dependencies at runtime as undefined module members — a confusing error with no indication of the cycle path. More importantly, a cyclic module graph means every module in the cycle is load-bearing for all the others: you cannot extract, test, or understand any one of them in isolation.</p>
+</section>
+<section>
+<h2>Decision</h2>
+<p>The module dependency graph must be a directed acyclic graph (DAG). A topological sort must exist. Inter-module cycles are detected by <a href="features.html#graph"><code>patties graph</code></a> using a DFS with colour marking and are always a hard failure (CI exit 1). Intra-module file cycles are a warning by default. The <code>--strict</code> flag promotes them to failures.</p>
+</section>
+<section>
+<h2>Consequences</h2>
+<p>Cyclic dependencies are caught on every push rather than surfacing at runtime. The fix pattern is explicit: extract shared concepts into a third module, or replace a direct import with a callback/event interface to flip the dependency direction. Cost: some initially convenient bidirectional designs must be refactored. This is the point — convenience is not a justification for spaghetti.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="decisions.html">All decisions</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Switch · Patties specs</title>
+<meta name="description" content="On/off toggle. Mirrors shadcn Switch. Built on @radix-ui/react-switch.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-2/52-switch.md</span></div>
+<h1>Switch</h1>
+<p class="lede">On/off toggle. Mirrors shadcn Switch. Built on @radix-ui/react-switch.</p>
+</header>
+<h2>Purpose</h2>
+<p>On/off toggle. Mirrors shadcn <code>Switch</code>. Built on <code>@radix-ui/react-switch</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Same downgrade story as Checkbox — when used inside a native form with <code>name</code>, the build replaces it with a hidden <code>&lt;input type="checkbox"&gt;</code> styled as a switch (CSS-only) and ships no JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-switch@^1.1</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Switch(props: Radix.SwitchProps &amp; { className?: string; nativeForm?: boolean }): JSX.Element
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li><code>nativeForm</code> enables the CSS-only static variant.</li><li>Removes <code>forwardRef</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Controlled mode toggles via click and <code>Space</code>.</li><li>Native mode submits <code>on</code> or absent in form data per HTML semantics.</li><li><code>aria-checked</code> reflects state.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

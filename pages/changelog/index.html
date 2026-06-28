@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog · Patties</title>
+<meta name="description" content="The human-readable version history of Patties — what landed in each release of patties, create-patties, and patties-ui, newest first. Mirrors GitHub Releases.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<script>window.SITE_BASE="../";window.SITE_SECTION="changelog";</script>
+</head>
+<body>
+
+<div class="hero-wrap">
+  <div class="hero">
+    <span class="eyebrow"><span class="dot"></span>Newest first · mirrors GitHub Releases</span>
+    <h1>Changelog</h1>
+    <p class="sub">What changed in each release of Patties, written to be read. Versions are managed with Changesets and published per package — <code>patties</code>, <code>create-patties</code>, and <code>patties-ui</code>. For the live registry + GitHub feed and the roadmap, see <a href="../release/index.html">Release</a>.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/bihaviour/bun-patties-framework/releases" target="_blank" rel="noopener">GitHub releases →</a>
+      <a class="btn btn-ghost" href="../release/index.html">Roadmap &amp; specs</a>
+    </div>
+  </div>
+</div>
+
+<main class="site-main">
+
+  <section>
+    <div class="callout warning">
+      <p class="callout-title">Pre-1.0 — read before upgrading</p>
+      <p>Patties is <code>0.x</code>: the framework API, CLI flags, and config shape may change between releases, and backward compatibility is not guaranteed until <code>1.0.0</code>. Pin an exact version. The authoritative, always-current feed is the <a href="../release/index.html#github">GitHub Releases list</a> — this page is the curated, human-readable companion.</p>
+    </div>
+  </section>
+
+  <!-- ===================== UNRELEASED ===================== -->
+  <section>
+    <div class="sec-head">
+      <span class="kicker">In progress</span>
+      <h2>Unreleased — <code>next</code> channel <span class="chip progress">◐ building</span></h2>
+      <p>Work landed via pending changesets. It will roll into the next version bump on each package's <code>latest</code> tag.</p>
+    </div>
+    <ul class="reqs">
+      <li><span class="req-tag stage">patties</span><span><strong>Update-available banner + <code>patties upgrade</code>.</strong> The CLI prints a cached, channel-aware banner on startup when a newer <code>patties</code> is published, and <code>patties upgrade</code> bumps the project to the newest release on its channel. The banner reads from a local cache and refreshes in the background, so it never blocks; opt out with <code>--no-update-check</code> or <code>NO_UPDATE_NOTIFIER</code>.</span></li>
+      <li><span class="req-tag stage">patties</span><span><strong>Workspace-aware React resolution.</strong> The dev-server bin + React resolution are now Bun-workspace-aware, so monorepos with a hoisted root <code>node_modules</code> load a single copy of React and don't crash SSR with "Invalid hook call." Flat-app resolution is unchanged.</span></li>
+      <li><span class="req-tag stage">patties</span><span><strong><code>patties-ui</code> truly optional at the CLI.</strong> The catalog commands (<code>add</code> / <code>ui</code> / <code>view</code> / <code>update</code>) are lazy-loaded in the dispatcher, so <code>patties dev</code> / <code>build</code> / <code>deploy</code> / <code>secret</code> no longer fail with "Cannot find module 'patties-ui/schema'" in projects that don't depend on the UI catalog.</span></li>
+      <li><span class="req-tag stage">create-patties</span><span><strong>Redesigned scaffolder prompt flow (CLI specs 18 + 19).</strong> Coding-agent prompt moves earlier; a new <strong>project type</strong> (frontend / backend / fullstack) drives gated sub-prompts for Patties UI and monorepo and the deploy-target set. Adds <code>--type</code>, <code>--ui</code>/<code>--no-ui</code>, <code>--monorepo</code>/<code>--no-monorepo</code>, <code>--theme</code>, and a <code>container</code> target (emits a <code>Dockerfile</code>). Claude/Codex projects ship the <code>/patties</code> skill + <code>/patties-init</code> command from one source so they can't drift. Stays zero-dependency.</span></li>
+    </ul>
+  </section>
+
+  <!-- ===================== FOUNDATIONS ===================== -->
+  <section>
+    <div class="sec-head">
+      <span class="kicker">Release line</span>
+      <h2>v0.0.x — Foundations <span class="chip shipped">✓ published</span></h2>
+      <p>The published <code>0.0.x</code> line establishes the whole framework: a Bun-native runtime, filesystem routing with React 19 SSR + islands, the build pipeline, the CLI, deploy adapters, the UI catalog, and the optional AI surface.</p>
+    </div>
+    <h3>Framework — <code>patties</code></h3>
+    <ul>
+      <li><strong>Bun-native runtime.</strong> HTTP on <code>Bun.serve</code>, filesystem discovery on <code>Bun.Glob</code>, bundling on <code>Bun.build</code>, dev HMR on <code>bun --hot</code> — no Node-era build stack.</li>
+      <li><strong>Filesystem routing + React 19 SSR.</strong> Routes compiled to Bun route patterns; pages stream via <code>renderToReadableStream</code>; interactive components opt into being client islands with on-demand hydration.</li>
+      <li><strong>Build-time discovery.</strong> Route + island discovery runs once at <code>build</code> and is inlined into the production bundle; the server never re-scans the disk at runtime (gated by integration tests).</li>
+      <li><strong>Thin context + middleware.</strong> Handlers take a standard <code>Request</code> and a small <code>PattiesContext</code> and return a <code>Response</code>; request flow is <code>compose()</code> middleware.</li>
+      <li><strong>Adapters.</strong> Deploy targets <code>bun</code> and <code>edge</code> behind adapters, keeping platform specifics out of the core.</li>
+      <li><strong>Optional AI + plugins + AGENTS.md.</strong> Agents, tools, and jobs on a lazy <code>@anthropic-ai/sdk</code> peer dep; plugin hooks for build/dev/jobs; regenerated <code>CLAUDE.md</code>/<code>AGENTS.md</code> app inventory.</li>
+    </ul>
+    <h3>Scaffolder — <code>create-patties</code></h3>
+    <ul>
+      <li><strong>Guided scaffolding.</strong> <code>bunx create-patties@latest my-app</code> stamps a working app with a chosen project type, optional Patties UI starter components, optional monorepo layout, and a deploy target — zero runtime dependencies.</li>
+    </ul>
+    <h3>UI catalog — <code>patties-ui</code></h3>
+    <ul>
+      <li><strong>60 copy-in components.</strong> A shadcn-compatible, copy-in catalog; <code>patties add &lt;component&gt;</code> stamps source into <code>app/components/ui/</code> — never imported from a versioned package. React 19 style (refs as props, no <code>forwardRef</code>), Tailwind v4 + CSS-variable theming, SSR-first with island-by-opt-in.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="callout note">
+      <p class="callout-title">Versioning &amp; channels</p>
+      <p>Each package is versioned independently with <a href="https://github.com/changesets/changesets" target="_blank" rel="noopener">Changesets</a> and published to npm. Stable releases land on the <code>latest</code> dist-tag; pre-release work lands on <code>next</code>. The <a href="../release/index.html#packages">Release page</a> shows the live dist-tags straight from the registry.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="inner">
+    <div>Patties — a Bun-native full-stack meta-framework. Licensed under MIT.</div>
+    <div class="foot-links">
+      <a href="../docs/index.html">Docs</a>
+      <a href="../release/index.html">Release</a>
+      <a href="../changelog/index.html">Changelog</a>
+      <a href="../specs/index.html">Specs</a>
+      <a href="https://github.com/bihaviour/bun-patties-framework" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/app.js"></script>
+</body>
+</html>

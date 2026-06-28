@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties add --diff / patties update — reconcile copy-in drift · Patties specs</title>
+<meta name="description" content="Accept — highest-leverage parity work now the catalog is shipped. The copy-in">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-patties-ui-update-diff.md</span></div>
+<h1>patties add --diff / patties update — reconcile copy-in drift</h1>
+<p class="lede">Accept — highest-leverage parity work now the catalog is shipped. The copy-in</p>
+</header>
+<h2>Review verdict (2026-05-28)</h2>
+<p><strong>Accept — highest-leverage parity work now the catalog is shipped.</strong> The copy-in model's single biggest weakness is upstream drift: users own the stamped source but lose visibility into how the catalog moved on. This was deferred to "phase-5" in the original cli-add spec; with all 60 components shipped, promote it.</p>
+<p>Scope pins:</p>
+<ul><li><strong>"Upstream" = the installed <code>patties-ui</code> version</strong>, resolved via <code>Bun.resolveSync("patties-ui/registry", cwd)</code>. There is no remote registry (that's [[rfc-patties-ui-registries]], backlog). <code>bun update patties-ui</code> + <code>patties update</code> is the drift-reconciliation loop.</li><li><strong><code>--diff</code> is read-only</strong>; <code>update</code> is the apply side (reuses the stamper with <code>force: true</code>, gated behind a shown diff).</li><li><strong><code>--check</code></strong> modifier exits non-zero on any drift, for CI staleness gates.</li><li>Diffs cover component files <strong>and</strong> <code>_internal/</code> helpers + <code>tokens.css</code> fragments.</li></ul>
+<p>Encoded into <code>cli/12-add-update-diff</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p>Add a read-only <code>patties add --diff &lt;component&gt;</code> that shows a unified diff between the user's stamped file and the catalog template, and a <code>patties update &lt;component&gt;</code> that re-stamps (overwriting) after showing that diff. Reconciles the inevitable drift in a copy-in component model.</p>
+<h2>Motivation</h2>
+<p>Once <code>patties add</code> stamps a component the user owns it — they can edit freely. But when <code>patties-ui</code> ships a fix or restyle, there is currently no way to see what changed or pull it in. shadcn solves this with <code>diff</code>. Without it, the copy-in model silently rots.</p>
+<h2>Proposal</h2>
+<ul><li><code>add --diff [name…]</code> — diff stamped files vs catalog templates; <code>up to date</code> / <code>not stamped</code> / unified diff per file. <code>--check</code> for CI.</li><li><code>update [name…] | --all | --dry-run</code> — re-stamp differing files with <code>force: true</code>, re-merge tokens, stamp newly-required helpers, patch new peer deps.</li><li>Colorized on a TTY, plain when piped.</li></ul>
+<h2>Trade-offs</h2>
+<ul><li><code>update</code> overwrites local edits — the shown diff is the safeguard; users commit first. A <code>--3way</code> merge is out of scope for v1.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Should <code>--check</code> be a flag on <code>--diff</code> or its own <code>patties ui status</code>? (Encoded as a <code>--diff --check</code> modifier.)</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

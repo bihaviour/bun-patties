@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Import attributes — macros, text, toml, file imports as first-class · Patties specs</title>
+<meta name="description" content="Accept with scoped policy. Spec 00 promises Bun macros; this RFC redeems that promise.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-import-attributes.md</span></div>
+<h1>Import attributes — macros, text, toml, file imports as first-class</h1>
+<p class="lede">Accept with scoped policy. Spec 00 promises Bun macros; this RFC redeems that promise.</p>
+</header>
+<h2>Review verdict (2026-05-24)</h2>
+<p><strong>Accept with scoped policy.</strong> Spec 00 promises Bun macros; this RFC redeems that promise.</p>
+<h3>Macro policy (decided 2026-05-24)</h3>
+<p><strong>Required to be macros</strong> (compiler-enforced "no runtime read" guarantee):</p>
+<ul><li>Route table (<code>scanRoutes</code> output) — closes the spec 04 promise that production bundles contain no <code>Bun.Glob</code> call.</li><li><code>env.public</code> values inlined into the client bundle.</li><li>Client manifest (island name → chunk URL).</li><li>AGENTS.md content hash for cache busting (the file itself stays generated at build time, but the hash gets inlined for the dev banner).</li></ul>
+<p><strong>Optional</strong> (may be import-attribute or runtime read):</p>
+<ul><li>SQL files (<code>with { type: "text" }</code> preferred).</li><li>Email/HTML templates (<code>with { type: "text" }</code> preferred).</li><li>TOML config blobs (<code>with { type: "toml" }</code> preferred when the file is known at build time).</li><li>SQLite seed databases (<code>with { type: "sqlite" }</code>).</li></ul>
+<p>Rule of thumb: anything <em>the framework builds for you</em> must be a macro; anything <em>your app reads</em> may be either.</p>
+<h3><code>--hot</code> interaction</h3>
+<p>Macros re-evaluate on <code>bun --hot</code> when their input files change. This is verified by the smoke test in [[rfc-bun-hot-reload]]. If a macro depends on a file Bun's dep tracker doesn't follow, the developer adds the dep explicitly via <code>import "./watched-file" with { type: "file" }</code> in the macro source.</p>
+<h3>Testing</h3>
+<p>Macros are unit-tested by importing them in a build-time test harness (<code>bun test</code> with a fixture that runs <code>Bun.build</code> and asserts on the emitted output). [[14-testing]] gets a new section.</p>
+<hr>
+<h2>Summary</h2>
+<p>Bun supports five import attribute types: <code>macro</code> (build-time function evaluation), <code>text</code> (string literal), <code>toml</code> (parsed object), <code>json</code> (parsed object), <code>file</code> (path/URL after bundling), and <code>sqlite</code> (embedded DB). 00-overview already promises "Bun macros" but no Patties spec actually says <em>where</em> macros are allowed, what counts as a macro, or how the other import attributes fit. This RFC closes that gap.</p>
+<h2>Motivation</h2>
+<ul><li>Macros let route metadata, manifest generation, and AGENTS.md scaffolding (11) run at build time instead of boot. Concrete win: turn <code>scanRoutes()</code> into a macro so the route table literally inlines, satisfying 08-config's "no <code>Bun.Glob</code> calls in production bundle" guarantee with compiler-enforced certainty.</li><li><code>with { type: "text" }</code> for SQL files (09-plugins) and email templates beats <code>Bun.file().text()</code> because it's tree-shakeable.</li><li><code>with { type: "toml" }</code> for <code>patties.toml</code> style config beats parsing at runtime.</li></ul>
+<h2>Proposal</h2>
+<ul><li>04-build: document the supported import attribute types and require Patties' macros to be pure (no I/O at module top level besides FS reads in the macro file itself).</li><li>09-plugins: macros may be authored by plugin packages; plugin docs must list which macros they export.</li><li>13-conventions: ban runtime JSON/TOML reads when a static import attribute can replace them.</li><li>11-agents-md-generator: convert the generator's filesystem scan into a macro so AGENTS.md is regenerated on every build, not via a separate CLI step.</li></ul>
+<p>Sample:</p>
+<pre data-lang="ts"><code>import routes from "./_scanRoutes.ts" with { type: "macro" };
+import schema from "./schema.sql"   with { type: "text"  };
+import config from "./patties.toml" with { type: "toml"  };
+</code></pre>
+<h2>Trade-offs</h2>
+<ul><li>Macros run in a sandboxed build-time context — they cannot import runtime-only code. Easy to footgun.</li><li>Errors in macros surface at build time with stack traces inside the bundler — harder to debug than a runtime throw.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Which existing spec touchpoints should <em>require</em> a macro vs. permit either? (Likely: route table = required, manifest = required, AGENTS.md = optional CLI for non-bundled flows.)</li><li>Do macros run during <code>Bun.build</code> only, or also under <code>bun --hot</code>? Test.</li><li>How do tests stub a macro's output (14-testing)?</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

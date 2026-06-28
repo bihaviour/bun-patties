@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patties — a Bun-native full-stack meta-framework</title>
+<meta name="description" content="Patties is a Bun-native full-stack meta-framework: React 19 SSR and filesystem routing on Bun.serve, client islands, build-time discovery, and deploy adapters — built on Bun.serve, Bun.Glob, and Bun.build instead of re-importing the Node-era stack.">
+<link rel="stylesheet" href="assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<script>window.SITE_SECTION="home";</script>
+</head>
+<body>
+
+<div class="hero-wrap">
+  <div class="hero">
+    <span class="eyebrow"><span class="dot"></span>Bun-native · React 19 SSR · Web-standard boundaries</span>
+    <h1>The full-stack framework built <span class="grad">on Bun</span>, not bolted onto it.</h1>
+    <p class="sub">Patties is a Bun-native meta-framework. HTTP is <code>Bun.serve</code>, bundling is <code>Bun.build</code>, discovery is <code>Bun.Glob</code>, hot-reload is <code>bun --hot</code> — no Webpack, no chokidar, no <code>node:http</code> wrapper. Filesystem routing and islands are discovered once at build time and inlined, so the production server never re-scans the disk. UI is React 19 over <code>renderToReadableStream</code>.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="docs/overview.html">Get started →</a>
+      <a class="btn btn-ghost" href="docs/index.html">Read the docs</a>
+      <a class="btn btn-ghost" href="https://github.com/bihaviour/bun-patties-framework" target="_blank" rel="noopener">View on GitHub</a>
+    </div>
+    <div class="stat-strip">
+      <div class="stat"><div class="v">0</div><div class="l">Node-era build tools to wire up</div></div>
+      <div class="stat"><div class="v">build-time</div><div class="l">route &amp; island discovery</div></div>
+      <div class="stat"><div class="v">React 19</div><div class="l">streaming SSR + islands</div></div>
+      <div class="stat"><div class="v">bun · edge</div><div class="l">deploy targets behind adapters</div></div>
+    </div>
+  </div>
+</div>
+
+<main class="site-main">
+
+  <section>
+    <div class="sec-head">
+      <span class="kicker">Why it exists</span>
+      <h2>Start from Bun's primitives, delete the rest</h2>
+      <p>Most full-stack frameworks were designed in the Node era and carry its tooling tax: a bundler bolted on, a separate file watcher, a glob library, an HTTP layer wrapped around <code>node:http</code>. Bun ships all of that natively. Patties is what a framework looks like when you build on those primitives instead of re-importing the stack on top of them.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature">
+        <div class="ic">⚡</div>
+        <h3><code>Bun.serve</code> at the core</h3>
+        <p>HTTP comes straight from <code>Bun.serve</code>. Handlers receive a standard <code>Request</code> and return a standard <code>Response</code> — no server abstraction in between.</p>
+      </div>
+      <div class="feature">
+        <div class="ic">🧭</div>
+        <h3>Filesystem routing</h3>
+        <p>Routes are files under <code>app/routes/</code>, compiled to Bun route patterns. Dynamic segments, methods, and nesting — discovered, not configured.</p>
+      </div>
+      <div class="feature">
+        <div class="ic">🏝️</div>
+        <h3>React 19 + islands</h3>
+        <p>Pages render on the server with <code>renderToReadableStream</code>. Mark a component an island and only it ships to the client, hydrating on demand.</p>
+      </div>
+      <div class="feature">
+        <div class="ic">🏗️</div>
+        <h3>Discover at build, serve frozen</h3>
+        <p>Route + island discovery happens once during <code>build</code> and is inlined into the bundle. The production server runs a static table and scans nothing.</p>
+      </div>
+      <div class="feature">
+        <div class="ic">🔌</div>
+        <h3>Thin context</h3>
+        <p>The one framework affordance is <code>PattiesContext</code> — params, cookies, env, vars, and <code>json/html/redirect</code>. Standards at the boundary, kept deliberately small.</p>
+      </div>
+      <div class="feature">
+        <div class="ic">🚢</div>
+        <h3>Adapters, not lock-in</h3>
+        <p>Deployment targets (<code>bun</code>, <code>edge</code>) live behind adapters. Platform specifics stay out of the core, so the same app ships to more than one place.</p>
+      </div>
+      <div class="feature">
+        <div class="ic">🎨</div>
+        <h3>Copy-in UI catalog</h3>
+        <p><code>patties-ui</code> is a shadcn-compatible, copy-in catalog of 60 components. <code>patties add &lt;component&gt;</code> stamps the source into your app — never a versioned dependency.</p>
+      </div>
+      <div class="feature">
+        <div class="ic">🤖</div>
+        <h3>Optional AI primitives</h3>
+        <p>Agents, tools, and jobs ride on an optional <code>@anthropic-ai/sdk</code> peer dep. Non-AI apps install and run without it; the AI surface loads only when used.</p>
+      </div>
+      <div class="feature">
+        <div class="ic">🧩</div>
+        <h3>Plugins &amp; AGENTS.md</h3>
+        <p>Hook into build, dev, and jobs. <code>patties dev</code>/<code>build</code> regenerate an inventory of your app into <code>CLAUDE.md</code>/<code>AGENTS.md</code> for coding agents.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="split">
+      <div class="prose">
+        <span class="kicker" style="color:var(--accent-text);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:.76rem;">Up in one command</span>
+        <h2>Scaffold an app, then <code>dev</code></h2>
+        <p>The official scaffolder, <code>create-patties</code>, asks a few questions — project type, Patties UI, monorepo, deploy target — and stamps a working app. Then <code>patties dev</code> gives you Bun-native HMR with a single copy of React.</p>
+        <p>Routes are folders, handlers are functions, and the only import you need to learn is the one that was already there.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="docs/scaffolding.html">Project scaffolding →</a>
+          <a class="btn btn-ghost" href="docs/app-structure.html">App structure</a>
+        </div>
+      </div>
+      <div class="code-window">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">terminal</span></div>
+<pre data-lang="bash"><code># scaffold a new app
+bunx create-patties@latest my-app
+cd my-app
+
+# Bun-native dev server with HMR
+bunx patties dev
+
+# build (route + island discovery happens here) and ship
+bunx patties build
+bunx patties deploy</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="split">
+      <div class="code-window">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="fname">app/routes/invoices.ts</span></div>
+<pre data-lang="ts"><code>// A route module — a plain function over web standards.
+// Discovered at build time and inlined into the Bun.serve table.
+export const routes = {
+  "/invoices/:id": {
+    GET: (req, ctx) =&gt; ctx.json({ id: ctx.params.id }),
+  },
+  "/invoices": {
+    POST: async (req, ctx) =&gt;
+      ctx.json(await create(await req.json())),
+  },
+};</code></pre>
+      </div>
+      <div class="prose">
+        <span class="kicker" style="color:var(--accent-text);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:.76rem;">Standards at the boundary</span>
+        <h2>Handlers are just functions</h2>
+        <p>A handler takes a standard <code>Request</code> and a thin <code>PattiesContext</code>, and returns a standard <code>Response</code>. Request flow is plain <code>compose()</code> middleware — no guards, pipes, interceptors, or decorators.</p>
+        <p>The same shape underlies the design exploration: a <em>modular monolith</em> where modules talk only through a published public API, enforced by one build-time boundary check.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="docs/routing.html">Routing →</a>
+          <a class="btn btn-ghost" href="specs/index.html">The design specs</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="kicker">Where to go next</span>
+      <h2>Four doors into the project</h2>
+      <p>Build with the framework, follow the design intent, track what shipped and what's next, or read the human-readable version history.</p>
+    </div>
+    <div class="doc-card-grid">
+      <a class="doc-card" href="docs/index.html">
+        <div class="ic">📘</div>
+        <h3>Documentation</h3>
+        <p>Guides and reference: routing, rendering, the build pipeline, the CLI, and deployment. Start here to build something.</p>
+        <div class="links"><span>Get started · Framework · CLI</span></div>
+      </a>
+      <a class="doc-card" href="release/index.html">
+        <div class="ic">🚀</div>
+        <h3>Releases &amp; roadmap</h3>
+        <p>What's shipped and what's coming — the delivery tracker, plus the status of every design specification.</p>
+        <div class="links"><span>Roadmap · Packages · Spec status</span></div>
+      </a>
+      <a class="doc-card" href="changelog/index.html">
+        <div class="ic">📓</div>
+        <h3>Changelog</h3>
+        <p>The human-readable version history — what landed in each release of <code>patties</code>, <code>create-patties</code>, and <code>patties-ui</code>, newest first.</p>
+        <div class="links"><span>Mirrors GitHub Releases</span></div>
+      </a>
+      <a class="doc-card" href="specs/index.html">
+        <div class="ic">⚖️</div>
+        <h3>Design specs</h3>
+        <p>The modular-monolith design exploration: architecture, features, and the decision records behind the framework.</p>
+        <div class="links"><span>Architecture · Features · ADRs</span></div>
+      </a>
+    </div>
+  </section>
+
+  <section>
+    <div class="cta-band">
+      <h2>"A framework you could delete and still have an app."</h2>
+      <p>Fewer dependencies, web-standard boundaries, and the expensive thinking done at build time. Reach for a Bun or web primitive every time one exists — the framework is the thin layer that's left.</p>
+      <div class="cta-row" style="justify-content:center;">
+        <a class="btn btn-primary" href="docs/overview.html">Start the quickstart →</a>
+        <a class="btn btn-ghost" href="https://github.com/bihaviour/bun-patties-framework" target="_blank" rel="noopener">Star on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <div class="sec-head">
+      <span class="kicker">Privacy</span>
+      <h2>Analytics &amp; cookies</h2>
+      <p>This site ships with optional, privacy-first Google Analytics 4 support that is <strong>disabled by default</strong>: no measurement ID is configured, so no Google script loads, no cookie is set, and no consent banner is shown. If analytics is later enabled, it runs under Google Consent Mode v2 with every signal defaulting to <strong>denied</strong> until you accept. The framework and your apps are wholly unaffected — this concerns the documentation website only.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="inner">
+    <div>Patties — a Bun-native full-stack meta-framework. Licensed under MIT.</div>
+    <div class="foot-links">
+      <a href="docs/index.html">Docs</a>
+      <a href="release/index.html">Release</a>
+      <a href="changelog/index.html">Changelog</a>
+      <a href="specs/index.html">Specs</a>
+      <a href="index.html#privacy">Privacy</a>
+      <a href="https://github.com/bihaviour/bun-patties-framework" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

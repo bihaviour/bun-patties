@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-009 — What's out of scope, and what stays untouched · Patties</title>
+<meta name="description" content="What's deliberately not built (DI, decorators, scopes) and what stays untouched.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">ADR</span> <span class="pill green">accepted</span></div>
+<h1>ADR-009 — What's out of scope, and what stays untouched</h1>
+<p class="lede">What's deliberately not built (DI, decorators, scopes) and what stays untouched.</p>
+</header>
+<section>
+<h2>Context</h2>
+<p>The convention is almost entirely <em>reuse</em>: the route-merge macro is a sibling of the existing route/island/agent macros, module handlers slot into the same <code>Bun.serve</code> route table and <code>compose()</code> middleware, and the <code>bun --hot</code> dev loop and deploy adapters are unchanged. The only net-new code is the module convention, the public-API boundary check (<a href="adr-003.html">ADR-003</a>), and the route-merge macro. That makes it important to record what is deliberately <em>not</em> built.</p>
+</section>
+<section>
+<h2>Decision</h2>
+<p>Out of scope, permanently: a DI container, <code>@Injectable</code>/<code>@Inject</code> and any decorators, <code>reflect-metadata</code>, AST type-extraction, guards/pipes/interceptors/filters, DI scopes, and a cycle resolver (cycles are a build failure per <a href="adr-008.html">ADR-008</a>, not something to resolve at runtime). This is a convention over Bun's module system, not a NestJS reimplementation.</p>
+</section>
+<section>
+<h2>Consequences</h2>
+<p>patties' existing full-stack surface — React SSR, islands, the UI catalog (<code>patties-ui</code>), the markdown/image pipelines, and every deploy adapter — is untouched; the convention sits beside it, opt-in. Cost: developers expecting Nest-style machinery won't find it, by design (see <a href="adr-002.html">ADR-002</a>, <a href="adr-004.html">ADR-004</a>, <a href="adr-005.html">ADR-005</a>).</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="decisions.html">All decisions</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

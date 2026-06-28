@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bun patch / audit / outdated — project hygiene CLI · Patties specs</title>
+<meta name="description" content="Accept — encoded as [[cli/20-doctor]]. Pulled forward from post-1.0 to the">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-package-hygiene.md</span></div>
+<h1>bun patch / audit / outdated — project hygiene CLI</h1>
+<p class="lede">Accept — encoded as [[cli/20-doctor]]. Pulled forward from post-1.0 to the</p>
+</header>
+<h2>Encoded (2026-05-31)</h2>
+<p><strong>Accept — encoded as [[cli/20-doctor]].</strong> Pulled forward from post-1.0 to the <strong>0.1.x pre-publish</strong> window: shipping a package with no project-hygiene story is poor practice for a published framework, and the integrated <code>patties doctor</code> UX the original verdict was waiting for is exactly what spec 20 defines. The cluster lands together as that verdict required — spec 20 reuses the <code>Bun.which</code> probe helper from [[rfc-bun-which]] (extending the scaffold's 2-probe set to a lifecycle set) and the width-aware output utilities from [[rfc-bun-cli-ansi]] (spec 24 §24.2). Resolved open questions are pinned in spec 20: severity <em>is</em> surfaced (with an <code>--audit-level</code> gate), and Phase 1 stays <strong>report-only</strong> — inheriting bun-which's "never install/modify on the user's behalf" rule; <code>--fix</code> and scheduled audits ([[rfc-bun-cron]]) are Phase 2. Original deferral verdict preserved below.</p>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Reject for v1; keep as future-work RFC.</strong> There is no dedicated CLI surface for project hygiene yet. The scaffold spec ends at "init"; nothing covers "keep this project healthy over time." Users today reach for <code>bun audit</code> / <code>bun outdated</code> directly — patties doesn't need to wrap these without a clear value-add.</p>
+<p>Revisit when:</p>
+<ul><li>A <code>patties doctor</code> or <code>patties upgrade</code> command is being drafted (this is also the trigger for [[rfc-bun-which]]'s extended scope and [[rfc-bun-cli-ansi]]'s richer probe output), OR</li><li>A scheduled hygiene story emerges (e.g. nightly dependency audits via [[rfc-bun-cron]]).</li></ul>
+<p><strong>Re-evaluation trigger:</strong> The cluster of "doctor" RFCs (which, this one, possibly cli-ansi extensions) revisits together when a doctor spec opens. Don't accept this one in isolation — the value is the integrated <code>patties doctor</code> UX, not the wrapper around <code>bun audit</code>.</p>
+<p>No spec changes. File preserved as <code>status: deferred</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p>Bun's built-in package management hygiene commands. Patties could wrap them in a <code>patties doctor</code> / <code>patties upgrade</code> flow.</p>
+<h2>Motivation</h2>
+<p>Hygiene tooling is standard in every package manager. Patties could thread these into a single <code>patties doctor</code> UX. Without that UX, wrapping individual commands adds nothing over calling <code>bun audit</code> directly.</p>
+<h2>Trade-offs</h2>
+<ul><li><strong>Wrapping for the sake of wrapping is friction.</strong> The pattern only pays off when <code>patties doctor</code> aggregates multiple checks into one command — security advisories, outdated deps, lockfile health, biome config validity, etc.</li></ul>
+<h2>Open questions</h2>
+<ul><li><strong>What does <code>patties doctor</code> actually check</strong> vs delegate to <code>bun audit</code>?</li><li><strong>Should we surface security-advisory severity</strong> to the user, or pass through Bun's output verbatim?</li><li><strong>How does this interact with the scaffold's [[rfc-bun-which]] probes?</strong> Both want the doctor surface; one acceptance pass should land them together.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

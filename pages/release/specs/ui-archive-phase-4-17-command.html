@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command · Patties specs</title>
+<meta name="description" content="Command palette / fuzzy menu. Mirrors shadcn Command. Built on cmdk.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-4/17-command.md</span></div>
+<h1>Command</h1>
+<p class="lede">Command palette / fuzzy menu. Mirrors shadcn Command. Built on cmdk.</p>
+</header>
+<h2>Purpose</h2>
+<p>Command palette / fuzzy menu. Mirrors shadcn <code>Command</code>. Built on <code>cmdk</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Filter state, keyboard navigation, and focus management require client JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>cmdk@^1</code></li><li><code>@radix-ui/react-dialog@^1.1</code> (for <code>CommandDialog</code> variant)</li><li><code>lucide-react@^0.400</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Command(props: React.ComponentProps&lt;typeof CommandPrimitive&gt;): JSX.Element
+export function CommandDialog(props: { open?: boolean; onOpenChange?: (o: boolean) =&gt; void; children?: React.ReactNode }): JSX.Element
+export function CommandInput(props: React.ComponentProps&lt;typeof CommandPrimitive.Input&gt;): JSX.Element
+export function CommandList(props: React.ComponentProps&lt;typeof CommandPrimitive.List&gt;): JSX.Element
+export function CommandEmpty(props: React.ComponentProps&lt;typeof CommandPrimitive.Empty&gt;): JSX.Element
+export function CommandGroup(props: React.ComponentProps&lt;typeof CommandPrimitive.Group&gt;): JSX.Element
+export function CommandItem(props: React.ComponentProps&lt;typeof CommandPrimitive.Item&gt;): JSX.Element
+export function CommandShortcut(props: React.ComponentProps&lt;"span"&gt;): JSX.Element
+export function CommandSeparator(props: React.ComponentProps&lt;typeof CommandPrimitive.Separator&gt;): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li><code>CommandDialog</code> wraps the palette in a Radix Dialog so that <code>Cmd+K</code> global trigger can mount a modal.</li><li>The <code>Cmd+K</code>/<code>Ctrl+K</code> global hotkey is <strong>not</strong> registered automatically; userland binds it in an island.</li><li>Removes <code>forwardRef</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Typing filters items via <code>cmdk</code>.</li><li><code>↑/↓/Enter/Esc</code> navigate and select.</li><li><code>CommandDialog</code> traps focus while open and restores on close.</li><li>Items can declare <code>value</code> distinct from their visible label for stable filtering.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

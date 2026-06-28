@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scroll Area · Patties specs</title>
+<meta name="description" content="Cross-platform custom scrollbars over an overflow:auto region. Mirrors shadcn ScrollArea. Built on @radix-ui/react-scroll-area.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/43-scroll-area.md</span></div>
+<h1>Scroll Area</h1>
+<p class="lede">Cross-platform custom scrollbars over an overflow:auto region. Mirrors shadcn ScrollArea. Built on @radix-ui/react-scroll-area.</p>
+</header>
+<h2>Purpose</h2>
+<p>Cross-platform custom scrollbars over an <code>overflow:auto</code> region. Mirrors shadcn <code>ScrollArea</code>. Built on <code>@radix-ui/react-scroll-area</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Scrollbars are JS-driven; Radix measures content and listens to wheel/pointer.</p>
+<p>A no-JS fallback renders native scrollbars on the <code>viewport</code> element so users without JS still get scroll.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-scroll-area@^1.2</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function ScrollArea(props: Radix.ScrollAreaProps &amp; { className?: string }): JSX.Element
+export function ScrollBar(props: Radix.ScrollAreaScrollbarProps &amp; { orientation?: "horizontal" | "vertical"; className?: string }): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>The viewport has <code>overflow:auto</code> in the static SSR HTML so users see native scrollbars before hydration; Radix removes them by setting <code>overflow:hidden</code> post-mount.</li><li>Removes <code>forwardRef</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Mouse wheel scrolls content after hydration.</li><li>Horizontal and vertical scrollbars appear only when needed.</li><li>Pre-hydration: native scrollbars still work.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

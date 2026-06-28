@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.cron — first-class scheduled jobs convention · Patties specs</title>
+<meta name="description" content="Accept. app/jobs/ is the natural parallel to app/agents/ and app/tools/ — closes the gap where spec 10 mentions cron callers without defining them.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-cron.md</span></div>
+<h1>Bun.cron — first-class scheduled jobs convention</h1>
+<p class="lede">Accept. app/jobs/ is the natural parallel to app/agents/ and app/tools/ — closes the gap where spec 10 mentions cron callers without defining them.</p>
+</header>
+<h2>Review verdict (2026-05-24)</h2>
+<p><strong>Accept.</strong> <code>app/jobs/</code> is the natural parallel to <code>app/agents/</code> and <code>app/tools/</code> — closes the gap where spec 10 mentions cron callers without defining them.</p>
+<p>Scope adjustments:</p>
+<ul><li><strong>Singleton across replicas</strong>: deferred to Phase 3. Phase 2 ships without it — multi-instance deploys fire each job N times. Documented loudly. The <code>singleton: true + Redis</code> mechanism becomes a follow-up RFC once <code>@patties/cache</code> (using <code>Bun.RedisClient</code>) lands.</li><li><strong>Edge-target cron</strong>: moved out of spec 12 and into <strong>deploy plugins</strong>. <code>@patties/deploy-cloudflare</code> translates <code>app/jobs/*</code> into <code>wrangler.toml [triggers]</code>; <code>@patties/deploy-vercel</code> emits <code>vercel.json crons</code>; etc. The framework core stays neutral — it just exposes the job inventory to plugins via a build hook.</li><li><strong>Tests</strong>: cron handler unit tests invoke the exported default function directly with a mocked <code>AiContext</code> (no need to fake the clock; that's the scheduler's job, not the handler's).</li></ul>
+<hr>
+<h2>Summary</h2>
+<p>Bun ships <code>Bun.cron(expr, handler)</code> returning a <code>Bun.CronController</code> with <code>.stop()</code> and <code>.list()</code>. Patties should adopt a <code>app/jobs/**/*.ts</code> convention where each file exports a default handler and a <code>schedule</code> string; the server wires them through <code>Bun.cron</code> on boot.</p>
+<h2>Motivation</h2>
+<p>10-agents-and-tools mentions "cron jobs" as a call site for <code>createAiContext</code> but no spec actually defines how cron is declared, wired, or tested. Users currently have no answer for "where does a recurring task live in a Patties app?" Bun's native cron removes the need for <code>node-cron</code>, <code>croner</code>, or external schedulers, and integrates with the same process lifecycle as <code>Bun.serve</code>.</p>
+<h2>Proposal</h2>
+<ul><li>13-conventions: introduce <code>app/jobs/</code> convention with file shape: ``<code>ts export const schedule = "*/5 * * * *"; export default async (ctx: JobContext) =&gt; { /* ... */ }; </code>``</li><li>01-server: on boot, scan <code>app/jobs/</code> via <code>Bun.Glob</code>, register each via <code>Bun.cron(schedule, handler)</code>, retain the <code>CronController</code> for graceful shutdown.</li><li>10-agents-and-tools: cron handlers receive an <code>AiContext</code> created via <code>createAiContext</code> — same shape as request handlers.</li><li>09-plugins: deploy plugins consume the <code>app/jobs/*</code> inventory via a build hook and emit vendor-native cron triggers (<code>wrangler.toml [triggers]</code>, <code>vercel.json crons</code>, Deno Deploy queued tasks, etc.). The framework core stays vendor-neutral.</li></ul>
+<h2>Trade-offs</h2>
+<ul><li>Multi-instance deploys (reusePort, edge replicas) will fire each job N times unless we add a lock. Document this and provide a <code>singleton: true</code> option that requires a Redis client.</li><li>Time-zone semantics: <code>Bun.cron</code> is process-local TZ; we should require explicit <code>tz:</code> in the export.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Should <code>schedule</code> be a single string or <code>string | string[]</code>?</li><li>How do tests fake the clock? Bun's mocks (14-testing) don't cover <code>Bun.cron</code> directly.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

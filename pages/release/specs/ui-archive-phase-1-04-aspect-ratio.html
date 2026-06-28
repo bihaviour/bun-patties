@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aspect Ratio · Patties specs</title>
+<meta name="description" content="Holds a child at a fixed width:height ratio. Mirrors shadcn AspectRatio. Upstream uses @radix-ui/react-aspect-ratio; Patties ships a tiny CSS-only equivalent…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/04-aspect-ratio.md</span></div>
+<h1>Aspect Ratio</h1>
+<p class="lede">Holds a child at a fixed width:height ratio. Mirrors shadcn AspectRatio. Upstream uses @radix-ui/react-aspect-ratio; Patties ships a tiny CSS-only equivalent…</p>
+</header>
+<h2>Purpose</h2>
+<p>Holds a child at a fixed width:height ratio. Mirrors shadcn <code>AspectRatio</code>. Upstream uses <code>@radix-ui/react-aspect-ratio</code>; Patties ships a tiny CSS-only equivalent since modern browsers support <code>aspect-ratio</code>.</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. Pure CSS — no JS.</p>
+<h2>Peer dependencies</h2>
+<p>None. (We deliberately drop <code>@radix-ui/react-aspect-ratio</code> because <code>aspect-ratio</code> CSS is universally supported in our edge runtime targets.)</p>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function AspectRatio(props: {
+  ratio?: number          // default 1
+  className?: string
+  children?: React.ReactNode
+  style?: React.CSSProperties
+}): JSX.Element
+
+export const island = false
+</code></pre>
+<p>Implementation: a <code>&lt;div&gt;</code> with <code>style={{ aspectRatio: String(ratio) }}</code> and <code>position: relative</code>. Children are absolutely positioned via a wrapper.</p>
+<h2>Patties adjustments</h2>
+<ul><li>Removes the Radix dependency.</li><li><code>ratio</code> accepts any positive number; an invalid <code>ratio</code> falls back to <code>1</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Snapshot SSR renders <code>style="aspect-ratio:16/9; position:relative"</code> when <code>ratio={16/9}</code>.</li><li>Bundle audit: zero JS shipped.</li><li>Renders correctly inside flex/grid parents with <code>width: 100%</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

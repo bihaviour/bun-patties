@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Input · Patties specs</title>
+<meta name="description" content="Styled &lt;input&gt;. Mirrors shadcn Input.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-2/29-input.md</span></div>
+<h1>Input</h1>
+<p class="lede">Styled &lt;input&gt;. Mirrors shadcn Input.</p>
+</header>
+<h2>Purpose</h2>
+<p>Styled <code>&lt;input&gt;</code>. Mirrors shadcn <code>Input</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code> if it has <code>onChange</code>/<code>onBlur</code> JS handlers. As an uncontrolled native input inside a server form, it is effectively island-free — the build downgrades it when no handlers are bound.</p>
+<h2>Peer dependencies</h2>
+<p>None.</p>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Input(props: React.InputHTMLAttributes&lt;HTMLInputElement&gt; &amp; { className?: string }): JSX.Element
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Drops <code>forwardRef</code>.</li><li>No special wrapper — it's literally <code>&lt;input class={...} {...props} /&gt;</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Native form submission carries the input value when no JS is present.</li><li>All <code>type</code> values (text, email, number, file, etc.) render with consistent styling.</li><li><code>disabled</code> and <code>aria-invalid</code> produce the documented styles.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

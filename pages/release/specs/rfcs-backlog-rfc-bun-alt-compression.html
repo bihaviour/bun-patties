@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.deflateSync / Bun.zstdCompress — alternate asset compression · Patties specs</title>
+<meta name="description" content="Bun.deflateSync (raw deflate / zlib), Bun.zstdCompress (zstd, sync + streaming). Adds alternate algorithms to the build's asset pre-compression step. Note: b…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Backlog</span> <span class="badge badge-id">rfcs/backlog/rfc-bun-alt-compression.md</span></div>
+<h1>Bun.deflateSync / Bun.zstdCompress — alternate asset compression</h1>
+<p class="lede">Bun.deflateSync (raw deflate / zlib), Bun.zstdCompress (zstd, sync + streaming). Adds alternate algorithms to the build's asset pre-compression step. Note: b…</p>
+</header>
+<h2>Summary</h2>
+<p><code>Bun.deflateSync</code> (raw deflate / zlib), <code>Bun.zstdCompress*</code> (zstd, sync + streaming). Adds alternate algorithms to the build's asset pre-compression step. Note: brotli compression (<code>Bun.brotliCompress*</code>) lives next to these and is usually the higher-impact addition.</p>
+<h2>Why backlog</h2>
+<p><code>Bun.gzipSync</code> already covers the common case (CDNs accept gzip universally). Brotli is the more useful win than zstd; deflate is rarely needed. No urgent reason to ship.</p>
+<h2>Trigger to promote to draft</h2>
+<ul><li>Cloudflare / Bun edge adapter benchmarks show meaningful size/latency wins from brotli/zstd, OR</li><li>A user-facing config flag for "compression formats" is requested.</li></ul>
+<h2>Bun-unique classification</h2>
+<p><strong>Bun-only</strong> for zstd (Node only got it in 22+ and it's still recent); <strong>Standard</strong> for deflate. Brotli is standard on both runtimes.</p>
+<h2>Open questions when promoted</h2>
+<ul><li>Which algorithms do we actually ship — gzip + brotli (probable), or also zstd?</li><li>Build-time pre-compression (current model) vs on-the-fly response compression — they're different concerns.</li><li>Per-file extension policy (skip already-compressed <code>.png</code>/<code>.jpg</code>/<code>.woff2</code>).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

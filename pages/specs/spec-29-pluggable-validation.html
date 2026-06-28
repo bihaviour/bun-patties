@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 29 — Pluggable Validation via Standard Schema · Patties</title>
+<meta name="description" content="Retype the AI-tool input surface to Standard Schema so any compliant validator — Zod 4, Valibot, ArkType — works unchanged, while Zod stays the framework's internal default.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Roadmap</span></div>
+<h1>Spec 29 — Pluggable Validation via Standard Schema</h1>
+<p class="lede">Today the public AI-tool API is hardwired to Zod: <code>defineTool({ input: z.ZodType })</code>. This spec retypes the tool input surface to <a href="https://standardschema.dev" target="_blank" rel="noopener">Standard Schema</a> so any compliant validator — Zod 4, Valibot, ArkType — works unchanged, while Zod stays the framework's <em>internal</em> default. No DI container, no runtime cost, full backward compatibility.</p>
+</header>
+
+<div class="callout note">
+<p class="callout-title">Status: Draft</p>
+<p>Foundational — sequenced <em>before</em> the scaffold rewrite (<a href="spec-21-create-patties.html">CLI Spec 21</a>) so new modular templates ship validator-agnostic tools written once. Framework changes: <code>ToolConfig.input</code> type, runtime validation path in <code>ai/run.ts</code>, JSON-Schema resolution, and the <code>ToolInputInvalid</code> error shape.</p>
+</div>
+
+<section>
+<h2>Purpose &amp; motivation</h2>
+<p>Zod plays two roles in patties. Only one of them should be the user's concern.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>Today — Zod is the public contract</h3>
+<p>Every <code>defineTool</code> must hand patties a <code>z.ZodType</code>. A team standardised on Valibot or ArkType can't reuse their schemas — they must rewrite each tool's input in Zod or hand-roll a bridge. The validator is a hidden lock-in.</p>
+</div>
+<div class="feature">
+<h3>Spec 29 — Standard Schema is the contract</h3>
+<p>The tool input is typed to <code>StandardSchemaV1&lt;TInput&gt;</code>. Zod 4, Valibot, and ArkType all implement that spec, so any of them drops in. Patties keeps using Zod internally for its own config and registry — that's an implementation detail users never touch.</p>
+</div>
+</div>
+<div class="callout tip">
+<p class="callout-title">Standard Schema</p>
+<p><a href="https://standardschema.dev" target="_blank" rel="noopener">Standard Schema</a> is a zero-dependency, types-only interop spec authored by the Zod, Valibot, and ArkType maintainers. A schema advertises a <code>~standard</code> property carrying <code>{ version, vendor, validate, types }</code>. Patties only needs <code>validate</code> (runtime) and <code>vendor</code> (to pick a JSON-Schema converter). This is the same boundary discipline as the rest of the framework: <a href="guidelines.html">standards at the edge</a>.</p>
+</div>
+</section>
+
+<section>
+<h2>Scope &amp; non-goals</h2>
+<div class="feature-grid">
+<div class="feature">
+<h3>✓ In scope</h3>
+<ul>
+<li>The public AI-tool input surface: <code>ToolConfig.input</code> / <code>defineTool</code>.</li>
+<li>Runtime input validation in <code>ai/run.ts</code>.</li>
+<li>JSON-Schema generation for the Anthropic wire format and the agents-md manifest.</li>
+<li>The <code>ToolInputInvalid</code> error shape.</li>
+</ul>
+</div>
+<div class="feature">
+<h3>✗ Non-goals</h3>
+<ul>
+<li><strong>Config validation stays Zod.</strong> <code>PattiesConfigSchema</code> is internal; not user-pluggable.</li>
+<li><strong>UI registry stays Zod.</strong> <code>ComponentEntrySchema</code> is patties-ui's own source of truth.</li>
+<li>No generic "validate this Request body" helper — that's a separate feature.</li>
+<li>No removal of Zod from <code>dependencies</code>; it remains the bundled default.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<section>
+<h2>API surface change</h2>
+<p>One type changes in <code>src/ai/types.ts</code>. The generic <code>TInput</code> is now inferred from the Standard Schema's output type rather than Zod's.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>Before</h3>
+<pre data-lang="ts"><code>import type { z } from "zod"
+
+export interface ToolConfig&lt;
+  TInput = unknown,
+  TOutput = unknown,
+&gt; {
+  name: string
+  description: string
+  input: z.ZodType&lt;TInput&gt;
+  handler: (
+    input: TInput,
+    ctx: AiContext,
+  ) =&gt; Promise&lt;TOutput&gt; | TOutput
+}</code></pre>
+</div>
+<div class="feature">
+<h3>After</h3>
+<pre data-lang="ts"><code>import type { StandardSchemaV1 } from "@standard-schema/spec"
+
+export interface ToolConfig&lt;
+  TSchema extends StandardSchemaV1 = StandardSchemaV1,
+  TOutput = unknown,
+&gt; {
+  name: string
+  description: string
+  input: TSchema
+  // optional escape hatch — see §4
+  parameters?: JsonSchema
+  handler: (
+    input: StandardSchemaV1.InferOutput&lt;TSchema&gt;,
+    ctx: AiContext,
+  ) =&gt; Promise&lt;TOutput&gt; | TOutput
+}</code></pre>
+</div>
+</div>
+<div class="callout note">
+<p class="callout-title">Note</p>
+<p><code>defineTool</code> keeps its single-argument shape. <code>StandardSchemaV1.InferOutput&lt;TSchema&gt;</code> gives the handler the exact parsed type — identical inference ergonomics to today's <code>z.infer</code>, but vendor-neutral.</p>
+</div>
+</section>
+
+<section>
+<h2>The JSON-Schema problem</h2>
+<p>This is the real engineering crux. Standard Schema defines runtime <em>validation</em> only — it carries no JSON-Schema export. But patties needs JSON Schema in two places: the Anthropic tool <code>input_schema</code> (wire format) and the agents-md <code>CLAUDE.md</code> manifest.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    T["defineTool({ input })"]
+    V["~standard.validate&nbsp;(runtime)"]
+    R{"JSON Schema needed"}
+    P["tool.parameters provided?"]
+    Z["vendor === 'zod'"]
+    O["other vendor"]
+    JS["JSON Schema"]
+    T --> V
+    T --> R
+    R --> P
+    P -->|yes| JS
+    P -->|no| Z
+    Z -->|"dynamic import('zod') → z.toJSONSchema"| JS
+    P -->|no| O
+    O -->|"no converter → build error"| ERR["Actionable error:\nadd parameters: {...}"]
+    classDef warn fill:#fef3c7,stroke:#d97706,color:#7c2d12;
+    class ERR warn;
+      </pre>
+<div class="cap">Zod stays zero-config (auto-derived JSON Schema). Any other validator works the moment the tool supplies an explicit <code>parameters</code> JSON Schema. The resolver is a small vendor→converter table, Zod registered by default.</div>
+</div>
+
+<h3>Resolution order</h3>
+<ul class="reqs">
+<li><span class="req-tag stage">1 · Explicit</span><span>If <code>tool.parameters</code> is set, use it verbatim. Always wins — the escape hatch for any validator.</span></li>
+<li><span class="req-tag stage">2 · Vendor converter</span><span>Else read <code>input['~standard'].vendor</code>. If a converter is registered (Zod ships by default via dynamic <code>import("zod").toJSONSchema</code>), use it.</span></li>
+<li><span class="req-tag stage">3 · Fail loud</span><span>Else throw a build-time error naming the tool and the fix: <em>"Tool 'x' uses validator '&lt;vendor&gt;' which patties can't auto-convert to JSON Schema. Add a <code>parameters</code> JSON Schema to the tool."</em> Never silently fall back to <code>{ type: "object" }</code> — that would ship a broken tool definition to the model.</span></li>
+</ul>
+<div class="callout warning">
+<p class="callout-title">Warning</p>
+<p>The current <code>zodToJsonSchemaLite</code> swallows failures and returns <code>{ type: "object" }</code> (<code>src/ai/run.ts</code>). Under Spec 29 a conversion failure for a <em>known</em> vendor is a build error, not a silent empty schema — a wrong tool schema corrupts model behaviour invisibly. The lite fallback is removed.</p>
+</div>
+</section>
+
+<section>
+<h2>Runtime validation</h2>
+<p>In <code>src/ai/run.ts</code>, the per-tool-call <code>safeParse</code> becomes a Standard Schema <code>validate</code>. The spec allows <code>validate</code> to be async, so the call site awaits.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>Before</h3>
+<pre data-lang="ts"><code>const parsed =
+  tool.config.input.safeParse(use.input)
+if (!parsed.success) {
+  throw new ToolInputInvalid(
+    use.name,
+    parsed.error.issues,
+  )
+}
+const out = await tool.config.handler(
+  parsed.data, ctx,
+)</code></pre>
+</div>
+<div class="feature">
+<h3>After</h3>
+<pre data-lang="ts"><code>const result = await tool.config
+  .input["~standard"].validate(use.input)
+if (result.issues) {
+  throw new ToolInputInvalid(
+    use.name,
+    result.issues,
+  )
+}
+const out = await tool.config.handler(
+  result.value, ctx,
+)</code></pre>
+</div>
+</div>
+<div class="callout note">
+<p class="callout-title">Note</p>
+<p>Standard Schema's <code>validate</code> returns <code>{ value }</code> on success or <code>{ issues }</code> on failure — no exceptions thrown for validation failures, same control flow as <code>safeParse</code>. Most validators run synchronously; awaiting a non-promise is a no-op, so there's no measurable cost for Zod.</p>
+</div>
+</section>
+
+<section>
+<h2>Error shape</h2>
+<p><code>ToolInputInvalid</code> currently stores <code>z.ZodIssue[]</code>. It becomes vendor-neutral.</p>
+<pre data-lang="ts"><code>import type { StandardSchemaV1 } from "@standard-schema/spec"
+
+export class ToolInputInvalid extends Error {
+  readonly issues: ReadonlyArray&lt;StandardSchemaV1.Issue&gt;
+  readonly tool: string
+  constructor(tool: string, issues: ReadonlyArray&lt;StandardSchemaV1.Issue&gt;) {
+    super(`Tool "${tool}" received invalid input: ${issues.length} issue(s).`)
+    this.name = "ToolInputInvalid"
+    this.tool = tool
+    this.issues = issues
+  }
+}</code></pre>
+<p>A <code>StandardSchemaV1.Issue</code> is <code>{ message: string; path?: ReadonlyArray&lt;PropertyKey | { key }&gt; }</code> — a strict subset of what <code>ZodIssue</code> carried, so anything formatting these issues for a response keeps working with a narrower read.</p>
+</section>
+
+<section>
+<h2>Validator examples</h2>
+<p>Same <code>defineTool</code>, three validators. Zod needs nothing extra; the others supply <code>parameters</code> until a converter is registered for them.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>Zod 4 — unchanged, auto JSON Schema</h3>
+<pre data-lang="ts"><code>import { z } from "zod"
+import { defineTool } from "patties/ai"
+
+export default defineTool({
+  name: "search",
+  description: "Search hotel inventory.",
+  input: z.object({
+    city: z.string(),
+    from: z.string(),
+    to: z.string(),
+  }),
+  handler(input) {
+    // input: { city, from, to }
+  },
+})</code></pre>
+</div>
+<div class="feature">
+<h3>Valibot — explicit parameters</h3>
+<pre data-lang="ts"><code>import * as v from "valibot"
+import { defineTool } from "patties/ai"
+
+export default defineTool({
+  name: "search",
+  description: "Search hotel inventory.",
+  input: v.object({
+    city: v.string(),
+    from: v.string(),
+    to: v.string(),
+  }),
+  parameters: {
+    type: "object",
+    properties: {
+      city: { type: "string" },
+      from: { type: "string" },
+      to:   { type: "string" },
+    },
+    required: ["city", "from", "to"],
+  },
+  handler(input) { /* fully typed */ },
+})</code></pre>
+</div>
+</div>
+<div class="callout note">
+<p class="callout-title">Note</p>
+<p>Valibot and ArkType both expose their own <code>toJsonSchema</code> helpers. A follow-up can register them in the vendor table so <code>parameters</code> becomes optional for those too — but that's additive and out of this spec's critical path.</p>
+</div>
+</section>
+
+<section>
+<h2>Dependency change</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Package</th><th>Change</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td><code>@standard-schema/spec</code></td><td><strong>Add</strong> to <code>packages/patties</code> <code>dependencies</code></td><td>Types-only, zero runtime, ~1&nbsp;kB. Provides <code>StandardSchemaV1</code>.</td></tr>
+<tr><td><code>zod</code></td><td><strong>Keep</strong> in <code>dependencies</code></td><td>Still the internal default for config + registry, and the default JSON-Schema converter. The dynamic <code>import("zod")</code> in the converter resolves the bundled copy.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout tip">
+<p class="callout-title">Optional-AI rule</p>
+<p>Per the <a href="guidelines.html">optional-AI rule</a>, the Zod JSON-Schema converter is loaded by dynamic <code>import()</code> inside the resolver — never at module top level — so non-AI users and edge bundles don't pull it eagerly.</p>
+</div>
+</section>
+
+<section>
+<h2>Backward compatibility</h2>
+<ul>
+<li><strong>Zod 4 is Standard-Schema-compliant.</strong> Every existing <code>z.object()</code> tool input satisfies <code>StandardSchemaV1</code> with no edit — existing apps compile and run unchanged.</li>
+<li><strong>The fixture app is the regression oracle.</strong> <code>tests/fixtures/ai-app/app/tools/search.ts</code> keeps its Zod schema; the generated <code>CLAUDE.md</code> tool JSON Schema must be byte-identical after the change.</li>
+<li><strong>No API rename.</strong> <code>defineTool</code>, <code>ToolConfig</code>, and <code>ToolInputInvalid</code> keep their names and import paths; only types widen.</li>
+<li><strong>This is additive → a minor release.</strong> No deprecation, no codemod.</li>
+</ul>
+</section>
+
+<section>
+<h2>Touch points</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>File</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td><code>src/ai/types.ts</code></td><td><code>ToolConfig.input</code> → <code>StandardSchemaV1</code>; handler input via <code>InferOutput</code>; add optional <code>parameters</code>.</td></tr>
+<tr><td><code>src/ai/run.ts</code></td><td><code>safeParse</code> → <code>~standard.validate</code> (awaited); replace <code>zodToJsonSchemaLite</code> with the resolver (§4).</td></tr>
+<tr><td><code>src/ai/errors.ts</code></td><td><code>ToolInputInvalid.issues</code> → <code>ReadonlyArray&lt;StandardSchemaV1.Issue&gt;</code>.</td></tr>
+<tr><td><code>src/ai/json-schema.ts</code> <span class="pill amber">new</span></td><td>The vendor→converter resolver: explicit <code>parameters</code> → Zod auto-convert → fail loud. Shared by <code>run.ts</code> and agents-md.</td></tr>
+<tr><td><code>src/agents-md/zod-to-json-schema.ts</code></td><td>Route through the shared resolver so the manifest matches the wire schema.</td></tr>
+<tr><td><code>src/ai/define.ts</code> (defineTool)</td><td>Generic signature widened; runtime behaviour unchanged.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section>
+<h2>Acceptance criteria</h2>
+<ul>
+<li>A tool defined with a Zod 4 schema works with no source change, and its generated JSON Schema is byte-identical to today's output.</li>
+<li>A tool defined with a Valibot or ArkType schema validates inputs correctly at runtime via <code>~standard.validate</code>.</li>
+<li>A non-Zod tool with no <code>parameters</code> fails the <strong>build</strong> with an actionable error naming the tool and the fix — never ships <code>{ type: "object" }</code>.</li>
+<li>A non-Zod tool <em>with</em> <code>parameters</code> emits that JSON Schema verbatim on the Anthropic wire and in <code>CLAUDE.md</code>.</li>
+<li>Invalid tool input throws <code>ToolInputInvalid</code> carrying <code>StandardSchemaV1.Issue[]</code>; the response surfaces the messages.</li>
+<li><code>@standard-schema/spec</code> is the only new dependency; <code>zod</code> is still only reached by dynamic <code>import()</code> for non-AI users.</li>
+<li><code>bun run validate</code> passes; the ai-app fixture and agents-md drift checks are green.</li>
+</ul>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="roadmap.html">Delivery tracker</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script type="module" src="../assets/mermaid-init.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

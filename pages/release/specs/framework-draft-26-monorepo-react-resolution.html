@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monorepo React single-copy resolution · Patties specs</title>
+<meta name="description" content="The --monorepo scaffold option ([[cli/18-create-patties-redesign]]) puts each">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Draft</span> <span class="badge badge-id">framework/draft/26-monorepo-react-resolution.md</span></div>
+<h1>Monorepo React single-copy resolution</h1>
+<p class="lede">The --monorepo scaffold option ([[cli/18-create-patties-redesign]]) puts each</p>
+</header>
+<h2>Purpose</h2>
+<p>The <code>--monorepo</code> scaffold option ([[cli/18-create-patties-redesign]]) puts each app under <code>apps/&lt;app_name&gt;/</code> in a Bun workspace, which <strong>hoists</strong> shared dependencies to the workspace-root <code>node_modules</code>. The dev server's existing single-React guarantee assumes a flat layout where <code>react</code> lives in <code>&lt;cwd&gt;/node_modules</code>. Under hoisting that assumption breaks and SSR can load <strong>two copies of React</strong>, crashing on the first hook with <em>"Invalid hook call."</em> This spec makes the framework's bin + React resolution <strong>workspace-aware</strong> so the monorepo option works at all. It is a correctness prerequisite for <code>--monorepo</code>, independent of the task-cache work ([[rfc-bun-task-cache]]).</p>
+<h2>Background — why one React</h2>
+<p>React hooks read a module-level dispatcher inside the <code>react</code> package; the renderer (<code>renderToReadableStream</code>) sets that dispatcher before rendering. App components, react-dom/server, and <code>react</code> must all resolve to the <strong>same</strong> <code>react</code> instance in memory. If components import hooks from one copy while the renderer set the dispatcher on another, the components see an empty dispatcher → "Invalid hook call" during SSR. The failure is a <em>duplicate-module</em> problem, not a misplaced-call problem.</p>
+<p>Two copies appear when two <code>node_modules/react</code> exist on disk and different importers resolve to different ones — classically when <code>patties</code> is installed via a <strong>symlink</strong> (workspace link / <code>bun link</code>): the runtime realpaths the symlink, so framework files <code>import "react"</code> from the framework checkout's own <code>node_modules</code> instead of the app's.</p>
+<h2>Current behavior (flat apps)</h2>
+<p><code>src/cli/dev.ts</code> already solves the flat case with two coordinated moves:</p>
+<ol><li><strong><code>--preserve-symlinks</code></strong> (<code>dev.ts:113</code>) — the dev process re-execs under <code>bun --preserve-symlinks</code>, so symlinks are <strong>not</strong> realpath'd. Framework files keep their logical path under <code>&lt;cwd&gt;/node_modules/patties/...</code>, so their <code>import "react"</code> walks up to <code>&lt;cwd&gt;/node_modules/react</code> — the app's single copy.</li><li><strong><code>resolveReexecEntry</code></strong> (<code>dev.ts:147</code>) — prefers launching the bin from <code>&lt;cwd&gt;/node_modules/patties/bin/patties.ts</code> (the logical app-tree path) over <code>process.argv[1]</code> (which may already be realpath'd into the framework checkout), anchoring the whole process inside the app tree.</li></ol>
+<p>This is airtight when there is exactly one <code>react</code>, at <code>&lt;cwd&gt;/node_modules</code>.</p>
+<h2>The monorepo gap</h2>
+<p>Bun workspaces hoist shared deps to the <strong>root</strong>, not each app:</p>
+<pre><code>my-monorepo/
+  node_modules/{react, react-dom, patties}   ← the ONE hoisted copy of each
+  apps/web/
+    node_modules/                            ← react usually NOT here
+    app/  patties.config.ts  package.json
+</code></pre>
+<p>Two assumptions in the current code break when <code>cwd = apps/web</code>:</p>
+<ul><li><code>resolveReexecEntry</code> probes <code>&lt;cwd&gt;/node_modules/patties/bin/patties.ts</code>. That path does <strong>not</strong> exist (patties is hoisted to the root), so it falls back to <code>process.argv[1]</code> — losing the app-tree anchoring.</li><li>Even with <code>--preserve-symlinks</code>, resolution must climb from <code>apps/web</code> up to the <strong>root</strong> <code>node_modules/react</code>. A stray nested <code>react</code> in an app (e.g. a version pin that forces a non-hoisted install) silently reintroduces a second copy.</li></ul>
+<h2>Proposed changes</h2>
+<h3>1. Upward bin search</h3>
+<p>Replace the single-path probe in <code>resolveReexecEntry</code> with a climb from <code>cwd</code> through parent <code>node_modules</code> directories up to the filesystem root, returning the nearest existing <code>node_modules/patties/bin/patties.ts</code>:</p>
+<pre data-lang="ts"><code>function resolveReexecEntry(cwd: string): string {
+  let dir = cwd;
+  while (true) {
+    const candidate = `${dir}/node_modules/patties/bin/patties.ts`;
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) break; // reached filesystem root
+    dir = parent;
+  }
+  return process.argv[1] ?? "";
+}
+</code></pre>
+<p>In a hoisted monorepo the nearest hit is the workspace-root copy — restoring the anchor. In a flat app the first iteration matches, so behavior is unchanged. (Stop at the first <code>node_modules/patties</code> found; do not keep climbing past it — a nested install is intentional if present.)</p>
+<h3>2. Keep <code>--preserve-symlinks</code>, anchored from the resolved entry</h3>
+<p><code>--preserve-symlinks</code> stays on. Because the re-exec entry (change 1) now points at the hoisted <code>patties</code>, <code>react</code> / <code>react-dom</code> resolve up to the single hoisted copy regardless of whether <code>cwd</code> is the app dir or the root.</p>
+<h3>3. Single-React guard (doctor check)</h3>
+<p>Before booting the dev server (and as a <code>patties doctor</code> check, if/when that command exists), assert exactly one <code>react</code> is reachable from the app entry. Use <code>Bun.resolveSync("react/package.json", appDir)</code> plus a scan for any nested <code>node_modules/react</code> under the app that resolves to a different realpath. If a second copy is found, fail fast with both paths and the fix, e.g.:</p>
+<pre><code>✗ Two copies of React detected — SSR hooks will crash.
+    apps/web → /my-monorepo/node_modules/react        (1903.x)
+    nested  → /my-monorepo/apps/web/node_modules/react (1900.x)
+  Align the version so Bun can hoist a single copy, then `bun install`.
+</code></pre>
+<p>This converts the cryptic runtime "Invalid hook call" into an actionable boot-time error.</p>
+<h2>Build / start</h2>
+<p><code>patties build</code> resolves <code>react</code> through <code>Bun.build</code> from the generated server entry (written under the app's <code>.patties/</code>), which walks up to the hoisted root naturally — so the compiled bundle embeds one React. This spec's changes are primarily a <strong>dev re-exec</strong> concern, but the acceptance tests below cover a monorepo <code>build</code> + <code>start</code> to confirm production SSR is also single-copy.</p>
+<h2>Non-goals</h2>
+<ul><li>Supporting two <em>intentional</em> React versions in one app — unsupported by React itself; out of scope.</li><li>A general dependency-deduplication tool — this is React-specific because the failure mode is React-specific. Other duplicate deps are the user's concern.</li><li>Changing the flat-app behavior — changes 1–2 are no-ops there.</li></ul>
+<h2>Tests</h2>
+<ul><li><code>resolveReexecEntry</code> unit test: in a synthetic <code>apps/web</code> tree with <code>patties</code> only at the root <code>node_modules</code>, returns the root bin path (not the argv fallback); in a flat tree, returns the local bin path (unchanged).</li><li>Integration: scaffold <code>--type fullstack --monorepo</code>, <code>bun install</code>, <code>bun --filter web dev</code>, request a route that calls a hook during SSR → renders without "Invalid hook call".</li><li>Integration: same monorepo, <code>patties build</code> + <code>patties start</code> → SSR route renders (production single-copy).</li><li>Doctor guard: plant a nested <code>apps/web/node_modules/react</code> at a different version → boot fails with both paths listed, exit non-zero.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>A <code>--monorepo</code> app's <code>patties dev</code> SSRs hook-using pages with no duplicate React, whether <code>react</code> is hoisted to the root or pinned in the app.</li><li><code>resolveReexecEntry</code> finds the hoisted <code>patties</code> bin by climbing parent <code>node_modules</code>; flat-app resolution is byte-for-byte unchanged.</li><li>A second reachable <code>react</code> fails at boot with a clear message naming both paths, instead of crashing later with "Invalid hook call."</li><li>Monorepo <code>build</code> + <code>start</code> produce single-copy production SSR.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

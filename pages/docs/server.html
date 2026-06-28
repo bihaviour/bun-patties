@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Server · Patties</title>
+<meta name="description" content="In-process server handles and Bun.serve startup.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>Server</h1>
+<p class="lede">Patties exposes two server entrypoints: <code>createServer()</code> for an in-process fetchable server handle, and <code>startServer()</code> for a real <code>Bun.serve</code> listener.</p>
+</header>
+<section>
+<h2><code>createServer</code></h2>
+<p><code>createServer</code> is useful for tests or internal embedding. It compiles the route patterns and returns a <code>fetch(req)</code> function without binding a port.</p>
+</section>
+<section>
+<h2><code>startServer</code></h2>
+<p><code>startServer</code> boots a real Bun server and forwards unmatched requests to the configured fallback handler.</p>
+<p>Supported server options include:</p>
+<ul>
+<li><code>port</code></li>
+<li><code>hostname</code></li>
+<li><code>unix</code></li>
+<li><code>reusePort</code></li>
+<li><code>routes</code></li>
+<li><code>fallback</code></li>
+<li><code>dev</code></li>
+<li><code>devServer</code></li>
+<li><code>staticRoutes</code></li>
+</ul>
+</section>
+<section>
+<h2>Dev-only routes</h2>
+<p>When <code>dev: true</code>, Patties injects internal routes for:</p>
+<ul>
+<li><code>__patties_open</code> to open files in an editor</li>
+<li><code>__patties_hmr</code> for hot-module reload websocket traffic</li>
+</ul>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

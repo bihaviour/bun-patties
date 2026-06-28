@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Progress · Patties specs</title>
+<meta name="description" content="Linear progress bar. Mirrors shadcn Progress. Built on @radix-ui/react-progress.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-2/40-progress.md</span></div>
+<h1>Progress</h1>
+<p class="lede">Linear progress bar. Mirrors shadcn Progress. Built on @radix-ui/react-progress.</p>
+</header>
+<h2>Purpose</h2>
+<p>Linear progress bar. Mirrors shadcn <code>Progress</code>. Built on <code>@radix-ui/react-progress</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code> when the <code>value</code> is meant to update dynamically. For static <code>value</code> (e.g. a step in a server-rendered checkout), the build downgrades to a plain <code>&lt;div role="progressbar"&gt;</code> with no JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-progress@^1.1</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Progress(props: Radix.ProgressProps &amp; { className?: string; indicatorClassName?: string }): JSX.Element
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li>A static-progress variant is exported as a class helper for non-island use.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Renders <code>role="progressbar"</code> with <code>aria-valuenow</code>, <code>aria-valuemax</code>.</li><li>Indicator translates correctly across all values 0–100.</li><li>Indeterminate state animates a stripe (CSS-only).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

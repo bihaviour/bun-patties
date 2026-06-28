@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.nanoseconds — high-resolution clock for Server-Timing · Patties specs</title>
+<meta name="description" content="Accept. The response finalizer introduced in spec 19 already">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-nanoseconds.md</span></div>
+<h1>Bun.nanoseconds — high-resolution clock for Server-Timing</h1>
+<p class="lede">Accept. The response finalizer introduced in spec 19 already</p>
+</header>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Accept.</strong> The response finalizer introduced in spec 19 already mutates outgoing-response headers (X-Request-Id, Set-Cookie flush). Adding <code>Server-Timing: total;dur=&lt;ms&gt;</code> is a two-line addition that turns the existing finalizer code path into the standard browser-Network-tab perf indicator. Cost: ~50 lines of new spec, ~10 lines of code. Value: every patties user sees server-side request duration in their dev tools with no setup.</p>
+<p>Scope pins:</p>
+<ul><li><strong>Dev only.</strong> Production responses must not carry the header (no perf leak, no overhead).</li><li><strong><code>total</code> only.</strong> Single <code>total;dur=&lt;ms&gt;</code> entry; named per-middleware entries are deferred to a follow-up RFC if real demand surfaces.</li><li><strong>Adapter parity.</strong> Bun adapter uses <code>Bun.nanoseconds()</code> (bigint ns); edge adapter uses <code>performance.now()</code> (double ms). Same precision class; identical header shape.</li><li><strong>Don't overwrite.</strong> A handler that sets its own <code>Server-Timing</code> header wins; the finalizer leaves it alone. Same rule as <code>X-Request-Id</code>.</li></ul>
+<p>Out of scope for this RFC:</p>
+<ul><li><strong>Named per-middleware entries.</strong> Would require ctx-threading. Re-open under a follow-up RFC if asked.</li><li><strong>Always-on production timing.</strong> Separate observability concern; apps that need it should wire their own middleware.</li></ul>
+<hr>
+<h2>Summary</h2>
+<p><code>Bun.nanoseconds()</code> returns elapsed nanoseconds since process start as a <code>bigint</code>. Use it in the same response finalizer that already adds <code>X-Request-Id</code> (spec 19) to emit <code>Server-Timing: total;dur=&lt;ms&gt;</code> on every dev response.</p>
+<h2>Motivation</h2>
+<p>Patties dev users currently get no built-in server-timing signal in their browser dev tools. They have to wire middleware that calls <code>performance.now()</code> and sets the header themselves. Spec 19 opened the right code path — the outer composer's response finalizer — for a header that should be on every response. Adding <code>Server-Timing</code> here costs nothing and gives every user a visible perf indicator from day one.</p>
+<p><code>Bun.nanoseconds()</code> is the right primitive on Bun: <code>bigint</code> nanoseconds, no allocation, no <code>Date.now()</code> rounding. On edge adapters, <code>performance.now()</code> is the standards-compliant equivalent and is available in every WHATWG-class runtime.</p>
+<h2>Proposal</h2>
+<h3>Capture timestamps</h3>
+<p>In the outer composer (the same module that builds <code>PattiesContext</code>):</p>
+<pre data-lang="ts"><code>// Bun adapter
+const ns0 = Bun.nanoseconds()
+const res = await runRoute(req, ctx)
+const ms = Number(Bun.nanoseconds() - ns0) / 1e6
+</code></pre>
+<pre data-lang="ts"><code>// Edge adapter
+const t0 = performance.now()
+const res = await runRoute(req, ctx)
+const ms = performance.now() - t0
+</code></pre>
+<h3>Set the header in dev</h3>
+<p>The same finalizer that flushes <code>X-Request-Id</code> checks <code>NODE_ENV</code>:</p>
+<pre data-lang="ts"><code>if (Bun.env.NODE_ENV !== "production") {
+  if (!res.headers.has("Server-Timing")) {
+    res.headers.set("Server-Timing", `total;dur=${ms.toFixed(1)}`)
+  }
+}
+</code></pre>
+<h3>Coexist with spec 19</h3>
+<p>The Server-Timing write happens after the X-Request-Id write in the finalizer. Both are pure-additive on disjoint header names.</p>
+<h2>Trade-offs</h2>
+<ul><li><strong><code>.toFixed(1)</code> reveals server timing shape in dev.</strong> That's the point — the developer wants to see it. Prod is unaffected by this RFC.</li><li><strong>Edge adapter precision.</strong> <code>performance.now()</code> is millisecond-precision-class but actually a double — same effective resolution as <code>Bun.nanoseconds()</code> rounded to ms.</li><li><strong>No named entries.</strong> Conscious scope. Easier to ship now and add later than to ship a wider API we can't easily walk back.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Should we also emit Server-Timing in prod when a user opts in via config? Deferred — open a follow-up RFC if asked.</li><li>Per-middleware named entries (<code>auth;dur=...</code>, <code>db;dur=...</code>)? Deferred — requires ctx-threading.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

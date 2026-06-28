@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLI overview · Patties</title>
+<meta name="description" content="The top-level patties commands and the global flags shared across them.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>CLI overview</h1>
+<p class="lede">The <code>patties</code> CLI groups everyday tasks under a handful of commands that share a consistent set of global flags.</p>
+</header>
+<section>
+<h2>Commands</h2>
+<p>The top-level CLI commands are:</p>
+<ul>
+<li><code>patties dev</code></li>
+<li><code>patties build</code></li>
+<li><code>patties deploy</code></li>
+<li><code>patties secret</code></li>
+</ul>
+</section>
+<section>
+<h2>Global flags</h2>
+<p>Global flags supported by the CLI include:</p>
+<ul>
+<li><code>--cwd &lt;path&gt;</code> to set the project root</li>
+<li><code>--config &lt;path&gt;</code> to load a specific config file</li>
+<li><code>--verbose</code> to include verbose diagnostics</li>
+<li><code>--version</code> and <code>--help</code></li>
+</ul>
+<p>The CLI resolves global flags before dispatching to a subcommand, so the same <code>--cwd</code>, <code>--config</code>, and <code>--verbose</code> behavior applies consistently across commands.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

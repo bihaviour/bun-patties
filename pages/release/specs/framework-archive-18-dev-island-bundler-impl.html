@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dev island bundler — implementation · Patties specs</title>
+<meta name="description" content="Implements the design decided in spec 17:">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/18-dev-island-bundler-impl.md</span></div>
+<h1>Dev island bundler — implementation</h1>
+<p class="lede">Implements the design decided in spec 17:</p>
+</header>
+<p>Implements the design decided in spec 17:</p>
+<ul><li><strong>A2′</strong> eager startup pre-bundle + lazy rebuild on chunk GET</li><li><strong>B1</strong> on disk under <code>&lt;appDir&gt;/.patties-dev/client/</code></li><li><strong>C1</strong> CLI owns the lifecycle</li><li><strong>D</strong> <code>/_patties/client/</code> URLs, stable filenames, <code>Cache-Control: no-store</code></li></ul>
+<p>This spec is the buildable plan. The intent is that a single PR can land the whole thing.</p>
+<h2>Existing pieces to reuse</h2>
+<ul><li><code>src/build/scan-islands.ts</code> → <code>scanIslands(appDir)</code> returns <code>IslandEntry[]</code>. Use as-is.</li><li><code>src/build/client-entry.ts</code> → <code>generateClientEntry(islands, { frameworkRoot })</code> returns the entry module source. Use as-is.</li><li><code>src/build/index.ts</code> → <code>resolveFrameworkRoot()</code> already exists (private). Lift it to a shared <code>src/internal/framework-root.ts</code> so <code>src/dev/</code> can import it without depending on <code>src/build/</code>.</li><li><code>src/dev/watcher.ts</code> → already publishes <code>{ type: "update", island }</code> on changes under <code>app/islands/</code>.</li><li><code>src/render/index.tsx</code> → <code>createRenderer({ manifest })</code> already accepts a <code>ClientManifest</code>. No shape change required.</li><li><code>src/server/index.ts</code> → <code>startServer({ staticRoutes })</code> already exists and is what the bundler's chunk routes will piggyback on.</li></ul>
+<h2>New module: <code>src/dev/bundler.ts</code></h2>
+<h3>Public API</h3>
+<pre data-lang="ts"><code>import type { ClientManifest } from "../render/index.tsx";
+
+export interface DevBundlerOptions {
+  appDir: string;
+}
+
+export interface DevBundlerHandle {
+  /** Live reference. Renderer reads this on each render; we mutate in place. */
+  readonly manifest: ClientManifest;
+
+  /** Route table keyed by URL. Pass into startServer({ staticRoutes }). */
+  readonly staticRoutes: Record&lt;string, (req: Request) =&gt; Promise&lt;Response&gt;&gt;;
+
+  /** Mark the bundle dirty. Cheap; does not trigger a build. */
+  markDirty(): void;
+
+  /** Most recent build error, if any. Cleared on the next successful build. */
+  lastError(): BuildError | null;
+
+  /** Tear down the in-memory state and remove `&lt;appDir&gt;/.patties-dev/`. */
+  dispose(): Promise&lt;void&gt;;
+}
+
+export interface BuildError {
+  message: string;
+  logs: string[];
+}
+
+export async function startDevBundler(opts: DevBundlerOptions): Promise&lt;DevBundlerHandle&gt;;
+</code></pre>
+<p>Re-exported from <code>src/dev/index.ts</code> as <code>startDevBundler</code> and the two types.</p>
+<h3>Internal state</h3>
+<pre data-lang="ts"><code>interface State {
+  appDir: string;
+  outDir: string;          // `${appDir}/.patties-dev/client`
+  entrySrcPath: string;    // `${appDir}/.patties-dev/client-entry.ts`
+  manifest: ClientManifest;
+  staticRoutes: Record&lt;string, (req: Request) =&gt; Promise&lt;Response&gt;&gt;;
+  dirty: boolean;
+  inFlight: Promise&lt;void&gt; | null;
+  lastError: BuildError | null;
+}
+</code></pre>
+<p>We rebuild the entire client bundle on dirty (not per-island). Reasons:</p>
+<ul><li><code>Bun.build</code> is fast enough that per-island is premature optimization.</li><li>The production pipeline produces a single entry + split chunks via <code>splitting: true</code>; matching that shape in dev keeps the renderer contract identical between dev and prod.</li><li>Per-island would require either disabling splitting (worse output) or running N parallel <code>Bun.build</code> calls (harder to reason about).</li></ul>
+<h3>Startup flow</h3>
+<pre data-lang="ts"><code>export async function startDevBundler(opts): Promise&lt;DevBundlerHandle&gt; {
+  const outDir = `${opts.appDir}/.patties-dev/client`;
+  const entrySrcPath = `${opts.appDir}/.patties-dev/client-entry.ts`;
+
+  await Bun.$`mkdir -p ${outDir}`.quiet();
+
+  const state: State = {
+    appDir: opts.appDir,
+    outDir,
+    entrySrcPath,
+    manifest: { entry: null, islands: {} },
+    staticRoutes: {},
+    dirty: false,
+    inFlight: null,
+    lastError: null,
+  };
+
+  await rebuild(state);          // eager pre-bundle (A2′)
+  wireStaticRoutes(state);       // installs /_patties/client/* handler
+
+  return {
+    get manifest() { return state.manifest; },
+    get staticRoutes() { return state.staticRoutes; },
+    markDirty() { state.dirty = true; },
+    lastError() { return state.lastError; },
+    dispose() { return disposeBundler(state); },
+  };
+}
+</code></pre>
+<h3><code>rebuild(state)</code></h3>
+<pre data-lang="ts"><code>async function rebuild(state: State): Promise&lt;void&gt; {
+  if (state.inFlight) return state.inFlight;          // coalesce concurrent callers
+  state.inFlight = (async () =&gt; {
+    try {
+      const islands = await scanIslands(state.appDir);
+      const frameworkRoot = resolveFrameworkRoot();
+      await Bun.write(state.entrySrcPath, generateClientEntry(islands, { frameworkRoot }));
+
+      const result = await Bun.build({
+        entrypoints: [state.entrySrcPath],
+        target: "browser",
+        splitting: true,
+        sourcemap: "linked",
+        minify: false,
+        outdir: state.outDir,
+        // Stable names. Dev uses Cache-Control: no-store so no need to hash.
+        naming: { entry: "[name].js", chunk: "[name].js", asset: "[name].[ext]" },
+      });
+
+      if (!result.success) {
+        state.lastError = {
+          message: "client bundle failed",
+          logs: result.logs.map((l) =&gt; l.message ?? String(l)),
+        };
+        return;
+      }
+
+      updateManifest(state.manifest, result.outputs, state.entrySrcPath, islands, state.outDir);
+      state.dirty = false;
+      state.lastError = null;
+    } finally {
+      state.inFlight = null;
+    }
+  })();
+  return state.inFlight;
+}
+</code></pre>
+<p><code>updateManifest</code> is a near-copy of <code>populateClientManifest</code> from <code>src/build/index.ts</code>. Lift the latter to a shared <code>src/internal/client-manifest.ts</code> and call it from both places — do <strong>not</strong> copy-paste.</p>
+<h3><code>wireStaticRoutes(state)</code></h3>
+<p>Installs handlers under <code>/_patties/client/*</code> that:</p>
+<ol><li>If dirty, <code>await rebuild(state)</code> first. Concurrent GETs coalesce on the shared <code>inFlight</code> promise.</li><li>Read the requested file from <code>state.outDir</code> with <code>Bun.file()</code>.</li><li>Return with <code>Content-Type</code> inferred from extension and <code>Cache-Control: no-store</code>.</li><li>If the file does not exist, return 404.</li></ol>
+<p>We register a single wildcard route, not one route per chunk. The existing <code>startServer({ staticRoutes })</code> API only takes a flat map; we work around that by registering a function under a synthetic pattern that the Bun matcher treats as a wildcard. <strong>Concrete shape TBD by the implementer</strong> — if <code>startServer</code> needs an extension, add an optional <code>wildcardRoutes?: Record&lt;string, Handler&gt;</code> field rather than overloading <code>staticRoutes</code> semantics.</p>
+<h3><code>dispose(state)</code></h3>
+<ul><li>Awaits any in-flight build.</li><li>Clears <code>state.staticRoutes</code>.</li><li><code>rm -rf</code> on <code>${appDir}/.patties-dev/</code>. Use Bun's <code>await Bun.$\</code>rm -rf ${path}\<code>.quiet()</code>.</li><li>Wired to <code>process.on("SIGINT" | "SIGTERM")</code> via the existing <code>installSigintHandler</code> in <code>src/cli/log.ts</code>. The CLI calls <code>bundler.dispose()</code> from inside the SIGINT handler before exiting.</li></ul>
+<h2>Watcher changes</h2>
+<p><code>src/dev/watcher.ts</code>:</p>
+<pre data-lang="ts"><code>export interface DevOptions {
+  appDir: string;
+  bundler?: DevBundlerHandle;   // new, optional
+}
+</code></pre>
+<p>In the existing <code>notifyChange(path)</code>:</p>
+<pre data-lang="ts"><code>if (path.startsWith(islandsDir)) {
+  options.bundler?.markDirty();             // ← new, synchronous, cheap
+  const rel = path.slice(islandsDir.length);
+  const name = rel.replace(/\.[tj]sx?$/, "").replace(/\//g, "-");
+  publish(JSON.stringify({ type: "update", island: name }));
+  return;
+}
+</code></pre>
+<p>Order matters: mark dirty <strong>before</strong> publishing the WS message so a fast-acting browser cannot GET the chunk before the dirty flag is set.</p>
+<h2>CLI wiring</h2>
+<p><code>src/cli/dev.ts</code>, in <code>bootstrap()</code>:</p>
+<pre data-lang="ts"><code>const bundler = await startDevBundler({ appDir: resolved.appDir });
+const devServer = createDevServer({ appDir: resolved.appDir, bundler });
+
+// install dispose on shutdown
+const sigint = installSigintHandler();   // assume returns a hook list
+sigint.push(() =&gt; bundler.dispose());
+
+// ...existing plugin onDevStart loop...
+
+const entry = findUserEntry(resolved.appDir);
+if (entry) {
+  const mod = await import(entry);
+  const start = mod.default as StartFn | undefined;
+  if (typeof start === "function") {
+    await start({
+      devServer,
+      port: resolved.port,
+      host: resolved.host,
+      appDir: resolved.appDir,
+      bundler,                              // ← new field
+    });
+    printReady(resolved);
+    return EXIT.OK;
+  }
+  log.warn(`${entry} has no default export; starting a stub dev server.`);
+}
+
+// Stub fallback unchanged — does NOT get the bundler.
+</code></pre>
+<p>The <code>StartFn</code> signature in <code>src/cli/dev.ts</code> gains an optional <code>bundler</code>:</p>
+<pre data-lang="ts"><code>type StartFn = (opts: {
+  devServer: DevServer;
+  port: number;
+  host: string;
+  appDir: string;
+  bundler?: DevBundlerHandle;
+}) =&gt; void | Promise&lt;void&gt;;
+</code></pre>
+<p>Optional so user-authored <code>server.ts</code> files written before this spec continue to compile and run (without hydrated islands — same as today).</p>
+<p><code>installSigintHandler</code> today is fire-and-forget; if it doesn't already expose a way to register additional cleanups, extend it to do so as part of this PR.</p>
+<h2>Renderer changes</h2>
+<p>This spec also pulls forward the HTMLRewriter work decided in [[rfc-bun-htmlrewriter]] (accepted Phase 2, not yet encoded). The dev bundler needs a <code>&lt;script src="/_patties/client/client-entry.js"&gt;</code> tag injected into the SSR HTML. Today <code>src/render/index.tsx</code> does that with string concatenation against <code>&lt;/body&gt;</code>. Spec 18 replaces that with an <code>HTMLRewriter</code> pipeline, because:</p>
+<ul><li>The dev bundler is now a second customer for the same injection point (the HMR client script is the first). Two string-concat callers in the same render path is the moment to factor.</li><li>The RFC's reasoning stands unchanged: string-concat against minified shells is fragile, and the rewriter ships unchanged to Cloudflare / workerd via the edge adapter (spec 12).</li><li>The CSRF auto-injection in [[rfc-bun-csrf]] depends on the rewriter landing first; doing it here unblocks that work too.</li></ul>
+<p>Implementation:</p>
+<ol><li>New <code>src/render/inject.ts</code> exporting <code>createInjector(scripts: string[]) → (res: Response) =&gt; Response</code>. Uses <code>HTMLRewriter</code> with a single <code>element("body", { element(el) { el.append(scriptTags, { html: true }) } })</code> handler.</li><li><code>src/render/index.tsx</code> constructs an injector per render with the appropriate scripts (HMR client in dev, plus the client-entry tag when <code>manifest.entry</code> is set).</li><li>Remove <code>BODY_CLOSE_RE</code> and the string-injection branch.</li><li>Existing unit tests under <code>tests/render/</code> that asserted on the concatenated string update to read the rewritten body. (Cheaper: buffer the rewritten Response in the test, assert on the result.)</li></ol>
+<p><code>src/render/dev-error.tsx</code> gains an optional "current build error" input. <code>src/render/index.tsx</code> plumbs it through:</p>
+<pre data-lang="ts"><code>export interface RenderOptions {
+  manifest?: ClientManifest;
+  dev?: boolean;
+  modules?: Record&lt;string, unknown&gt;;
+  /** new: function returning the most recent dev build error, if any */
+  getBuildError?: () =&gt; BuildError | null;
+}
+</code></pre>
+<p>In <code>renderPage</code>, before normal rendering: if <code>dev &amp;&amp; getBuildError()</code> returns non-null, short-circuit to <code>renderDevErrorPage</code> with that error instead of rendering the page. This makes broken island edits visible on the next navigation without crashing the server.</p>
+<p>The template's <code>app/server.ts</code> passes <code>getBuildError: () =&gt; opts.bundler?.lastError() ?? null</code>.</p>
+<h2>Template changes (handed off to CLI spec 09)</h2>
+<p><code>packages/create-patties/templates/default/</code> updates:</p>
+<ol><li><code>gitignore</code> — add <code>.patties-dev/</code>.</li><li><code>app/server.ts</code> — consume the bundler:</li></ol>
+<pre data-lang="ts"><code>import type { DevBundlerHandle, DevServer } from "patties/dev";
+import { createRenderer } from "patties/render";
+import { createRouter } from "patties/router";
+import { startServer } from "patties/server";
+
+interface StartOpts {
+  devServer: DevServer;
+  port: number;
+  host: string;
+  appDir: string;
+  bundler?: DevBundlerHandle;
+}
+
+export default async function start(opts: StartOpts): Promise&lt;void&gt; {
+  const renderer = createRenderer({
+    dev: true,
+    manifest: opts.bundler?.manifest,
+    getBuildError: () =&gt; opts.bundler?.lastError() ?? null,
+  });
+  const router = await createRouter({ appDir: opts.appDir, renderer });
+  startServer({
+    port: opts.port,
+    hostname: opts.host,
+    dev: true,
+    devServer: opts.devServer,
+    routes: router.routes,
+    fallback: router.fallback,
+    staticRoutes: opts.bundler?.staticRoutes,
+  });
+}
+</code></pre>
+<ol><li>The <code>app/server.ts</code> I added in PR-current already exists in a thinner form; this spec replaces it.</li></ol>
+<h2>Dev/prod manifest divergence (clarification)</h2>
+<p>The macro policy decided in [[rfc-bun-import-attributes]] lists <em>"Client manifest (island name → chunk URL)"</em> as a required macro: the production server bundle reads the manifest at build time via <code>MANIFEST</code> and never at runtime. This spec deliberately diverges in dev:</p>
+<ul><li>Dev mutates <code>state.manifest</code> in place across rebuilds; the renderer holds the live reference and reads it on each render.</li><li>The <code>MANIFEST</code> macro is <strong>not</strong> used in the dev path.</li></ul>
+<p>This is consistent with the build-time-discovery rule because the production server bundle still goes through <code>src/build/index.ts</code> → <code>generateServerEntry</code> → MANIFEST macro. The dev bundler lives entirely under <code>src/dev/</code> and is import-disjoint from the production bundle (see the guard test below).</p>
+<p>Document this divergence in <code>src/dev/bundler.ts</code> with a one-line header comment referencing the RFC, so the next person reading the code understands why this dev path looks unlike the prod path.</p>
+<h2>Build-time-discovery guard</h2>
+<p>Production server bundle must not import <code>src/dev/bundler.ts</code>. Enforce with a new test in <code>tests/integration/build.test.ts</code>:</p>
+<pre data-lang="ts"><code>test("production server bundle does not reference src/dev/", async () =&gt; {
+  const built = await fs.promises.readFile(serverEntryArtifact, "utf8");
+  expect(built).not.toMatch(/startDevBundler/);
+  expect(built).not.toMatch(/\.patties-dev/);
+});
+</code></pre>
+<p>Also add a static import-graph check (CI grep): no file under <code>src/server/**</code> or <code>src/build/**</code> may <code>import</code> anything under <code>src/dev/</code>. A shell one-liner is enough; wire it into <code>bun run validate</code>.</p>
+<h2>Test plan</h2>
+<h3>Unit — <code>tests/dev/bundler.test.ts</code> (new)</h3>
+<p>Fixture: minimal app under <code>tests/fixtures/dev-bundler/</code> with one island <code>app/islands/Counter.tsx</code>.</p>
+<ol><li><code>startDevBundler({ appDir: fixture })</code> populates <code>manifest.entry</code> and <code>manifest.islands["Counter"]</code> with non-null URLs.</li><li><code>Bun.file(${outDir}/client-entry.js).exists()</code> is true after startup.</li><li><code>markDirty()</code> does not block, does not trigger I/O — verified by mocking <code>Bun.build</code> to count calls (one call from startup).</li><li>Calling the static route handler for the entry URL after <code>markDirty()</code> triggers exactly one rebuild even if invoked concurrently 10x (coalescing assertion).</li><li>Editing the island file (<code>Bun.write</code> with broken syntax) + <code>markDirty()</code> + GET → response is still 200 with stale content, <code>lastError()</code> returns the build error.</li></ol>
+<h3>Integration — <code>tests/integration/dev-hmr.test.ts</code> (extend)</h3>
+<p>Add after the existing reload test:</p>
+<ol><li>Boot <code>patties dev</code> against a fixture with one island.</li><li>GET <code>/</code> → assert response HTML contains <code>&lt;script src="/_patties/client/client-entry.js"</code>.</li><li>GET that URL → 200, <code>Content-Type: text/javascript</code>, <code>Cache-Control: no-store</code>, body contains the island name.</li><li>Touch the island file with <code>Bun.write</code>. Wait for the WS message. GET the URL again → still 200, body reflects the new contents.</li></ol>
+<h3>Integration — <code>tests/integration/build.test.ts</code> (extend)</h3>
+<p>Add the production-bundle guard test described under <em>Build-time-discovery guard</em>.</p>
+<h3>Manual</h3>
+<p><code>bunx create-patties demo &amp;&amp; cd demo &amp;&amp; bun dev</code> → load <code>/</code> → the demo todo island responds to clicks without <code>patties build</code> having ever run.</p>
+<h2>Migration / compatibility</h2>
+<ul><li><code>StartFn</code> gains an optional <code>bundler</code> field. Existing user <code>server.ts</code> files written before this spec continue to compile and run; they just don't hydrate islands (same as today). The <code>create-patties</code> template is updated so new projects get the wiring by default.</li><li><code>createRenderer</code> gains an optional <code>getBuildError</code>. Existing callers are unaffected.</li><li><code>createDevServer</code> gains an optional <code>bundler</code>. Existing callers are unaffected.</li><li>No public-export changes beyond the two new symbols (<code>startDevBundler</code>, <code>DevBundlerHandle</code>) on <code>patties/dev</code>.</li></ul>
+<h2>Risks / open in implementation</h2>
+<ol><li><strong><code>startServer</code> static-routes shape.</strong> Today <code>staticRoutes</code> is <code>Record&lt;string, Response&gt;</code> — a flat map of URL → fixed response. Our bundler needs <strong>per-request functions</strong> (so we can check the dirty flag). Three options for the implementer: ((req: Request) =&gt; Promise&lt;Response&gt;)<code>. Tightest fit; keeps one field. field on </code>ServerOptions`. rebuild. Defeats the lazy-rebuild design — rejected. Recommend the first; the type widening is backwards-compatible.<ul><li>Extend <code>ServerOptions</code> with <code>staticRoutes</code> accepting `Response |</li><li>Add a new <code>wildcardRoutes</code> field. Cleanest separation; one more</li><li>Have the bundler pre-write all chunk Responses and re-publish on</li></ul></li><li><strong>Race between scan and write.</strong> If the user saves an island file mid-rebuild, <code>scanIslands</code> runs against a transient FS state. Bun's FS is synchronous within the build, so the risk is limited to the user actively editing during the build window (sub-second). If it bites, debounce in the watcher (50ms).</li><li><strong>Sourcemap URLs.</strong> Bun emits <code>//# sourceMappingURL=…</code> relative to the chunk. Because chunks and maps live in the same <code>outDir</code> served under the same prefix, the default relative URL should resolve. Verify in the integration test by curling the sourcemap URL.</li><li><strong>AGENTS.md mention.</strong> <code>.patties-dev/</code> should be excluded from <code>agents-md</code> scan if that scan ever walks user dirs. Today it doesn't, but flag it for <code>src/agents-md/generate.ts</code> review.</li></ol>
+<h2>Acceptance criteria</h2>
+<ul><li><code>bunx create-patties demo &amp;&amp; cd demo &amp;&amp; bun dev</code> serves a page where islands hydrate and respond to input, without <code>patties build</code> ever running.</li><li>Editing an island file marks the bundle dirty without triggering a build; the build only runs when the browser re-fetches the chunk URL after the HMR notification.</li><li><code>patties build</code> artifacts are byte-for-byte unchanged by this spec (same <code>src/build/</code> code path).</li><li>Production server bundle contains zero references to <code>src/dev/</code> or <code>.patties-dev</code>; the new integration test asserts both.</li><li><code>bun run validate</code> passes including the new import-graph guard.</li><li>SIGINT during <code>patties dev</code> removes the <code>.patties-dev/</code> directory before exit.</li><li>Script injection in <code>src/render/index.tsx</code> uses <code>HTMLRewriter</code> rather than string concatenation (encodes [[rfc-bun-htmlrewriter]]); flip that RFC's <code>status:</code> from <code>encoded_in: []</code> to include <code>framework/draft/18-dev-island-bundler-impl</code> once this lands.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

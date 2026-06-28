@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Popover · Patties specs</title>
+<meta name="description" content="Floating panel anchored to a trigger. Mirrors shadcn Popover. Built on @radix-ui/react-popover.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/39-popover.md</span></div>
+<h1>Popover</h1>
+<p class="lede">Floating panel anchored to a trigger. Mirrors shadcn Popover. Built on @radix-ui/react-popover.</p>
+</header>
+<h2>Purpose</h2>
+<p>Floating panel anchored to a trigger. Mirrors shadcn <code>Popover</code>. Built on <code>@radix-ui/react-popover</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Positioning, open-state, and focus management need client JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-popover@^1.1</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export const Popover: typeof Radix.Root
+export const PopoverTrigger: typeof Radix.Trigger
+export const PopoverAnchor: typeof Radix.Anchor
+export function PopoverContent(props: Radix.PopoverContentProps &amp; { className?: string; align?: "start" | "center" | "end" }): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li>Content defaults to <code>align="center" sideOffset={4}</code> to match shadcn defaults.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>SSR renders only the trigger.</li><li>Opening the popover positions content correctly under the trigger, including viewport flip.</li><li><code>Esc</code> and outside-click close it; focus returns to the trigger.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

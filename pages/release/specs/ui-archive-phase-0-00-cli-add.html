@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>`bun patties add` — UI component stamper · Patties specs</title>
+<meta name="description" content="Ship the foundation that every UI component spec in phase-1 through phase-4 depends on: a patties add subcommand that copies the canonical source for a compo…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-0/00-cli-add.md</span></div>
+<h1>`bun patties add` — UI component stamper</h1>
+<p class="lede">Ship the foundation that every UI component spec in phase-1 through phase-4 depends on: a patties add subcommand that copies the canonical source for a compo…</p>
+</header>
+<h2>Purpose</h2>
+<p>Ship the foundation that every UI component spec in phase-1 through phase-4 depends on: a <code>patties add</code> subcommand that copies the canonical source for a component (and its required helpers + peer deps) into the user's project, idempotently.</p>
+<p>This spec does <strong>not</strong> ship any components. It ships the plumbing that components plug into. No component spec in a later phase is mergeable until this one is <code>completed</code>.</p>
+<h2>Public surface</h2>
+<pre data-lang="text"><code>patties add &lt;component&gt; [...components]
+patties add --all
+patties add --list
+patties add --dry-run &lt;component&gt;
+</code></pre>
+<p>Behaviour:</p>
+<ul><li><code>&lt;component&gt;</code> is the kebab-case name from the index in <a href="ui-archive-00-overview.html">../00-overview.md</a> (<code>accordion</code>, <code>alert-dialog</code>, <code>data-table</code>, …). Numbers are not part of the name.</li><li><code>--all</code> stamps every component whose spec status is <code>completed</code> (skips drafts).</li><li><code>--list</code> prints a table of <code>name | phase | island | status</code> and exits.</li><li><code>--dry-run</code> prints the file list and <code>package.json</code> diff without writing.</li></ul>
+<p>Flags inherited from global CLI (<code>--cwd</code>, <code>--config</code>, <code>--verbose</code>) work unchanged. The command refuses to run if <code>process.env.NODE_ENV === "production"</code>, mirroring the rule in <a href="cli-archive-08-secret-command.html"><code>secret</code></a>.</p>
+<h2>Wiring into the framework</h2>
+<p>Mounts in <code>bun-patties-framework</code> as:</p>
+<ul><li><code>src/cli/commands/add.ts</code> — <code>export async function runAdd(argv: string[], ctx: CliContext): Promise&lt;number&gt;</code>. Mirrors the shape of <code>runSecret</code> / <code>runDeploy</code>.</li><li><code>src/cli/index.ts</code> — new <code>case "add":</code> in the dispatch switch, plus a line in <code>printHelp()</code>.</li><li><code>src/cli/commands/add/</code> (subdir) — implementation modules:<ul><li><code>registry.ts</code> — the static component table (name → spec path, peer deps, island flag, helpers, kind, phase, status).</li><li><code>stamper.ts</code> — writes files under <code>app/components/ui/</code>, never overwriting unless <code>--force</code>.</li><li><code>peer-deps.ts</code> — patches <code>package.json</code> <code>dependencies</code> block; uses pinned versions from the registry.</li><li><code>tokens.ts</code> — idempotent merge into <code>app/styles/tokens.css</code>.</li><li><code>internal.ts</code> — installs <code>_internal/cn.ts</code>, <code>_internal/slot.ts</code>, <code>_internal/variants.ts</code> on first use.</li></ul></li></ul>
+<p>The framework's package exports do <strong>not</strong> gain a new entry point. Component source lives in the user's repo; the CLI is the only public touchpoint.</p>
+<h2>Component registry shape</h2>
+<pre data-lang="ts"><code>export interface ComponentEntry {
+  name: string;                 // "alert-dialog"
+  spec: string;                 // "ui/phase-3/03-alert-dialog"
+  phase: 0 | 1 | 2 | 3 | 4;
+  kind: "primitive" | "recipe" | "provider";
+  island: "no" | "yes" | "subtree" | "yes-downgrade";
+  status: "draft" | "completed";
+  files: { from: string; to: string }[];   // source-of-truth paths relative to framework repo
+  peerDeps: Record&lt;string, string&gt;;        // npm name -&gt; semver range, merged into user's package.json
+  internalHelpers: ("cn" | "slot" | "variants")[];
+  tokens?: string[];                       // CSS variable group keys merged into tokens.css
+}
+</code></pre>
+<p>The registry is a single TS module (<code>registry.ts</code>), hand-maintained alongside each phase's components. No filesystem scan at runtime.</p>
+<h2>Stamping rules</h2>
+<ol><li><strong>Destination is fixed</strong>: <code>&lt;cwd&gt;/app/components/ui/&lt;name&gt;.tsx</code>. Recipes that produce multiple files (Data Table, Sidebar, Form) emit each file individually as declared in <code>files</code>.</li><li><strong>Never overwrite</strong> without <code>--force</code>. If the destination exists, print a one-line skip notice and continue.</li><li><strong>Helpers stamp once</strong>: each <code>_internal/*.ts</code> is written only if missing. Helper files are append-only; the CLI does not rewrite them.</li><li><strong>Peer deps are merged, not replaced</strong>: only add missing keys. If a user has a stricter range, leave it alone and warn.</li><li><strong>tokens.css merge is idempotent</strong>: keyed by CSS-variable block comments (<code>/* @patties:tokens base */</code>). Re-running the same <code>add</code> is a no-op.</li><li><strong>No network at install time</strong>: the CLI does not call <code>npm install</code>. It only edits <code>package.json</code> and exits with a line telling the user to run <code>bun install</code>.</li></ol>
+<h2>Source-of-truth layout</h2>
+<p>Inside <code>bun-patties-framework</code>, canonical component source lives at:</p>
+<pre><code>templates/ui/&lt;name&gt;.tsx                     # single-file primitives
+templates/ui/&lt;name&gt;/&lt;filename&gt;.tsx          # multi-file recipes
+templates/ui/_internal/{cn,slot,variants}.ts
+templates/ui/tokens.css
+</code></pre>
+<p>The <code>add</code> command reads from these paths inside the installed <code>patties</code> package (resolved via <code>import.meta.resolve("patties/package.json")</code> and a relative <code>templates/ui/</code> lookup). This keeps the spec catalog and the shipped code in lock-step: a component is "implementable" only when both the markdown spec exists in <code>agent_specs/ui/progress/phase-N/</code> and the source exists under <code>templates/ui/</code>.</p>
+<h2>Cross-cutting test harness (foundation for every later phase)</h2>
+<p>Phase-0 also ships test utilities under <code>bun-patties-framework/tests/ui/</code>:</p>
+<ul><li><code>renderStatic(component)</code> — wraps <code>renderToReadableStream</code> with the project's default <code>tokens.css</code> and returns the resulting HTML string.</li><li><code>hydrate(component)</code> — boots the island bundle in a <code>happy-dom</code> (or Bun's built-in DOM) environment and asserts no console errors during hydration.</li><li><code>assertJsonProps(component, props)</code> — fails if any prop crossing the island boundary fails <code>JSON.stringify</code> round-trip.</li></ul>
+<p>These three helpers are what every component-level "Acceptance criteria" in later phases will reference. Their public signatures are frozen by this spec.</p>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties add --list</code> prints all 60 components from <a href="ui-archive-00-overview.html">../00-overview.md</a> plus their current <code>status</code>.</li><li><code>patties add alert</code> (after the alert spec ships in phase-1) writes exactly <code>app/components/ui/alert.tsx</code> and any required <code>_internal/*</code> files, patches <code>package.json</code>, and merges <code>tokens.css</code>. A second invocation is a no-op.</li><li><code>patties add unknown-name</code> exits non-zero with <code>unknown component: unknown-name</code>.</li><li><code>patties add --dry-run badge</code> writes nothing but prints the would-be file list and <code>package.json</code> diff.</li><li>Running <code>patties add</code> from a directory without a <code>package.json</code> exits non-zero with <code>not a Patties project (no package.json found at &lt;cwd&gt;)</code>.</li><li><code>tests/ui/renderStatic.test.ts</code> and <code>tests/ui/hydrate.test.ts</code> exist and pass against a fixture component shipped under <code>tests/ui/__fixtures__/</code>.</li><li><code>bun run check</code> (Biome + tsc) passes on every new file. The <code>PostToolUse</code> hook from <a href="framework-archive-13-conventions.html">framework conventions</a> gates this.</li><li>The command is registered in <code>printHelp()</code> and listed in <code>README.md</code> under "Commands".</li></ul>
+<h2>Out of scope (deferred to later specs)</h2>
+<ul><li>Per-component spec authoring — each phase's components own their own spec files.</li><li><code>patties remove &lt;component&gt;</code> — additive-only for now.</li><li><code>patties update &lt;component&gt;</code> (re-stamp from new spec version) — deferred to a phase-5 maintenance spec.</li><li>Theming editor / token UI — userland concern.</li><li>Registry-driven plugin components (third-party <code>patties add</code> providers) — out of scope until the core 60 are shipped.</li></ul>
+<h2>Open questions</h2>
+<ol><li>Should <code>--force</code> be a per-file confirmation (interactive) or all-or-nothing? Default proposal: all-or-nothing, since the CLI is meant to be re-runnable in CI.</li><li>Where does the registry live long-term — hand-maintained TS, or generated from frontmatter in <code>agent_specs/ui/progress/**/*.md</code>? Phase-0 ships hand-maintained; revisit once 20+ components are completed.</li></ol>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

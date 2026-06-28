@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accordion · Patties specs</title>
+<meta name="description" content="Vertically stacked, expandable sections — mirrors shadcn Accordion. Built on @radix-ui/react-accordion.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/01-accordion.md</span></div>
+<h1>Accordion</h1>
+<p class="lede">Vertically stacked, expandable sections — mirrors shadcn Accordion. Built on @radix-ui/react-accordion.</p>
+</header>
+<h2>Purpose</h2>
+<p>Vertically stacked, expandable sections — mirrors shadcn <code>Accordion</code>. Built on <code>@radix-ui/react-accordion</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Open-state is client state; ARIA <code>aria-expanded</code> flips on user interaction; chevron rotates via Radix <code>data-state</code>.</p>
+<p>The root <code>&lt;Accordion&gt;</code> IS the island; nested <code>AccordionItem</code>s share that island's React root and do not register independently.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-accordion@^1.2</code></li><li><code>lucide-react@^0.400</code> (ChevronDown icon)</li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export const Accordion: typeof AccordionPrimitive.Root
+export function AccordionItem(props: AccordionPrimitive.AccordionItemProps &amp; { className?: string }): JSX.Element
+export function AccordionTrigger(props: AccordionPrimitive.AccordionTriggerProps &amp; { className?: string }): JSX.Element
+export function AccordionContent(props: AccordionPrimitive.AccordionContentProps &amp; { className?: string }): JSX.Element
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>No <code>forwardRef</code>. Refs are accepted via the <code>ref</code> prop (React 19).</li><li><code>onValueChange</code> is allowed because the entire tree is in one island — props do not cross the SSR boundary.</li><li>Default <code>type="single"</code> and <code>collapsible</code> if neither is specified, to match the most common shadcn snippet.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>SSR output renders all items collapsed (uncontrolled default) and matches snapshot.</li><li>Clicking a trigger toggles <code>data-state="open"</code> and reveals content after hydration.</li><li>Keyboard <code>↑/↓/Home/End/Space/Enter</code> all work per WAI-ARIA pattern.</li><li><code>prefers-reduced-motion</code> disables the height-collapse transition.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

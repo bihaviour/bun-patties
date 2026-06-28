@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties deploy · Patties</title>
+<meta name="description" content="Build-and-dispatch deployment through installable plugins.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>patties deploy</h1>
+<p class="lede"><code>patties deploy</code> builds the app and hands deployment off to an installed deploy plugin.</p>
+</header>
+<section>
+<h2>Flow</h2>
+<ul>
+<li>load config and resolve the active target</li>
+<li>run <code>patties build</code> unless <code>--skip-build</code> is set</li>
+<li>find deploy plugins whose <code>deployTarget</code> matches the target</li>
+<li>select a plugin, optionally using <code>--env</code></li>
+<li>call the plugin with the built artifacts</li>
+</ul>
+</section>
+<section>
+<h2>Flags</h2>
+<ul>
+<li><code>--target &lt;bun|edge&gt;</code></li>
+<li><code>--env &lt;name&gt;</code></li>
+<li><code>--skip-build</code></li>
+</ul>
+</section>
+<section>
+<h2>Behavior by target</h2>
+<p>If no plugin is installed for <code>bun</code>, Patties prints the built server entry run path instead of failing. For non-Bun targets, missing deploy plugins are treated as a usage error.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

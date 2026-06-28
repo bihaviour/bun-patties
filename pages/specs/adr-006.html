@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-006 — Validation, jobs, persistence stay libraries · Patties</title>
+<meta name="description" content="Validation, jobs, and persistence stay plain libraries — the framework doesn't wrap them.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">ADR</span> <span class="pill green">accepted</span></div>
+<h1>ADR-006 — Validation, jobs, persistence stay libraries</h1>
+<p class="lede">Validation, jobs, and persistence stay plain libraries — the framework doesn't wrap them.</p>
+</header>
+<section>
+<h2>Context</h2>
+<p>Frameworks tend to absorb libraries into framework concepts — a "pipe" for validation, a "provider" for a repository. That coupling is the weight this design is trying to avoid.</p>
+</section>
+<section>
+<h2>Decision</h2>
+<p>Zod, an ORM, the job/cron primitives — call them directly where you need them. The framework doesn't wrap them. Shared infrastructure lives in a normal module (<code>app/_platform/</code>) exposed through its public API.</p>
+</section>
+<section>
+<h2>Consequences</h2>
+<p>No framework-specific way to validate or query; you use the library's own API and docs. Upgrades and swaps are independent of the framework. Cost: less prescription — teams pick their own conventions for these concerns.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="decisions.html">All decisions</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

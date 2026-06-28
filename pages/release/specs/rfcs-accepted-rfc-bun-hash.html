@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.hash / Bun.sha — one-shot hash helpers · Patties specs</title>
+<meta name="description" content="Accept as a policy adoption — and an active complement to">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-hash.md</span></div>
+<h1>Bun.hash / Bun.sha — one-shot hash helpers</h1>
+<p class="lede">Accept as a policy adoption — and an active complement to</p>
+</header>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Accept</strong> as a policy adoption — and an active complement to the existing <code>Bun.CryptoHasher</code> usage. The framework already uses <code>Bun.CryptoHasher</code> for streaming hash flows (asset content hashing in spec 04). For one-shot cases — cache keys, ETags, quick fingerprints — the streaming API is friction. <code>Bun.hash</code> (Wyhash) and <code>Bun.sha</code> (SHA family) are one-call ergonomics.</p>
+<p>This RFC was originally drafted as borderline out-of-scope. The spec-22 image pipeline tipped it over: image cache keys (<code>${src}|${w}|${fmt}|${q}</code> → short hash) are the canonical one-shot case, and reaching for <code>Bun.CryptoHasher</code> there is unergonomic.</p>
+<p>Codified as section 24.3 of the <strong>Bun-builtin policy spec</strong> ([[framework/draft/24-bun-builtin-policy]]).</p>
+<p>Scope pins:</p>
+<ul><li><strong>One-shot cache keys</strong> use <code>Bun.hash</code> (non-crypto, fast, Wyhash).</li><li><strong>Crypto-grade hashing</strong> (HMAC verify, SRI) uses <code>Bun.sha</code> (SHA-2 family).</li><li><strong>Streaming inputs stay on <code>Bun.CryptoHasher</code></strong> — this policy adds the one-shot form, doesn't replace the streaming form.</li><li><strong>Passwords always use <code>Bun.password</code></strong> — neither of these primitives is correct for password storage.</li></ul>
+<p>Out of scope for this RFC:</p>
+<ul><li><strong>Custom HMAC wrappers</strong> — <code>Bun.sha</code> is the building block; HMAC composition is per-caller (see cookie-signing, image signing).</li><li><strong>Performance comparisons across hash algorithms</strong> — left to profiling, not specification.</li></ul>
+<hr>
+<h2>Summary</h2>
+<p><code>Bun.hash(input)</code> returns a non-crypto fast hash (Wyhash) as a <code>bigint</code>. <code>Bun.sha(input, algorithm)</code> returns a SHA family digest as a <code>Uint8Array</code>. Both are one-call alternatives to <code>Bun.CryptoHasher</code>'s streaming-builder API.</p>
+<h2>Motivation</h2>
+<p>The framework's hashing needs split into two shapes:</p>
+<ul><li><strong>Streaming</strong>: large content, fingerprinted with <code>Bun.CryptoHasher</code> already (spec 04 § Hashing).</li><li><strong>One-shot</strong>: small known input (cache key, ETag suggestion). Today, even these reach for <code>Bun.CryptoHasher</code> because that's the documented helper. The image-pipeline cache keys (<code>${src}|${w}|${fmt}|${q}</code>) make the one-shot pattern routine enough to deserve first-party documentation.</li></ul>
+<h2>Proposal</h2>
+<p>See [[framework/draft/24-bun-builtin-policy|spec 24]] § 24.3 for the policy and concrete patterns. Summary:</p>
+<ul><li>Use <code>Bun.hash(x).toString(36)</code> for non-security cache keys (image cache, route cache).</li><li>Use <code>Bun.sha(body, "sha256")</code> for one-shot crypto-grade hashes (SRI, HMAC composition).</li><li>Keep <code>Bun.CryptoHasher</code> for streaming flows (build-output fingerprints, large response bodies).</li></ul>
+<h2>Trade-offs</h2>
+<ul><li><strong>Two hash families documented.</strong> Users now have to know when to use Wyhash vs SHA. Mitigation: the policy text spells out the distinction explicitly.</li><li><strong><code>Bun.hash</code> is non-crypto.</strong> Don't reach for it for HMAC signing; it's not collision-resistant under adversarial input.</li></ul>
+<h2>Open questions</h2>
+<ul><li><strong>Wyhash bigint output → string encoding</strong> — <code>.toString(36)</code> is compact (~12 chars). <code>.toString(16)</code> is hex-conventional. Choose per-use-case; document examples for both.</li><li><strong><code>Bun.sha</code> algorithm default</strong> — explicit <code>"sha256"</code> parameter always; no default that could change.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

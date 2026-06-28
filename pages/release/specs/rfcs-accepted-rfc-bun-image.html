@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.Image — in-process image transforms for static assets · Patties specs</title>
+<meta name="description" content="Accept. Image optimization is one of next/image's most-loved">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-image.md</span></div>
+<h1>Bun.Image — in-process image transforms for static assets</h1>
+<p class="lede">Accept. Image optimization is one of next/image's most-loved</p>
+</header>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Accept.</strong> Image optimization is one of <code>next/image</code>'s most-loved features and a recurring user expectation — patties should ship it on day one. Sharp (Node's image lib of record) is a 30+ MB native addon that complicates Docker images, breaks cross-platform builds, and adds material cold-start cost. Bun ships image decode/encode in core; we ship the same <code>&lt;Image&gt;</code> ergonomics with zero install footprint and faster boot.</p>
+<p>This is the cleanest expression of the project's reframed value proposition: <strong>patties' edge isn't "things Next on Node can't do" — it's "things every Node framework does, but with a fraction of the dependency surface."</strong></p>
+<p>Scope pins (per the maximally-ambitious option chosen on 2026-05-27):</p>
+<ul><li><strong><code>&lt;Image&gt;</code> React component</strong> as the user-facing API.</li><li><strong>Build-time pre-generation</strong> for static assets in <code>app/public/</code>.</li><li><strong>Runtime endpoint</strong> at <code>/_patties/image</code> for on-demand transforms of unknown sources.</li><li><strong>Signed URL params</strong> (HMAC-SHA256) to defend against cache-stampede / disk-fill attacks.</li><li><strong>On-disk LRU cache</strong> at <code>.patties/image-cache/</code>, size-limited<ul><li>atime-based eviction.</li></ul></li><li><strong>Edge adapter:</strong> build-time variants only; runtime endpoint disabled (WinterCG runtimes don't have writable disk).</li></ul>
+<p>Out of scope for this RFC:</p>
+<ul><li><strong>Vendor CDN integration</strong> (Cloudflare Image Resizing, Vercel Image Optimization) — belongs in deploy plugins.</li><li><strong>GIF / animated formats</strong> — Bun.Image's animation story not landed.</li><li><strong>SVG transforms</strong> — served as-is.</li><li><strong>CSS image refs</strong> — <code>&lt;img&gt;</code> only.</li></ul>
+<hr>
+<h2>Summary</h2>
+<p><code>Bun.Image</code> performs decode / resize / re-encode in-process without a native addon. Combined with a React <code>&lt;Image&gt;</code> component, a build-time variant generator, and a signed runtime endpoint, it gives patties users <code>next/image</code> ergonomics with the Sharp dep tax removed.</p>
+<h2>Motivation</h2>
+<p>Image optimization is table-stakes for a meta-framework in 2026. <code>next/image</code> defines what users expect:</p>
+<ul><li>Responsive srcsets (AVIF / WebP / JPEG)</li><li>Lazy loading by default</li><li>Build-time pre-generation for known images</li><li>On-demand resize for user-uploaded URLs</li><li>Cache layer between user and image source</li></ul>
+<p>Today, patties users serve images as opaque static files. They either lose the ergonomics or install Sharp + write the pipeline themselves. With Bun.Image in core, the framework can ship the pipeline at near-zero cost.</p>
+<h2>Proposal</h2>
+<p>See [[framework/draft/22-image-pipeline|spec 22]] for the full shape. Summary:</p>
+<ul><li><strong><code>&lt;Image&gt;</code></strong> React component that renders <code>&lt;img srcset&gt;</code>.</li><li><strong>Build pass</strong> that walks <code>app/public/**/*.{png,jpg,jpeg,webp,avif}</code>, generates AVIF/WebP/JPEG variants at configured widths via <code>Bun.Image</code>, emits a manifest inlined into the server bundle via Bun macros.</li><li><strong>Runtime endpoint</strong> at <code>/_patties/image?src=...&amp;w=...&amp;fmt=...&amp;q=...&amp;sig=...</code> for sources not in the manifest. HMAC-signed URLs only.</li><li><strong>Disk LRU cache</strong> at <code>.patties/image-cache/</code>; size-limited with atime-based eviction.</li><li><strong>Configuration knobs</strong> under <code>images.*</code> in <code>patties.config.ts</code>: domains, formats, widths, qualities, cacheDir, cacheMaxBytes, signingSecret.</li></ul>
+<h2>Trade-offs</h2>
+<ul><li><strong>API surface is large.</strong> Many config knobs, a signed URL flow, a React component, a disk cache. Mitigation: defaults are production-grade out of the box; users opt into knobs only when needed.</li><li><strong>Disk cache requires writable filesystem.</strong> Edge adapters disable the runtime endpoint; that's the right call but means feature parity is bun-target-only.</li><li><strong>HMAC signing requires a secret.</strong> First-run derives one from <code>(projectName, buildHash)</code> with a one-time warning; users add a real secret before deploying. Same pattern as <code>Bun.randomUUIDv7</code>'s fallback shape.</li><li><strong>Sharp parity not guaranteed.</strong> Bun.Image's feature surface may lag Sharp (e.g. exotic color space conversions, smartcrop). We ship what Bun supports; edge cases fall back to deploy-plugin CDN integration.</li></ul>
+<h2>Open questions</h2>
+<ul><li><strong>Cache eviction policy</strong> — LRU by atime is the v1 choice. LFU or size-weighted are alternatives; revisit if eviction storms show up in profiling.</li><li><strong>Allowed external domains</strong> — <code>images.domains</code> allowlist is v1; a future RFC could add per-domain rewriting (replace user URLs with vendor CDN URLs at render time).</li><li><strong>Quality presets</strong> — config exposes <code>qualities: [50, 75, 90]</code> but the component takes a free-form <code>quality</code> prop clamped to the allowlist. Users may expect any 1–100 value; revisit if this is friction.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

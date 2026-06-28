@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delivery tracker · Patties</title>
+<meta name="description" content="The delivery tracker for the modular-monolith exploration — filterable epics and tasks with status and dependency links across the pluggable-validation and modular-monolith workstreams.">
+<link rel="stylesheet" href="../assets/app.css">
+<style>
+  .filterbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:6px 0 16px; }
+  .filterbar .flabel { font-size:12px; font-weight:650; letter-spacing:.04em; text-transform:uppercase; color:var(--text-muted); margin-right:2px; }
+  .chipbtn { font-size:12.5px; font-weight:600; color:var(--text-soft); background:var(--surface); border:1px solid var(--border); padding:6px 12px; border-radius:999px; cursor:pointer; transition:.15s; }
+  .chipbtn:hover { border-color:var(--accent); color:var(--accent-text); }
+  .chipbtn.active { color:#fff; background:var(--accent); border-color:var(--accent); }
+  table.tracker td { vertical-align:middle; }
+  table.tracker .item-main { font-weight:650; color:var(--heading); }
+  table.tracker .item-sub { display:block; font-size:12px; color:var(--text-muted); font-weight:400; margin-top:2px; }
+  table.tracker tr[data-kind="task"] .item-main { font-weight:500; font-size:13px; }
+  table.tracker tr[data-kind="task"] td:first-child { padding-left:28px; position:relative; }
+  table.tracker tr[data-kind="task"] td:first-child::before { content:"↳"; position:absolute; left:12px; color:var(--text-muted); }
+  .ghcell { font-size:12.5px; color:var(--text-muted); white-space:nowrap; }
+  .ghcell.has { color:var(--accent-text); font-weight:600; }
+  .trk-empty td { text-align:center; color:var(--text-muted); font-style:italic; padding:22px; }
+</style>
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Design spec</span></div>
+<h1>Delivery tracker</h1>
+<p class="lede">Where each epic and task stands: <strong>draft</strong>, <strong>in progress</strong>, or <strong>shipped</strong>. Two workstreams are in flight — <a href="spec-29-pluggable-validation.html">pluggable validation</a> (foundation) and the <a href="spec-28-modular-monolith.html">modular-monolith</a> layer. Specs are the detail behind a task — linked inline, not tracked separately. Design lives in <a href="features.html">Features</a>, rationale in <a href="decisions.html">Decisions</a>, published versions on <a href="../release/index.html">Release</a>.</p>
+</header>
+
+<section>
+<h2>Delivery status</h2>
+<p>Filter by status. Everything is <span class="pill amber">Draft</span> today — specs written, no implementation issue/PR opened yet. Cells fill in as work moves.</p>
+
+<div class="callout note">
+<p class="callout-title">Sequencing</p>
+<p><a href="spec-29-pluggable-validation.html">Spec 29 · Pluggable validation</a> lands <em>first</em>. It widens the public AI-tool API from Zod to <a href="https://standardschema.dev" target="_blank" rel="noopener">Standard Schema</a> — a foundational change that the modular scaffold (<a href="spec-21-create-patties.html">CLI Spec 21</a>) depends on, so the new module templates ship validator-agnostic tools written once instead of being authored in Zod and migrated later. Modular-monolith work (Spec 28 + Epics 1–3) follows.</p>
+</div>
+
+<div class="filterbar" id="filter-status">
+<span class="flabel">Status</span>
+<button class="chipbtn active" data-filter="all">All</button>
+<button class="chipbtn" data-filter="draft">Draft</button>
+<button class="chipbtn" data-filter="doing">In progress</button>
+<button class="chipbtn" data-filter="done">Shipped</button>
+</div>
+
+<div class="table-wrap">
+<table class="tracker" id="tracker-table">
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+<th>Issue / PR</th>
+<th>Depends on</th>
+</tr>
+</thead>
+<tbody>
+<!-- EPICS -->
+<tr data-kind="epic" data-status="draft">
+<td><a class="item-main" href="epic-01.html">E1 · Convention &amp; boundary</a><span class="item-sub">Module folder layout + build-time public-API import check</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">— not started</td>
+<td><span>Foundation</span></td>
+</tr>
+<tr data-kind="epic" data-status="draft">
+<td><a class="item-main" href="epic-02.html">E2 · Route discovery macro</a><span class="item-sub">Bun.Glob macro merges each module's routes into one frozen Bun.serve table</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">— not started</td>
+<td><span>E1</span></td>
+</tr>
+<tr data-kind="epic" data-status="draft">
+<td><a class="item-main" href="epic-03.html">E3 · Starter · docs · release</a><span class="item-sub">--template modular scaffold, docs, and a minor release verified on npm</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">— not started</td>
+<td><span>E1, E2</span></td>
+</tr>
+
+<!-- TASKS · realising Spec 29 (Pluggable Validation) — FOUNDATION, lands first -->
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Retype <code>ToolConfig.input</code> to <code>StandardSchemaV1</code></span><span class="item-sub">src/ai/types.ts — handler input via <code>InferOutput</code>; add optional <code>parameters</code> JSON Schema</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-29-pluggable-validation.html">Spec 29</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Add <code>@standard-schema/spec</code> dependency</span><span class="item-sub">packages/patties/package.json — types-only; keep <code>zod</code> as internal default</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-29-pluggable-validation.html">Spec 29</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Vendor→JSON-Schema resolver</span><span class="item-sub">src/ai/json-schema.ts (new) — explicit <code>parameters</code> → Zod dynamic-import convert → fail loud; no <code>{type:"object"}</code> fallback</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-29-pluggable-validation.html">Spec 29</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Swap runtime validation to <code>~standard.validate</code></span><span class="item-sub">src/ai/run.ts — replace <code>safeParse</code> (awaited); route <code>input_schema</code> through the resolver</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-29-pluggable-validation.html">Spec 29</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Vendor-neutral <code>ToolInputInvalid</code> + agents-md resolver</span><span class="item-sub">src/ai/errors.ts → <code>StandardSchemaV1.Issue[]</code>; src/agents-md/zod-to-json-schema.ts → shared resolver</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-29-pluggable-validation.html">Spec 29</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Validation tests — Zod byte-parity + non-Zod validators</span><span class="item-sub">tests/ai — Zod JSON Schema unchanged; Valibot/ArkType validate; missing <code>parameters</code> fails build</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-29-pluggable-validation.html">Spec 29</a></span></td>
+</tr>
+
+<!-- TASKS · realising Spec 28 (Modular Monolith Convention) -->
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Add <code>modulesDirs</code> to <code>PattiesConfigSchema</code></span><span class="item-sub">packages/patties/src/config/schema.ts — optional <code>string[]</code></span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-28-modular-monolith.html">Spec 28</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Router scans module subdirectories</span><span class="item-sub">src/router/filesystem.ts — glob <code>&lt;modulesDir&gt;/*/routes/**</code>, strip module prefix</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-28-modular-monolith.html">Spec 28</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Island scanner emits module-prefixed keys</span><span class="item-sub">src/build/scan-islands.ts — <code>&lt;mod&gt;/&lt;ComponentName&gt;</code></span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-28-modular-monolith.html">Spec 28</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Group agents-md manifest by module</span><span class="item-sub">src/agents-md/collect.ts + render.ts — group output per module when modulesDirs set</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-28-modular-monolith.html">Spec 28</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Integration tests — flat layout regression</span><span class="item-sub">tests/integration/build.test.ts — flat layout unchanged when modulesDirs absent</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-28-modular-monolith.html">Spec 28</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Integration tests — modular layout smoke</span><span class="item-sub">tests/fixtures/modular-app/ — routes, islands, agents-md all correct</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-28-modular-monolith.html">Spec 28</a></span></td>
+</tr>
+
+<!-- TASKS · realising CLI Spec 21 (create-patties Modular Monolith) -->
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Remove <code>--type</code> flag and ProjectType prompt</span><span class="item-sub">packages/create-patties/src/prompts.ts — hard error on --type</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-21-create-patties.html">CLI Spec 21</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Delete <code>_backend/</code> template overlay</span><span class="item-sub">packages/create-patties/templates/_backend/ — remove directory</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-21-create-patties.html">CLI Spec 21</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Rewrite <code>templates/default/app/</code> as modular layout</span><span class="item-sub">modules/home/ + modules/api/; pre-fill modulesDirs in config; AI module tools authored against Standard Schema</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-21-create-patties.html">CLI Spec 21</a> · <a href="spec-29-pluggable-validation.html">Spec 29</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Ungate Patties UI and monorepo prompts</span><span class="item-sub">src/index.ts / prompts.ts — remove type-based conditional gates</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-21-create-patties.html">CLI Spec 21</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Add <code>patties-modular-monolith.md</code> to <code>_claude/</code> overlay</span><span class="item-sub">templates/_claude/.claude/rules/ — LLM rules from Spec 28 §9</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-21-create-patties.html">CLI Spec 21</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Update <code>patties-init.md</code> command for module-first scaffolding</span><span class="item-sub">templates/_claude/.claude/commands/patties-init.md</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-21-create-patties.html">CLI Spec 21</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">Update scaffold tests</span><span class="item-sub">tests/scaffold.test.ts — drop type assertions; add modular layout assertions</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-21-create-patties.html">CLI Spec 21</a></span></td>
+</tr>
+<tr data-kind="task" data-status="draft">
+<td><span class="item-main">CI scaffold-smoke for modular layout</span><span class="item-sub">scaffold → bun install → bun dev → curl / and /api/health → both 200</span></td>
+<td><span class="pill amber">Draft</span></td>
+<td class="ghcell">—</td>
+<td><span><a href="spec-21-create-patties.html">CLI Spec 21</a></span></td>
+</tr>
+
+<!-- empty-state row (shown by JS when a filter matches nothing) -->
+<tr class="trk-empty" hidden><td colspan="4">No items match this filter yet.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="../docs/index.html">User docs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script>
+(() => {
+  const table = document.getElementById("tracker-table");
+  const rows = [...table.querySelectorAll("tbody tr[data-kind]")];
+  const empty = table.querySelector(".trk-empty");
+  const state = { status: "all" };
+
+  function apply() {
+    let shown = 0;
+    for (const r of rows) {
+      const ok = state.status === "all" || r.dataset.status === state.status;
+      r.hidden = !ok;
+      if (ok) shown++;
+    }
+    if (empty) empty.hidden = shown !== 0;
+  }
+
+  function wire(barId, key) {
+    const bar = document.getElementById(barId);
+    bar.addEventListener("click", (e) => {
+      const btn = e.target.closest(".chipbtn");
+      if (!btn) return;
+      for (const b of bar.querySelectorAll(".chipbtn")) b.classList.toggle("active", b === btn);
+      state[key] = btn.dataset.filter;
+      apply();
+    });
+  }
+
+  wire("filter-status", "status");
+})();
+</script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

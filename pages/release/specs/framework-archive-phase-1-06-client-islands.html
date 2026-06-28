@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Islands · Patties specs</title>
+<meta name="description" content="Hydrate interactive components in the browser using React (react-dom/client). Pages are static SSR HTML; islands are the only interactive units. Each island …">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-1/06-client-islands.md</span></div>
+<h1>Client Islands</h1>
+<p class="lede">Hydrate interactive components in the browser using React (react-dom/client). Pages are static SSR HTML; islands are the only interactive units. Each island …</p>
+</header>
+<h2>Purpose</h2>
+<p>Hydrate interactive components in the browser using React (<code>react-dom/client</code>). Pages are static SSR HTML; islands are the only interactive units. Each island is its own independent React root — there is no whole-page React tree.</p>
+<h2>Public surface</h2>
+<pre data-lang="ts"><code>export function createClient(): {
+  register(name: string, component: ComponentType): void
+  hydrateAll(): void
+}
+</code></pre>
+<p>The synthetic client entry produced by <a href="framework-archive-phase-1-04-build.html">04-build</a> imports every island and calls <code>register(name, Component)</code>, then <code>hydrateAll()</code>.</p>
+<h2>Behavior</h2>
+<ol><li><code>hydrateAll()</code> queries <code>[data-island]</code> markers in the document.</li><li>For each marker, read <code>data-island="&lt;name&gt;"</code> and the adjacent <code>&lt;script type="application/json" data-props&gt;</code> blob.</li><li>Look up the registered component by name and call <code>hydrateRoot(marker, &lt;Component {...props} /&gt;)</code> from <code>react-dom/client</code>. Each marker gets its own root — never <code>createRoot</code>, which would discard the SSR markup.</li><li>Errors during hydration log to <code>console.error</code> with the island name; the rest of the page stays alive.</li></ol>
+<h2>Constraints</h2>
+<ul><li>Islands use only <code>react</code> + <code>react-dom/client</code>. No global React tree — each island is an independent <code>hydrateRoot</code> call.</li><li>Islands must be self-contained — no shared module-level state across islands. Cross-island coordination is a Phase 4 RFC.</li><li>Props must be JSON-serializable. If a component needs a function prop, expose a route handler instead. Non-JSON types (Date, Map, Set, BigInt) require an explicit (de)serializer at the island boundary.</li></ul>
+<h2>Bundle-size note</h2>
+<p>React + <code>react-dom/client</code> is ~45KB gzipped. <code>Bun.build</code> code-splitting hoists the React runtime into a single shared chunk so multiple islands on one page do not duplicate it. Pages with zero islands ship zero client JS (the synthetic entry short-circuits before importing React).</p>
+<h2>Non-goals</h2>
+<ul><li>Partial hydration triggered by viewport, idle, or interaction (Phase 4 RFC).</li><li>Cross-island state stores.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>A counter island marker hydrates with <code>hydrateRoot</code> and <code>useState</code> works in the browser without a hydration-mismatch warning.</li><li>A page with zero islands ships zero client JS (no React runtime in the bundle).</li><li>A page with multiple islands shares a single React runtime chunk.</li><li>A misspelled <code>data-island</code> name logs an error but does not throw out of the page.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

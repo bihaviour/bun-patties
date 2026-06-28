@@ -8,6 +8,8 @@
 		"packages/*"
 	],
 	"scripts": {
+		"start": "bun run scripts/serve-pages.ts",
+		"dev": "bun --hot scripts/serve-pages.ts",
 		"test": "bun --filter './packages/*' test",
 		"typecheck": "bun --filter './packages/*' typecheck",
 		"lint": "biome check . && bun run scripts/check-workflow-pins.ts && bun run scripts/check-release-tag.ts",
@@ -16,6 +18,7 @@
 		"check": "bun run lint && bun run typecheck",
 		"knip": "bunx knip",
 		"generate:agents-md": "bun --filter patties generate:agents-md",
+		"build:specs": "bun run scripts/build-specs.ts",
 		"check:docs-links": "bun run scripts/check-docs-links.ts",
 		"validate": "bun run scripts/validate.ts",
 		"validate:verbose": "bun run scripts/validate.ts --verbose",

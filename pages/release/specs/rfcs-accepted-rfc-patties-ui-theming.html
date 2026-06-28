@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theming — @theme inline wiring + base-color token presets · Patties specs</title>
+<meta name="description" content="Accept the two buildable theming slices; the live editor is split out as deferred">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-patties-ui-theming.md</span></div>
+<h1>Theming — @theme inline wiring + base-color token presets</h1>
+<p class="lede">Accept the two buildable theming slices; the live editor is split out as deferred</p>
+</header>
+<h2>Review verdict (2026-05-28)</h2>
+<p><strong>Accept the two buildable theming slices; the live editor is split out as deferred ([[rfc-patties-ui-theme-editor]]).</strong></p>
+<p>Scope pins:</p>
+<ul><li><strong><code>@theme inline</code> wiring</strong> is the canonical Tailwind v4 mechanism (matrix had it "specced"). patties does <strong>not</strong> own <code>app.css</code>; the wiring is a snippet the CLI <em>prints</em> (via <code>patties ui init</code>), never auto-edits.</li><li><strong>Base-color presets</strong> ship as alternate <code>tokens.css</code> payloads under <code>patties-ui/templates/themes/</code> (e.g. <code>neutral</code>/<code>slate</code>/<code>stone</code>/<code>zinc</code>), selected at stamp time via <code>--theme &lt;name&gt;</code> (on <code>add</code> or <code>ui init</code>). <strong>No persisted <code>baseColor</code> config key</strong> — the preset is a one-time stamp choice the user then edits (consistent with the convention-over-config stance).</li><li><strong>Dark mode stays divergent</strong>: <code>.dark</code> on <code>&lt;html&gt;</code>, zero JS theming dep, no <code>next-themes</code> — recorded, not changed here.</li></ul>
+<p>Encoded into <code>ui/62-theming-presets</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p>Define the canonical Tailwind v4 <code>@theme inline</code> wiring snippet patties prints, and add stamp-time base-color token presets via <code>--theme &lt;name&gt;</code>.</p>
+<h2>Motivation</h2>
+<p>shadcn offers a base-color/preset system and documents <code>@theme inline</code>. patties shipped the default token set but had no preset choice and no canonical wiring doc.</p>
+<h2>Proposal</h2>
+<ul><li>Ship <code>templates/themes/&lt;name&gt;/tokens.css</code> preset payloads; <code>--theme &lt;name&gt;</code> merges the chosen values via the existing idempotent token merge (<code>tokens.ts</code>).</li><li><code>patties ui init</code> prints the <code>@theme inline</code> mapping for the shipped tokens.</li></ul>
+<h2>Trade-offs</h2>
+<ul><li>A preset is stamp-time only (not reconfigurable later) — but the user owns <code>tokens.css</code> and edits freely, so this matches copy-in.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Shareable preset <em>codes/URLs</em> across projects → split to [[rfc-patties-ui-theme-editor]] (deferred).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

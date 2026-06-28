@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties add --path · Patties specs</title>
+<meta name="description" content="The destination for patties add is hard-coded to app/components/ui/. shadcn's">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/14-add-path.md</span></div>
+<h1>patties add --path</h1>
+<p class="lede">The destination for patties add is hard-coded to app/components/ui/. shadcn's</p>
+</header>
+<h2>Purpose</h2>
+<p>The destination for <code>patties add</code> is hard-coded to <code>app/components/ui/</code>. shadcn's <code>--path</code> lets users redirect where component source is written; the matrix calls this "the only hard-coded convention shadcn users will miss immediately" (matrix §2 <code>--path</code> — <strong>gap</strong>; "Gaps worth an RFC" #3). This spec adds a per- invocation <code>--path</code> flag, backed by the optional <code>config.ui.componentsDir</code> introduced in [[framework/25-ui-config-block]].</p>
+<h2>Usage</h2>
+<pre><code>patties add --path src/ui button        # stamp button.tsx into src/ui/
+patties add --path packages/web/ui --all
+</code></pre>
+<p><code>--path</code> overrides the destination for <strong>this invocation only</strong>. For a durable project-wide change, set <code>config.ui.componentsDir</code> instead ([[framework/25-ui-config-block]]).</p>
+<h2>Behavior</h2>
+<ol><li><code>parseArgs</code> gains a <code>--path &lt;value&gt;</code> option (<code>add.ts:161</code>). It takes the next argv token as its value; a missing value is <code>EXIT.USAGE</code>.</li><li>The path is resolved relative to <code>ctx.cwd</code>. Reject absolute paths and paths that resolve outside the project root → <code>EXIT.USAGE</code>, one-line message. (Same guard as the config block.)</li><li>The resolved dir replaces <code>componentsDir</code> in the path set threaded through the stamper. <code>_internal/</code> helpers go to <code>&lt;path&gt;/_internal/</code> (mirrors the <code>internalDir</code> default). The <code>tokensFile</code> is <strong>not</strong> affected by <code>--path</code> — only component + helper destinations move; tokens stay where config/convention puts them (one stylesheet per project).</li><li>Precedence: <code>--path</code> &gt; <code>config.ui.componentsDir</code> &gt; convention default (<code>app/components/ui</code>).</li><li>Composes with <code>--dry-run</code>, <code>--view</code>, <code>--force</code>, <code>--all</code> — the plan/preview reflects the redirected destination.</li></ol>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties add --path src/ui button</code> stamps <code>src/ui/button.tsx</code> and <code>src/ui/_internal/cn.ts</code>; nothing lands in <code>app/components/ui/</code>.</li><li><code>--path</code> with no following value exits <code>EXIT.USAGE</code>.</li><li>An absolute <code>--path /etc</code> or a <code>--path ../../outside</code> exits <code>EXIT.USAGE</code>; no files written.</li><li><code>--path</code> overrides <code>config.ui.componentsDir</code> for that invocation only; a later <code>patties add</code> with no flag uses the config/convention value again.</li><li><code>patties add --path src/ui --dry-run button</code> shows <code>src/ui/button.tsx</code> in the plan.</li><li><code>tokens.css</code> destination is unchanged by <code>--path</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

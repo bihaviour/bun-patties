@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build pipeline · Patties</title>
+<meta name="description" content="What happens during patties build.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>Build pipeline</h1>
+<p class="lede"><code>patties build</code> drives a multi-stage pipeline.</p>
+</header>
+<section>
+<h2>Build stages</h2>
+<ol>
+<li>Load config and resolve target settings.</li>
+<li>Scan routes, islands, agents, tools, and jobs.</li>
+<li>Generate the client entry for islands.</li>
+<li>Bundle browser assets when islands exist.</li>
+<li>Write the client manifest to disk.</li>
+<li>Generate a server entry with inlined route and manifest macros.</li>
+<li>Bundle the server for the active adapter target.</li>
+<li>Copy public assets.</li>
+<li>Let the adapter emit final runtime artifacts.</li>
+</ol>
+</section>
+<section>
+<h2>Output shape</h2>
+<p>The build result includes:</p>
+<ul>
+<li>a client manifest</li>
+<li>the final server entry</li>
+<li>emitted assets</li>
+<li>feature counts for routes, islands, agents, tools, and jobs</li>
+<li>additional adapter artifacts</li>
+</ul>
+</section>
+<section>
+<h2>Plugin hooks</h2>
+<p>Plugins can participate with:</p>
+<ul>
+<li><code>onBuildStart</code></li>
+<li><code>onBuildEnd</code></li>
+<li><code>onJobsCollect</code></li>
+</ul>
+<p>Hook failures are wrapped with plugin and hook names before being surfaced.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

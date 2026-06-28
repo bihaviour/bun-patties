@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuration &amp; environment · Patties</title>
+<meta name="description" content="patties.config discovery, schema defaults, env validation, and secrets.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>Configuration &amp; environment</h1>
+<p class="lede">Patties discovers configuration from a <code>patties.config</code> file in the project root, validates it through Zod, and loads environment variables and secrets before serving.</p>
+</header>
+<section>
+<h2>Config discovery</h2>
+<p>Patties discovers configuration from one of these files in the project root:</p>
+<ul>
+<li><code>patties.config.ts</code></li>
+<li><code>patties.config.js</code></li>
+<li><code>patties.config.mjs</code></li>
+</ul>
+<p>You can also provide an explicit path with <code>--config</code>.</p>
+</section>
+<section>
+<h2>Authoring config</h2>
+<p>Use <code>defineConfig()</code> for a typed config object:</p>
+<pre data-lang="ts"><code>import { defineConfig } from "patties";
+
+export default defineConfig({
+  target: "bun",
+});</code></pre>
+</section>
+<section>
+<h2>Current config fields</h2>
+<ul>
+<li><code>target</code>: <code>bun</code> or <code>edge</code></li>
+<li><code>appDir</code></li>
+<li><code>outDir</code></li>
+<li><code>plugins</code></li>
+<li><code>env.required</code></li>
+<li><code>env.public</code></li>
+<li><code>secrets</code></li>
+<li><code>server.port</code></li>
+<li><code>server.hostname</code></li>
+<li><code>server.unix</code></li>
+<li><code>server.reusePort</code></li>
+<li><code>adapter.bun.compile</code></li>
+</ul>
+</section>
+<section>
+<h2>Defaults</h2>
+<p>Important defaults include:</p>
+<ul>
+<li><code>target: "bun"</code></li>
+<li><code>appDir: "./app"</code></li>
+<li><code>outDir: "./.patties"</code></li>
+<li><code>server.port: 3000</code></li>
+<li><code>server.hostname: "0.0.0.0"</code></li>
+<li><code>adapter.bun.compile: false</code></li>
+</ul>
+</section>
+<section>
+<h2>Validation</h2>
+<p>Config is parsed through Zod. Invalid values fail with a structured error that includes the offending path.</p>
+</section>
+<section>
+<h2>Environment and secrets</h2>
+<ul>
+<li>required environment variables can be listed in <code>env.required</code></li>
+<li>public environment keys can be listed in <code>env.public</code></li>
+<li>secret keys can be listed in <code>secrets</code></li>
+</ul>
+<p>During <code>patties dev</code>, Patties loads configured secrets and validates required environment variables before starting the server.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

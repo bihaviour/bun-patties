@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Separator · Patties specs</title>
+<meta name="description" content="Visual or semantic divider. Mirrors shadcn Separator. Built on @radix-ui/react-separator.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/45-separator.md</span></div>
+<h1>Separator</h1>
+<p class="lede">Visual or semantic divider. Mirrors shadcn Separator. Built on @radix-ui/react-separator.</p>
+</header>
+<h2>Purpose</h2>
+<p>Visual or semantic divider. Mirrors shadcn <code>Separator</code>. Built on <code>@radix-ui/react-separator</code>.</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. No JS — Radix Separator is a server-renderable primitive.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-separator@^1.1</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Separator(props: Radix.SeparatorProps &amp; { className?: string }): JSX.Element
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li><code>orientation</code> defaults to <code>"horizontal"</code>; <code>decorative</code> defaults to <code>true</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Decorative separator renders without <code>role="separator"</code>.</li><li>Non-decorative separator renders <code>role="separator"</code> with <code>aria-orientation</code>.</li><li>Bundle audit: zero JS.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

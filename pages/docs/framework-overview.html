@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Framework overview · Patties</title>
+<meta name="description" content="Core runtime pieces and public API surface.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>Framework overview</h1>
+<p class="lede">Patties is a Bun-native full-stack meta-framework built around Bun primitives, React rendering, filesystem routing, and optional AI features.</p>
+</header>
+<section>
+<h2>Public entrypoints</h2>
+<p>The public entrypoints exposed from <code>src/index.ts</code> include:</p>
+<ul>
+<li><code>createRenderer</code> for React server rendering</li>
+<li><code>createRouter</code> for filesystem-driven route discovery</li>
+<li><code>createServer</code> and <code>startServer</code> for serving compiled routes</li>
+<li><code>build</code> for production bundling</li>
+<li><code>defineConfig</code> for project configuration</li>
+<li>AI, middleware, plugin, and <code>AGENTS.md</code> helpers</li>
+</ul>
+</section>
+<section>
+<h2>Runtime layers</h2>
+<p>At a high level, the runtime is split into a few clear layers:</p>
+<ul>
+<li>route scanning and match compilation</li>
+<li>React page rendering</li>
+<li>dev and production server bootstrap</li>
+<li>client island manifest generation</li>
+<li>adapter-specific build emission for Bun and edge targets</li>
+<li>optional plugin and AI feature collection</li>
+</ul>
+<p>Continue with <a href="routing.html">Routing</a>, <a href="rendering-islands.html">Rendering &amp; islands</a>, or <a href="configuration.html">Configuration &amp; environment</a>.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

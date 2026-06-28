@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task runner + output cache (patties run) · Patties specs</title>
+<meta name="description" content="Give Bun-workspace monorepos ([[cli/18-create-patties-redesign]]) the one thing">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Draft</span> <span class="badge badge-id">framework/draft/27-task-runner-cache.md</span></div>
+<h1>Task runner + output cache (patties run)</h1>
+<p class="lede">Give Bun-workspace monorepos ([[cli/18-create-patties-redesign]]) the one thing</p>
+</header>
+<h2>Purpose</h2>
+<p>Give Bun-workspace monorepos ([[cli/18-create-patties-redesign]]) the one thing Bun workspaces lack at CI scale: <strong>task-output caching</strong> and <strong>affected detection</strong>. <code>patties run &lt;task&gt;</code> wraps <code>bun --filter</code> (keeping its topological order and TUI) with a content-addressed cache — on a hit it restores a task's declared outputs and replays its log instead of re-running. Built entirely on Bun builtins (<code>Bun.CryptoHasher</code>, <code>Bun.Glob</code>, <code>Bun.Archive</code>, <code>bun:sqlite</code>, <code>Bun.$</code>, <code>Bun.spawn</code>; <code>Bun.s3</code> in Phase 2) — no Turborepo/Nx. Encodes [[rfc-bun-task-cache]].</p>
+<p>This is a build/CI concern, not a dev-loop concern: <code>patties dev</code> ([[framework/05-dev-hmr]]) is untouched.</p>
+<h2>Public surface</h2>
+<h3>Command</h3>
+<pre><code>patties run &lt;task&gt; [--filter &lt;pattern&gt;] [--affected] [--since &lt;ref&gt;]
+                   [--no-cache] [--force] [--dry-run]
+                   [--concurrency &lt;n&gt;] [--remote]   # --remote is Phase 2
+</code></pre>
+<ul><li><code>--filter</code> — same patterns as <code>bun --filter</code> (name / path / glob); default all workspace packages that define <code>&lt;task&gt;</code>.</li><li><code>--affected [--since &lt;ref&gt;]</code> — restrict to packages changed since <code>&lt;ref&gt;</code> (default <code>origin/main</code>) and their transitive dependents.</li><li><code>--no-cache</code> — run, do not read or write the cache. <code>--force</code> — ignore hits, run, but still write. <code>--dry-run</code> — print each unit's hit/miss <strong>and the reason the key changed</strong>; run nothing.</li><li>Bare <code>patties build</code> / <code>dev</code> are unchanged; <code>run</code> is the opt-in orchestrator.</li></ul>
+<h3>Config (<code>patties.config.ts</code>)</h3>
+<p>A <code>tasks</code> block, validated by the config Zod schema ([[framework/08-config]]):</p>
+<pre data-lang="ts"><code>tasks?: Record&lt;string, {
+  inputs?: string[];   // globs; default: package files minus outputs + gitignored
+  outputs?: string[];  // globs; default: [] (nothing cached to restore)
+  env?: string[];      // env var names/globs whose VALUES feed the cache key
+  cache?: boolean;     // default true; false = always run, never store
+}&gt;
+</code></pre>
+<p>Topological ordering is already provided by <code>bun --filter</code> — there is <strong>no</strong> <code>dependsOn</code> field; the runner relies on Bun for order.</p>
+<h3>Cache store</h3>
+<pre><code>.patties/cache/
+  index.sqlite          // bun:sqlite (WAL): key → { outputs[], exitCode, logRef, createdAt, bytes }
+  &lt;key&gt;.tar.gz          // Bun.Archive of the task's declared outputs
+  &lt;key&gt;.log             // captured stdout/stderr
+</code></pre>
+<p>Writes are crash-safe: tarball/log written to a temp name then atomically renamed; the <code>index.sqlite</code> row is inserted last so a half-written entry is never observable as a hit.</p>
+<h2>Cache key</h2>
+<p>The single correctness-critical artifact. <code>key = sha256(canonical-serialize[…])</code> over <strong>all</strong> of the following — conservative by design (over-invalidate before risking a stale hit):</p>
+<ol><li><strong><code>cacheFormatVersion</code></strong> — bumped by the runner to invalidate every entry when the keying logic changes.</li><li><strong><code>taskName</code> + the resolved command string</strong>.</li><li><strong><code>inputsHash</code></strong> — sorted <code>[relPath, blobSHA]</code> over the task's <code>inputs</code> globs, excluding <code>outputs</code> and gitignored paths. Tracked files reuse git's blob SHA (<code>git ls-files -s</code>); untracked files are hashed with <code>Bun.CryptoHasher</code>.</li><li><strong><code>externalDeps</code></strong> — this package's resolved dependency versions + integrity hashes from <code>bun.lock</code> (its dep closure only, not the whole lockfile, to avoid over-invalidation).</li><li><strong><code>internalDepKeys</code></strong> — the computed cache keys of this package's workspace dependencies. (Topological order guarantees they are computed first.) This term is what makes a plain <code>patties run build</code> affected-correct: a leaf change rekeys every dependent.</li><li><strong><code>globalInputs</code></strong> — content hashes of root <code>patties.config.ts</code>, root <code>tsconfig.json</code>, and the package's own <code>package.json</code>.</li><li><strong><code>envValues</code></strong> — values of env vars matched by <code>task.env</code> (sorted).</li><li><strong><code>toolVersions</code></strong> — <code>Bun.version</code> + the patties version.</li><li><strong><code>platform</code></strong> — <code>process.platform</code> + <code>process.arch</code>.</li></ol>
+<h2>Behavior</h2>
+<h3>Per task (in <code>bun --filter</code> topological order)</h3>
+<ol><li>Compute <code>key</code>.</li><li>If <code>!--force</code> and not <code>--no-cache</code> and <code>index.sqlite</code> has <code>key</code>: extract <code>&lt;key&gt;.tar.gz</code> into the package dir, replay <code>&lt;key&gt;.log</code>, mark <strong>hit</strong>, skip.</li><li>Else <code>Bun.spawn</code> the command with <code>cwd</code> = the package dir, streaming output. On exit 0 and caching enabled: <code>new Bun.Archive(glob(outputs))</code> → write <code>&lt;key&gt;.tar.gz</code> + <code>&lt;key&gt;.log</code>, then insert the index row. On non-zero exit: propagate the failure, write nothing.</li><li><code>--dry-run</code> stops after step 1 and reports hit/miss + the first differing key component.</li></ol>
+<h3>Affected detection (the <code>--affected</code> optimization)</h3>
+<ol><li><code>base = git merge-base &lt;--since|origin/main&gt; HEAD</code> (via <code>Bun.$</code>).</li><li><code>changed = git diff --name-only ${base}...HEAD</code> + untracked → map each path to the owning workspace package by directory prefix. A root-level change (root config, <code>bun.lock</code>) marks <strong>all</strong> packages.</li><li><code>affected = changed ∪ transitive dependents</code> via the reverse graph built from <code>workspace:</code> deps.</li><li>Hand <code>affected</code> package names to <code>bun --filter</code> for the task.</li></ol>
+<p>Affected detection is an <em>optimization</em>: with the <code>internalDepKeys</code> term, running the task across <strong>all</strong> packages is already correct — unchanged packages are cache hits. <code>--affected</code> skips even the hit lookups and powers "test only what changed."</p>
+<h2>Phasing</h2>
+<ul><li><strong>Phase 1 (local):</strong> everything above. Local cache, affected detection, <code>--dry-run</code> / <code>--no-cache</code> / <code>--force</code>.</li><li><strong>Phase 2 (remote):</strong> <code>--remote</code> checks an S3-compatible bucket via <code>Bun.s3</code> on local miss (HEAD/GET <code>&lt;key&gt;.tar.gz</code>), restores, and warms the local store; writes back on miss. Credentials/endpoint read from env by <code>Bun.s3</code>. Vendor-neutral — GitHub Actions cache, R2, MinIO, self-hosted are all just buckets. Adds a basic size/age prune.</li></ul>
+<h2>Non-goals</h2>
+<ul><li>Caching long-running <code>patties dev</code> — build/test tasks only.</li><li>A general dependency-dedup or polyglot task model — JS/Bun packages only; polyglot is deferred ([[cli/18-create-patties-redesign]]).</li><li>A <code>dependsOn</code> task-graph DSL — <code>bun --filter</code> owns ordering.</li><li>Remote-cache GC/quota policy beyond size/age prune.</li></ul>
+<h2>Tests</h2>
+<ul><li><strong>Key determinism:</strong> identical inputs → identical key; changing each of the nine components in isolation changes the key (one test per component).</li><li><strong>Hit/restore:</strong> run a task, mutate nothing, re-run → cache hit, outputs restored byte-identical, command not spawned (assert via a sentinel side effect that would re-fire on a real run).</li><li><strong>Invalidation propagation:</strong> edit a leaf package → it and its dependents miss; unrelated packages hit.</li><li><strong>Affected:</strong> <code>--affected --since &lt;ref&gt;</code> runs only changed + dependents; root-config change → all.</li><li><strong>Crash safety:</strong> kill mid-write → no observable hit for the partial key; next run recomputes.</li><li><strong><code>--dry-run</code>:</strong> reports the differing key component without running.</li><li><strong>Non-determinism guard:</strong> a task with non-deterministic output is detectable (document the failure mode; caching such a task is user error).</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>patties run build</code> across a Bun-workspace monorepo caches outputs; a no-op re-run is near-instant with zero task spawns.</li><li>A change to one package rebuilds exactly it + its transitive dependents; everything else restores from cache.</li><li><code>patties run test --affected --since origin/main</code> runs only affected packages.</li><li><code>--dry-run</code> explains every hit/miss; <code>--no-cache</code> / <code>--force</code> behave as specified.</li><li>The cache is sound: no stale hit across any of the nine key components.</li><li>Phase 2 <code>--remote</code> warms from and writes to an S3-compatible bucket with no vendor account required.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

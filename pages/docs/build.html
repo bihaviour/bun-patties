@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties build · Patties</title>
+<meta name="description" content="Production build flow and flags.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>patties build</h1>
+<p class="lede"><code>patties build</code> creates a production bundle and prints a summary of the output.</p>
+</header>
+<section>
+<h2>Behavior</h2>
+<ul>
+<li>Loads project config and optional target overrides</li>
+<li>Runs the framework build pipeline</li>
+<li>Reports output directory, server entry size, asset sizes, and route counts</li>
+<li>Regenerates the root <code>AGENTS.md</code> file after a successful build</li>
+</ul>
+</section>
+<section>
+<h2>Flags</h2>
+<ul>
+<li><code>--target &lt;bun|edge&gt;</code></li>
+<li><code>--out &lt;path&gt;</code></li>
+<li><code>--app &lt;path&gt;</code></li>
+<li><code>--compile</code></li>
+<li><code>--dev</code></li>
+</ul>
+</section>
+<section>
+<h2>Build summary</h2>
+<p>After a successful build, the CLI reports:</p>
+<ul>
+<li>target and elapsed time</li>
+<li>output directory</li>
+<li>gzipped server entry size</li>
+<li>gzipped asset sizes</li>
+<li>counts for routes, islands, agents, tools, and jobs</li>
+<li>adapter artifacts when present</li>
+</ul>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

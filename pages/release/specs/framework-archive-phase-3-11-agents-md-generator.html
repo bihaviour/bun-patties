@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AGENTS.md Generator · Patties specs</title>
+<meta name="description" content="Emit AGENTS.md at the project root on every build. The file tells any AI agent (Claude Code, etc.) exactly how this specific app is structured, so it can add…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-3/11-agents-md-generator.md</span></div>
+<h1>AGENTS.md Generator</h1>
+<p class="lede">Emit AGENTS.md at the project root on every build. The file tells any AI agent (Claude Code, etc.) exactly how this specific app is structured, so it can add…</p>
+</header>
+<h2>Purpose</h2>
+<p>Emit <code>AGENTS.md</code> at the project root on every build. The file tells any AI agent (Claude Code, etc.) exactly how this specific app is structured, so it can add features without asking "where does this go?".</p>
+<h2>Generated sections</h2>
+<ol><li><strong>Route map</strong> — file path → URL pattern → HTTP methods.</li><li><strong>Island inventory</strong> — component name → props interface → hydration target.</li><li><strong>Agent directory</strong> — agent name → tools available → trigger conditions.</li><li><strong>Tool directory</strong> — tool name → input schema (Zod → JSON Schema) → output description.</li><li><strong>Middleware chain</strong> — order of execution + a one-line summary parsed from a doc comment.</li><li><strong>Environment variables</strong> — name, required?, what it configures (from <code>patties.config.ts</code>).</li></ol>
+<h2>Public surface</h2>
+<pre data-lang="ts"><code>export interface AgentsMdDocument {
+  routes: RouteSummary[]
+  islands: IslandSummary[]
+  agents: AgentSummary[]
+  tools: ToolSummary[]
+  middleware: MiddlewareSummary[]
+  env: EnvVarSummary[]
+}
+
+export async function generateAgentsMd(appDir: string, config: ResolvedConfig): Promise&lt;string&gt;
+</code></pre>
+<p>The string is the rendered Markdown; the caller writes it to <code>AGENTS.md</code>.</p>
+<h2>Behavior</h2>
+<ol><li>Reuse the route scanner (<a href="framework-archive-phase-0-02b-filesystem-router.html">02b</a>) for the route map.</li><li>Statically analyze islands for prop type names (best-effort via the TS compiler API; fallback to "see source").</li><li>Import each agent and tool module to read its <code>defineAgent</code> / <code>defineTool</code> config (these are pure data structures). The import runs inside a <strong><code>Bun.spawn</code>-ed subprocess</strong> dedicated to AGENTS.md generation:<ul><li>The subprocess is a tiny script that <code>import()</code>s the user module, posts the extracted config as JSON to stdout, and exits.</li><li>Communication is JSON-over-stdio (<code>stdio: ["ignore", "pipe", "pipe"]</code>); the parent reads <code>proc.stdout</code> and waits on <code>proc.exited</code>.</li><li>Side effects at module load (DB connections, HTTP calls, <code>process.exit</code>) are contained — the subprocess dies when generation finishes.</li><li>A module whose top-level throws produces a generator error naming the file and the cause from <code>proc.stderr</code>, not a crashed build.</li><li>Workers were considered but rejected: subprocess isolation matches better with the no-shared-state requirement and is simpler to kill on timeout.</li></ul></li><li>Translate Zod schemas to JSON Schema for the tool table.</li><li>Apply plugin <code>onAgentsMdGenerate</code> hooks (<a href="framework-archive-phase-4-09-plugins.html">09</a>) in order.</li><li>Render with a deterministic template — same input always produces the same Markdown (important for diffs in PRs).</li><li>Write the result with <code>Bun.write("AGENTS.md", markdown)</code>. Never <code>node:fs.writeFile</code>.</li></ol>
+<h2>Acceptance criteria</h2>
+<ul><li>A fresh <code>bunx create-patties</code> app produces an <code>AGENTS.md</code> listing the seed route and no agents.</li><li>Adding a tool and rebuilding adds exactly one row to the tool table.</li><li>Two consecutive builds with no source change produce byte-identical files.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

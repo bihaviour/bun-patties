@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remote / URL / namespaced registries + patties ui build · Patties specs</title>
+<meta name="description" content="Accept — promoted from backlog. Previously parked as the lowest-priority parity">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-patties-ui-registries.md</span></div>
+<h1>Remote / URL / namespaced registries + patties ui build</h1>
+<p class="lede">Accept — promoted from backlog. Previously parked as the lowest-priority parity</p>
+</header>
+<h2>Review verdict (2026-05-29)</h2>
+<p><strong>Accept — promoted from backlog.</strong> Previously parked as the lowest-priority parity item, now brought onto the implementation path alongside the other <code>specced</code> rows. The full design was already on record in <code>cli/15-registry-distribution</code>; this promotion flips its status from "design of record, build on demand" to "scheduled work."</p>
+<p>Scope pins (unchanged from the on-record spec):</p>
+<ul><li><strong>Source kinds</strong>: name | namespaced (<code>@ns/name</code>) | local path | URL.</li><li><strong><code>ui.registries</code></strong> namespace→base map, extending the <code>ui</code> config block ([[rfc-patties-ui-config-block]]).</li><li><strong>HTTPS-only</strong> fetch, <code>ComponentEntry</code>-schema validated, source shown before stamp; fetched source written as text, <strong>never</strong> <code>eval</code>/<code>import</code>-ed.</li><li><strong>Never runs <code>npm/bun install</code></strong> — preserves the CI-safe divergence (<code>add.ts:73</code>).</li><li><strong><code>patties ui build</code></strong> is for third-party catalog authors; first-party <code>patties-ui</code> stays hand-maintained TS and is not required to be built.</li></ul>
+<p>Lowest priority among the <code>specced</code> rows (see the matrix Implementation order), but no longer gated behind a "third-party ecosystem exists" trigger.</p>
+<p>Encoded into <code>cli/15-registry-distribution</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p>Extend <code>patties add</code> to resolve components from URLs, local paths, and namespaced third-party registries (<code>@acme/fancy-button</code>), and add <code>patties ui build</code> to compile a <code>registry.ts</code> + <code>templates/</code> into a fetchable <code>registry.json</code> for third-party authors.</p>
+<p>Full design is on record in <code>cli/draft/15-registry-distribution</code>.</p>
+<h2>Motivation</h2>
+<p>patties resolves only by name, from the single first-party <code>patties-ui</code> registry in <code>node_modules</code> (<code>load-catalog.ts:20</code>). To support company-internal catalogs and a community ecosystem, <code>add</code> needs to resolve from URLs / local paths / namespaces, and catalog authors need a <code>build</code> step to emit a fetchable artifact.</p>
+<h2>Design highlights (from cli/15)</h2>
+<ul><li>Source kinds: name | namespaced (<code>@ns/name</code>) | local path | URL.</li><li><code>ui.registries</code> namespace→base map ([[rfc-patties-ui-config-block]]).</li><li>HTTPS-only fetch, <code>ComponentEntry</code>-schema validated, source shown before stamp; fetched source is written as text, never <code>eval</code>/<code>import</code>-ed.</li><li><strong>Never runs <code>npm/bun install</code></strong> — preserves the CI-safe divergence (<code>add.ts:73</code>).</li><li><code>patties ui build --out dist/r</code> emits schema-valid <code>registry.json</code> + per-component JSON with inlined source. First-party <code>patties-ui</code> stays hand-maintained TS and is not required to be built.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Integrity: do remote registries need a lockfile/hash pin to detect tampering?</li><li>Caching: cache fetched registries under a project-local dir, or always re-fetch?</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

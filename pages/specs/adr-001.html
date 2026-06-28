@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-001 — A module is a folder, not a class · Patties</title>
+<meta name="description" content="A module is just a directory under app/ — no decorated class, no registration object.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">ADR</span> <span class="pill green">accepted</span></div>
+<h1>ADR-001 — A module is a folder, not a class</h1>
+<p class="lede">A module is just a directory under <code>app/</code> — no decorated class, no registration object.</p>
+</header>
+<section>
+<h2>Context</h2>
+<p>NestJS makes a module a decorated class with <code>imports/providers/exports</code> arrays. That descriptor exists to feed an IoC container. Without a container, the descriptor has no job.</p>
+</section>
+<section>
+<h2>Decision</h2>
+<p>A module is a directory under <code>app/</code>. Its public surface is whatever its <code>index.ts</code> re-exports; its HTTP surface is whatever <code>routes.ts</code> exports. No <code>defineModule()</code> registration object is required.</p>
+</section>
+<section>
+<h2>Consequences</h2>
+<p>Zero ceremony to declare a module — make a folder. The "module graph" is just the import graph. Cost: conventions (file names, the <code>app/</code> root) are load-bearing; the build must know them.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="decisions.html">All decisions</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

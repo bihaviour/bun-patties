@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sonner · Patties specs</title>
+<meta name="description" content="Toast notifications via sonner. Mirrors shadcn Sonner. Recommended over 56-toast.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/50-sonner.md</span></div>
+<h1>Sonner</h1>
+<p class="lede">Toast notifications via sonner. Mirrors shadcn Sonner. Recommended over 56-toast.</p>
+</header>
+<h2>Purpose</h2>
+<p>Toast notifications via <code>sonner</code>. Mirrors shadcn <code>Sonner</code>. Recommended over <a href="ui-archive-phase-3-56-toast.html">56-toast</a>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Toaster mounts a portal and listens for imperative <code>toast(...)</code> calls. Lives at the root of the page layout.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>sonner@^1.5</code></li></ul>
+<blockquote><p>Upstream shadcn pairs Sonner with <code>next-themes</code>; Patties does not. Theme is read from the <code>class="dark"</code> attribute on <code>&lt;html&gt;</code> via a tiny DOM observer.</p>
+</blockquote>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Toaster(props: React.ComponentProps&lt;typeof Sonner&gt; &amp; { theme?: "light" | "dark" | "system" }): JSX.Element
+export { toast } from "sonner"
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li><code>theme</code> is read from a small DOM observer on <code>&lt;html class="dark"&gt;</code>, not <code>next-themes</code>.</li><li>Mount <code>&lt;Toaster /&gt;</code> in a root island; only one per app.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>toast("hi")</code> from any island renders a toast.</li><li>Theme follows the document's dark mode class.</li><li>Pre-hydration: no toaster DOM is rendered (lazy mount).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

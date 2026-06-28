@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Item · Patties specs</title>
+<meta name="description" content="Generic list/row primitive — icon + content + action layout. Mirrors shadcn Item.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/32-item.md</span></div>
+<h1>Item</h1>
+<p class="lede">Generic list/row primitive — icon + content + action layout. Mirrors shadcn Item.</p>
+</header>
+<h2>Purpose</h2>
+<p>Generic list/row primitive — icon + content + action layout. Mirrors shadcn <code>Item</code>.</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. Layout-only.</p>
+<h2>Peer dependencies</h2>
+<p>None.</p>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Item(props: { variant?: "default" | "muted"; size?: "default" | "sm"; className?: string } &amp; React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function ItemMedia(props: { variant?: "default" | "icon" | "image" } &amp; React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function ItemContent(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function ItemTitle(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function ItemDescription(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function ItemActions(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function ItemHeader(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function ItemFooter(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function ItemGroup(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function ItemSeparator(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li><code>asChild</code> is supported on <code>Item</code> so it can render as a <code>&lt;a&gt;</code> or <code>&lt;button&gt;</code> semantically without losing the layout.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Snapshot tests for each variant and size.</li><li>Bundle audit: zero JS.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

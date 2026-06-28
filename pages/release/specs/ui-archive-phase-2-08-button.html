@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Button · Patties specs</title>
+<meta name="description" content="The canonical button. Mirrors shadcn Button. The single most-used component — its island story matters.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-2/08-button.md</span></div>
+<h1>Button</h1>
+<p class="lede">The canonical button. Mirrors shadcn Button. The single most-used component — its island story matters.</p>
+</header>
+<h2>Purpose</h2>
+<p>The canonical button. Mirrors shadcn <code>Button</code>. The single most-used component — its island story matters.</p>
+<h2>Island model</h2>
+<p><code>island: "subtree"</code>. Two delivery modes:</p>
+<ol><li><strong>Server button</strong> — when used as a link-like or form-submit (<code>type="submit"</code>), no <code>onClick</code>. Server-rendered, zero JS.</li><li><strong>Island button</strong> — when wrapped in an island parent (Dialog, Form, etc.) OR when the page mounts an island that depends on a click handler. The component itself does not auto-island; instead it inherits its parent island root.</li></ol>
+<p>Pages that use Buttons only as link/submit ship zero JS for them.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>class-variance-authority@^0.7</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
+export type ButtonSize = "default" | "sm" | "lg" | "icon"
+
+export function Button(props: {
+  variant?: ButtonVariant
+  size?: ButtonSize
+  asChild?: boolean
+  className?: string
+} &amp; React.ButtonHTMLAttributes&lt;HTMLButtonElement&gt;): JSX.Element
+
+export const buttonVariants: (opts: { variant?: ButtonVariant; size?: ButtonSize }) =&gt; string
+export const island = "subtree"
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li><code>buttonVariants</code> is exported so other components (e.g. <code>AlertDialogAction</code>) can compose classes without depending on <code>Button</code>.</li><li><code>asChild</code> uses <code>_internal/slot.tsx</code>.</li><li>Drops <code>forwardRef</code>.</li></ul>
+<h2>Phase-1 inline-styling debt to resolve here</h2>
+<p>Phase 1 shipped before this spec existed, so two phase-1 components inlined their own minimal button <code>cva</code> rather than depend on a not-yet-built Button:</p>
+<ul><li><a href="ui-archive-phase-1-38-pagination.html">Pagination</a> — <code>PaginationLink</code> inlines a local <code>cva</code> and a local <code>PaginationLinkSize</code> union instead of importing <code>buttonVariants</code> / <code>ButtonSize</code>.</li><li><a href="ui-archive-phase-1-30-input-group.html">Input Group</a> — <code>InputGroupButton</code> inlines <code>inputGroupButtonVariants</code> instead of composing <code>buttonVariants</code>.</li></ul>
+<p>Both templates carry a <code>// Phase 1 inlines button styling…</code> comment marking the spot. When implementing Button, migrate these to import <code>buttonVariants</code> (and <code>ButtonSize</code>) so there is a single source of truth for button styling. This is the reason <code>buttonVariants</code> is exported as a standalone.</p>
+<h2>Acceptance criteria</h2>
+<ul><li>All variant × size combinations snapshot correctly.</li><li><code>asChild</code> with an <code>&lt;a&gt;</code> child renders an anchor with the button classes and forwards focus styles.</li><li>A button with <code>type="submit"</code> inside a <code>&lt;form action="/x" method="post"&gt;</code> works without any client JS.</li><li>A button with <code>onClick</code> inside an island parent hydrates and the handler fires.</li><li>Pagination's <code>PaginationLink</code> and Input Group's <code>InputGroupButton</code> are refactored to compose <code>buttonVariants</code> instead of their inlined local <code>cva</code>, with their phase-1 <code>// Phase 1 inlines button styling</code> comments removed.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Middleware &amp; context · Patties</title>
+<meta name="description" content="Request pipeline composition and the Patties request context.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>Middleware &amp; context</h1>
+<p class="lede">Patties middleware is an async chain around a route handler.</p>
+</header>
+<section>
+<h2>Middleware shape</h2>
+<pre data-lang="ts"><code>type Middleware = (
+  req: Request,
+  ctx: PattiesContext,
+  next: () =&gt; Promise&lt;Response&gt;,
+) =&gt; Promise&lt;Response&gt;;</code></pre>
+<p>Use <code>defineMiddleware()</code> for authoring and <code>compose()</code> to wrap a handler.</p>
+</section>
+<section>
+<h2>Context values</h2>
+<p><code>PattiesContext</code> includes:</p>
+<ul>
+<li><code>params</code></li>
+<li><code>cookies</code></li>
+<li><code>env</code></li>
+<li><code>vars</code></li>
+<li><code>url</code></li>
+<li>optional <code>aiContext</code></li>
+<li>optional <code>csrf</code></li>
+<li>helpers for <code>json()</code>, <code>html()</code>, and <code>redirect()</code></li>
+</ul>
+</section>
+<section>
+<h2>Cookie behavior</h2>
+<p>Patties reads Bun's request cookie map when available. For fallback paths where that map is missing, it synthesizes cookies from the <code>Cookie</code> header so middleware can still work consistently.</p>
+</section>
+<section>
+<h2>Response helpers</h2>
+<p>The built-in context helpers reduce boilerplate for common response types:</p>
+<ul>
+<li><code>ctx.json(body, init?)</code></li>
+<li><code>ctx.html(body, init?)</code></li>
+<li><code>ctx.redirect(to, status?)</code></li>
+</ul>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties ui init — front-load theming + helper setup · Patties specs</title>
+<meta name="description" content="Accept — as an optional convenience, not a prerequisite. Today tokens.css +">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-patties-ui-init.md</span></div>
+<h1>patties ui init — front-load theming + helper setup</h1>
+<p class="lede">Accept — as an optional convenience, not a prerequisite. Today tokens.css +</p>
+</header>
+<h2>Review verdict (2026-05-28)</h2>
+<p><strong>Accept — as an optional convenience, not a prerequisite.</strong> Today <code>tokens.css</code> + <code>_internal/</code> are created lazily on the first <code>patties add</code>, so the first stamp silently also does theme + helper setup. <code>patties ui init</code> front-loads that on its own reviewable commit, and lets a project adopt the token model before picking components.</p>
+<p>Scope pins:</p>
+<ul><li><strong><code>add</code> stays self-bootstrapping</strong> — running <code>add</code> without ever running <code>init</code> works exactly as today. <code>init</code> is optional.</li><li>No interactive prompts (CLI pillar "one command, zero questions"); no style/baseColor/rsc questions — those are conventions, not config.</li><li><strong>Never edits <code>app.css</code></strong> — prints the <code>@theme inline</code> wiring snippet only (overlaps with [[rfc-patties-ui-theming]]).</li><li>Never runs <code>bun install</code>; patches <code>package.json</code> + prints the reminder.</li></ul>
+<p>Encoded into <code>cli/11-ui-init</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p>A one-time, idempotent setup command that lays down <code>tokens.css</code>, <code>_internal/cn.ts</code> (+ <code>clsx</code>/<code>tailwind-merge</code>), and prints the Tailwind <code>@theme inline</code> wiring snippet.</p>
+<h2>Motivation</h2>
+<p>The first <code>patties add</code> does double duty (component + theme/helper bootstrap). Surfacing the bootstrap as its own step makes it explicit, reviewable, and adoptable before any component is stamped.</p>
+<h2>Proposal</h2>
+<p><code>patties ui init [--dry-run] [--force]</code>: merge tokens idempotently, stamp <code>cn</code> (not slot/variants — those arrive with the first component that needs them), patch base deps, report the <code>app.css</code> wiring snippet. Honors <code>config.ui</code> overrides.</p>
+<h2>Trade-offs</h2>
+<ul><li>Adds a command users may skip; mitigated by keeping <code>add</code> self-bootstrapping so <code>init</code> is never required.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Should <code>init</code> accept <code>--theme &lt;name&gt;</code> to seed a base-color preset? (Yes — defined in [[rfc-patties-ui-theming]].)</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

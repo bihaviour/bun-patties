@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epic 2 — Route discovery &amp; merge macro · Patties</title>
+<meta name="description" content="A Bun.build macro discovers each module's routes.ts with Bun.Glob, merges the maps into one route table (detecting path collisions), and inlines it as a literal — the production server scans nothing.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Roadmap</span></div>
+<h1>Epic 2 — Route discovery &amp; merge macro</h1>
+<p class="lede">A <code>Bun.build</code> macro — a sibling of patties' existing route/island/agent macros — discovers each module's <code>routes.ts</code> with <code>Bun.Glob</code>, merges the maps into one route table (detecting path collisions), and inlines it as a literal. The production server is <code>Bun.serve({ routes })</code> and scans nothing. See <a href="architecture.html#discovery">Architecture · build-time discovery</a>.</p>
+</header>
+
+<div class="callout note">
+<p class="callout-title">Goal</p>
+<p>Every <code>app/*/routes.ts</code> map is merged at build into a single frozen <code>BunRoutes</code> table; module handlers run inside the existing <code>compose()</code> middleware; the prod bundle does no runtime scan.</p>
+</div>
+
+<section>
+<h2>Definition of done</h2>
+<ul>
+<li>A macro discovers <code>app/*/routes.ts</code> via <code>Bun.Glob</code> and reads each module's <code>routes</code> export.</li>
+<li>Maps are merged into one <code>BunRoutes</code> literal reusing the existing <code>BunRoutes</code>/<code>HTTPMethod</code> types from <code>src/types.ts</code>.</li>
+<li>Duplicate <code>path + method</code> across modules is a build error naming both modules.</li>
+<li>The boundary check from <a href="epic-01.html">E1</a> runs over the same discovered set.</li>
+<li>The prod bundle holds the inlined table and does <strong>no</strong> runtime scan (asserted alongside <code>build.test.ts</code>); dev re-discovers under <code>bun --hot</code>.</li>
+</ul>
+</section>
+
+<section>
+<h2>The macro</h2>
+<p><strong>New:</strong> <code>src/build/macros/modules.macro.ts</code> — mirrors the existing <code>routes.macro.ts</code> contract (return value inlined as a literal; runtime never scans).</p>
+<pre data-lang="ts"><code>// modules.macro.ts — build time only, consumed with { type: "macro" }
+export async function MODULE_ROUTES(appDir: string) {
+  const files = await Array.fromAsync(new Bun.Glob("*/routes.ts").scan(appDir));
+  return mergeRouteMaps(files); // { "/invoices/:id": { GET }, ... } — one BunRoutes literal
+}</code></pre>
+<div class="callout note">
+<p class="callout-title">Reuses directly</p>
+<p>Nothing here is a new runtime. The macro is a sibling of the existing <code>src/build/macros/*.macro.ts</code> pipeline; it leans on <code>Bun.Glob</code> discovery, the <code>Bun.serve</code> route table (<code>BunRoutes</code>), the <code>compose()</code> middleware + <code>PattiesContext</code>, the <code>bun --hot</code> dev loop, and the existing deploy adapters. The only net-new code is the merge + collision step. The deliberate non-goals (no DI, no decorators) are recorded in <a href="adr-009.html">ADR-009</a>.</p>
+</div>
+</section>
+
+<section>
+<h2>Merge &amp; collision detection</h2>
+<p>Each module's map is namespaced by intent, not auto-prefixed (the route-prefixing call is open — see <a href="decisions.html#open">Decisions</a>). The merge is a shallow combine with conflict detection.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Case</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>Two modules, disjoint paths</td><td>merged table</td></tr>
+<tr><td>Same path, different methods</td><td>merged into one path entry</td></tr>
+<tr><td>Same path + same method in two modules</td><td>build error naming both modules + <code>file:line</code></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section>
+<h2>Verify</h2>
+<pre data-lang="bash"><code>bun --filter patties test modules   # discovery + merge + collision error
+bun --filter patties test build     # assert: no Bun.Glob / scan at runtime</code></pre>
+</section>
+
+<section>
+<h2>Dependencies</h2>
+<div class="feature-grid">
+<div class="feature"><h3>Blocked by</h3><p><a href="epic-01.html">E1</a> — the convention and the boundary check it reuses.</p></div>
+<div class="feature"><h3>Blocks</h3><p><a href="epic-03.html">E3</a> — the starter scaffolds modules that this macro discovers.</p></div>
+</div>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="roadmap.html">Delivery tracker</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

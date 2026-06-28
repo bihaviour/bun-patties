@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.embeddedFiles — single-binary deploy with embedded static assets · Patties specs</title>
+<meta name="description" content="Accept. This is the only acceptance in the bucket-A pass that">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-bun-embedded-files.md</span></div>
+<h1>Bun.embeddedFiles — single-binary deploy with embedded static assets</h1>
+<p class="lede">Accept. This is the only acceptance in the bucket-A pass that</p>
+</header>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Accept.</strong> This is the only acceptance in the bucket-A pass that demonstrates a <em>structural</em> Bun advantage — not a dep-replacement, not an ergonomics win, but a deploy story no Next-on-Node framework can ship today. The user gets a truly single-file binary: <code>scp dist/server</code> and done. No sidecar <code>dist/assets/</code> directory, no separate static-file CDN bootstrap. The build-time-discovery rule extends from routes (already inlined via macros) to assets (embedded via <code>with { type: "file" }</code> + <code>Bun.embeddedFiles</code>).</p>
+<p>Scope pins:</p>
+<ul><li><strong>Bun adapter <code>--compile</code> path only.</strong> Edge adapter is out of scope — Workers / WinterCG runtimes don't use <code>bun --compile</code>.</li><li><strong>Opt-in.</strong> Compile remains gated by <code>adapter.bun.compile: true</code>. Default builds still emit JS server bundle + <code>dist/assets/</code>.</li><li><strong>Production only.</strong> Dev mode reads <code>app/public/</code> from disk.</li><li><strong>Disable disk fallback in compile mode.</strong> The catch-all fetch handler must not try disk if an asset is missing — return 404. Cleanest expression of "the binary contains everything."</li></ul>
+<p>Out of scope for this RFC:</p>
+<ul><li><strong>Edge adapter parity.</strong> Separate concern; revisit when a non-compile file-embedding pattern matters.</li><li><strong>Compile-by-default.</strong> Bigger UX decision; this RFC just makes compile-mode actually single-file.</li><li><strong>Compression of embedded assets.</strong> See [[rfc-bun-alt-compression]] for build-time brotli/zstd.</li></ul>
+<hr>
+<h2>Summary</h2>
+<p><code>Bun.embeddedFiles</code> exposes files embedded into a <code>--compile</code>'d binary as <code>BunFile[]</code>. Combined with Bun's <code>with { type: "file" }</code> import attribute (build side), it lets a single executable contain not just runtime + JS bundle but also all static assets — the user ships one file, not a binary + assets directory.</p>
+<h2>Motivation</h2>
+<p>Today, the bun adapter's compile mode produces:</p>
+<pre><code>dist/
+  server        # ~50MB binary
+  assets/       # static files separately
+</code></pre>
+<p>Users who want the "scp one file, done" story are blocked by the sidecar directory. The fix is straightforward on Bun: walk assets at build time, register each via <code>import ... with { type: "file" }</code>, and look them up at runtime via <code>Bun.embeddedFiles</code>. The same trick the route table already uses (build-time inlining via macros) applies to assets.</p>
+<p>This is the cleanest expression of the build-time discovery rule: the filesystem could be empty and the server still works.</p>
+<h2>Proposal</h2>
+<h3>Build (<code>src/build/</code>)</h3>
+<p>When <code>adapter.bun.compile === true</code> and <code>mode === "production"</code>, emit a generated module <code>.patties/embedded-manifest.ts</code> containing one <code>import ... with { type: "file" }</code> per asset in <code>app/public/</code> and <code>.patties/client/</code>. Import that module from the server entry so Bun's bundler picks up the dependencies and embeds them at compile time.</p>
+<h3>Adapter (<code>src/adapters/bun/</code>)</h3>
+<p>In compile mode, build the static map by iterating <code>Bun.embeddedFiles</code> and mapping each to a <code>Response</code> via the manifest. Pass the static map to <code>Bun.serve({ static })</code> as today.</p>
+<p>Disable the catch-all fetch handler's disk-streaming fallback in compile mode — assets not in the embedded set return 404 directly.</p>
+<h3>Output layout</h3>
+<pre><code>dist/
+  server        # single executable, contains everything
+</code></pre>
+<p>No <code>dist/assets/</code>.</p>
+<h2>Trade-offs</h2>
+<ul><li><strong>Binary grows by the asset payload size.</strong> Acceptable — the user explicitly opted into <code>compile: true</code>. If they have a 1GB video in <code>app/public/</code>, they get a 1GB binary. Document this.</li><li><strong>No partial updates.</strong> Today, swapping out <code>dist/assets/logo.png</code> doesn't require a rebuild. With embedded assets, it does. Same trade-off as compile-mode itself.</li><li><strong>Edge adapter doesn't benefit.</strong> Workers / WinterCG runtimes don't have <code>bun --compile</code>, so the embedded-files API has no effect there. The win is bun-target-specific.</li></ul>
+<h2>Open questions</h2>
+<ul><li><strong>File-content embedding vs metadata-only embedding</strong> — decision for v1: full content (this is the point of <code>Bun.embeddedFiles</code>; metadata-only would defeat single-file-deploy).</li><li><strong>Build-time hashing for cache busting</strong> — already handled by spec 04's <code>Bun.CryptoHasher</code> flow; embedded paths use the same hashed names as on-disk assets.</li><li><strong>Dev-mode equivalent</strong> — dev re-scans the filesystem (per the build-time-discovery rule's dev exception); <code>embeddedFiles</code> is prod-compile-only.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

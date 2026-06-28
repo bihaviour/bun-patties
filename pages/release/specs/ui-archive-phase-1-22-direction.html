@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direction Provider · Patties specs</title>
+<meta name="description" content="LTR/RTL provider that Radix components read. Mirrors shadcn Direction (which simply re-exports Radix's DirectionProvider).">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/22-direction.md</span></div>
+<h1>Direction Provider</h1>
+<p class="lede">LTR/RTL provider that Radix components read. Mirrors shadcn Direction (which simply re-exports Radix's DirectionProvider).</p>
+</header>
+<h2>Purpose</h2>
+<p>LTR/RTL provider that Radix components read. Mirrors shadcn <code>Direction</code> (which simply re-exports Radix's <code>DirectionProvider</code>).</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. It's a Context provider that renders synchronously on the server. Children inherit the direction during SSR; client islands re-read on hydration.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-direction@^1.1</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function DirectionProvider(props: {
+  dir: "ltr" | "rtl"
+  children?: React.ReactNode
+}): JSX.Element
+
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Recommended placement: in the root layout, around the page tree, with <code>dir</code> driven by the request locale (read from a Patties middleware).</li><li>Also sets <code>dir</code> on the nearest <code>&lt;html&gt;</code> element via a server-side prop so CSS <code>:dir()</code> selectors work without JS.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>SSR <code>&lt;html dir="rtl"&gt;</code> is emitted when locale is RTL.</li><li>Nested Radix components (Menu, Slider, etc.) flip their arrow-key semantics in RTL.</li><li>Bundle audit: zero JS contribution beyond Radix's tiny context module.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

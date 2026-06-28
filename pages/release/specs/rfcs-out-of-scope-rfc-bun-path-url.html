@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.fileURLToPath / Bun.pathToFileURL — file URL ↔ path · Patties specs</title>
+<meta name="description" content="Moved backlog → out-of-scope. Identical surface to node:url with no">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Out of scope</span> <span class="badge badge-id">rfcs/out-of-scope/rfc-bun-path-url.md</span></div>
+<h1>Bun.fileURLToPath / Bun.pathToFileURL — file URL ↔ path</h1>
+<p class="lede">Moved backlog → out-of-scope. Identical surface to node:url with no</p>
+</header>
+<h2>Out-of-scope (2026-05-31)</h2>
+<p><strong>Moved backlog → out-of-scope.</strong> Identical surface to <code>node:url</code> with no Bun-specific advantage — there is nothing for patties to own. If a future spec ever needs a <code>file://</code> ↔ path round-trip, it inlines <code>node:url</code> at that one call site. Permanent no.</p>
+<h2>Summary</h2>
+<p>Convert between <code>file://</code> URLs and OS paths. Mirrors <code>node:url</code> functions.</p>
+<h2>Why backlog</h2>
+<p>Framework uses string paths from <code>Bun.Glob</code> and config-relative resolution. No code path round-trips file URLs today.</p>
+<p>This entry is borderline <strong>out-of-scope</strong>: identical surface to Node, no value-add beyond convenience.</p>
+<h2>Trigger to promote to draft</h2>
+<ul><li>Plugin loader needs to resolve relative imports from a plugin file's <code>import.meta.url</code>, OR</li><li>Edge adapter starts dealing with file URLs from a different runtime.</li></ul>
+<h2>Bun-unique classification</h2>
+<p><strong>Standard</strong> — identical to <code>node:url</code>. No Bun-specific advantage; if we ever need this, importing from <code>node:url</code> is fine.</p>
+<h2>Open questions when promoted</h2>
+<ul><li>Honestly: do we ever ship this, or just <code>import { fileURLToPath } from "node:url"</code> at the use site?</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

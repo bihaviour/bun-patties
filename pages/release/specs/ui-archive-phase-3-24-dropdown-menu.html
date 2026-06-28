@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dropdown Menu · Patties specs</title>
+<meta name="description" content="Popover-style menu triggered by a button. Mirrors shadcn DropdownMenu. Built on @radix-ui/react-dropdown-menu.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/24-dropdown-menu.md</span></div>
+<h1>Dropdown Menu</h1>
+<p class="lede">Popover-style menu triggered by a button. Mirrors shadcn DropdownMenu. Built on @radix-ui/react-dropdown-menu.</p>
+</header>
+<h2>Purpose</h2>
+<p>Popover-style menu triggered by a button. Mirrors shadcn <code>DropdownMenu</code>. Built on <code>@radix-ui/react-dropdown-menu</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Open/close, focus management, and roving tab-index require client JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-dropdown-menu@^2.1</code></li><li><code>lucide-react@^0.400</code> (Check, ChevronRight, Circle)</li></ul>
+<h2>Public API</h2>
+<p>Mirrors <a href="ui-archive-phase-3-18-context-menu.html">18-context-menu</a> one-to-one, swapping <code>ContextMenu*</code> for <code>DropdownMenu*</code>. See that spec for the full list.</p>
+<pre data-lang="ts"><code>export const DropdownMenu: typeof Radix.Root
+export const DropdownMenuTrigger: typeof Radix.Trigger
+// … (Portal, Group, Sub, RadioGroup, SubTrigger, SubContent, Content, Item,
+//     CheckboxItem, RadioItem, Label, Separator, Shortcut)
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li><code>Trigger</code> defaults to <code>asChild</code> semantics so a <code>&lt;Button&gt;</code> child receives the correct ARIA.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>SSR renders only the trigger.</li><li>Opening the menu after hydration focuses the first item (or <code>defaultFocus</code> target).</li><li><code>Esc</code> closes; outside-click closes; submenus open on hover and <code>→</code> key.</li><li>Radio and checkbox items reflect controlled state.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

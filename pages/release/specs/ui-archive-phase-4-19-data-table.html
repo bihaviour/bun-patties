@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Table · Patties specs</title>
+<meta name="description" content="Composed table pattern (sort, filter, paginate, row-select) built on @tanstack/react-table and 53-table. Mirrors shadcn Data Table recipe.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-4/19-data-table.md</span></div>
+<h1>Data Table</h1>
+<p class="lede">Composed table pattern (sort, filter, paginate, row-select) built on @tanstack/react-table and 53-table. Mirrors shadcn Data Table recipe.</p>
+</header>
+<h2>Purpose</h2>
+<p>Composed table pattern (sort, filter, paginate, row-select) built on <code>@tanstack/react-table</code> and 53-table. Mirrors shadcn <code>Data Table</code> recipe.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Sort/filter/pagination/selection are client state.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@tanstack/react-table@^8</code></li></ul>
+<h2>Public API</h2>
+<p>Like upstream, this is a <strong>recipe</strong>, not a single primitive. The CLI stamps a reference implementation:</p>
+<pre data-lang="ts"><code>export function DataTable&lt;TData, TValue&gt;(props: {
+  columns: ColumnDef&lt;TData, TValue&gt;[]
+  data: TData[]
+  initialSorting?: SortingState
+  initialColumnFilters?: ColumnFiltersState
+  initialPagination?: PaginationState
+  className?: string
+}): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li><code>data</code> and <code>columns</code> must be JSON-serializable when this is mounted as a top-level island. <code>columns</code> with custom <code>cell</code> renderers should be defined inside the island module — not passed as props.</li><li>An SSR-first variant: server renders the first page statically (no sort), the island upgrades on hydration. Documented as <code>&lt;DataTable mode="progressive"&gt;</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Sort, filter, pagination, and row-select work after hydration.</li><li>Server pre-renders the first page so users see data before JS loads.</li><li>Bundle: <code>@tanstack/react-table</code> is code-split per page that imports it.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

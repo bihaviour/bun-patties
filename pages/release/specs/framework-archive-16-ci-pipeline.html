@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CI Pipeline · Patties specs</title>
+<meta name="description" content="Patties is Bun-native and edge-first (00-overview, pillars 1 and 4). The CI pipeline must defend both: it runs entirely on Bun (no Node toolchain in the inst…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/16-ci-pipeline.md</span></div>
+<h1>CI Pipeline</h1>
+<p class="lede">Patties is Bun-native and edge-first (00-overview, pillars 1 and 4). The CI pipeline must defend both: it runs entirely on Bun (no Node toolchain in the inst…</p>
+</header>
+<p>Patties is Bun-native and edge-first (<a href="framework-archive-00-overview.html">00-overview</a>, pillars 1 and 4). The CI pipeline must defend both: it runs entirely on Bun (no Node toolchain in the install/build/test path), and it proves on every PR that the same source builds and boots on each supported edge runtime — <code>workerd</code>, Deno Deploy, Vercel Edge, Netlify Edge, and Bun's own edge runtime.</p>
+<h2>Goals</h2>
+<ol><li><strong>Bun is the toolchain.</strong> <code>bun install</code>, <code>bun run build</code>, <code>bun test</code>, <code>bun run lint</code>. No <code>npm</code>, <code>pnpm</code>, <code>yarn</code>, <code>node</code>, <code>vitest</code>, <code>jest</code>, or <code>tsx</code> in any job. The only exception is the per-adapter test legs that must invoke the target runtime's own CLI (<code>workerd serve</code>, <code>deno serve</code>, <code>wrangler dev</code>, etc.) — those tools are downloaded directly, not via npm.</li><li><strong>Edge-neutrality is enforced by CI, not by docs.</strong> Every adapter listed in <a href="framework-archive-phase-2-12-edge-adapters.html">12-edge-adapters</a> has its own job that boots the runtime and hits a fixed route-smoke suite. If a PR breaks one adapter, that PR fails — there is no "Bun works, ship it" path.</li><li><strong>Build once, fan out.</strong> The build artifact is produced once per commit and downloaded by every downstream job. Tests never rebuild.</li><li><strong>One required check.</strong> Branch protection points at a single aggregator job (<code>ci-pass</code>). Adding a new check never requires editing branch protection.</li><li><strong>Fast PR feedback.</strong> Docs-only changes skip the full matrix. Per-PR concurrency cancels superseded runs.</li></ol>
+<h2>Non-goals</h2>
+<ul><li>Node.js support legs. There is no Node target (<a href="framework-archive-00-overview.html">00-overview</a>, non-goal 2); there is no Node matrix.</li><li>Windows matrix. Patties targets Bun and edge runtimes; both are Linux-first in CI. A separate Bun-on-Windows smoke job may be added later if demand appears.</li><li>Native-binary build pipeline. Patties has no Rust component.</li><li>Test timing-based shard balancing. Premature below ~500 tests; revisit when <code>bun test</code> walltime exceeds ~5 minutes.</li><li>Flake-rerun jobs. Revisit if/when a flaky test lands.</li><li>Coverage gates. Revisit when there is a target number to enforce.</li><li>Per-PR preview deployments. Local adapter runs cover the same surface without standing up cloud infra.</li></ul>
+<h2>Triggers and concurrency</h2>
+<pre data-lang="yaml"><code>on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize]
+
+concurrency:
+  group: &gt;-
+    ${{ github.event_name == 'pull_request'
+        &amp;&amp; format('{0}-pr-{1}', github.workflow, github.ref_name)
+        || format('{0}-sha-{1}', github.workflow, github.sha) }}
+  cancel-in-progress: true
+</code></pre>
+<ul><li>PR runs are keyed per-PR and cancelled on a new push to the branch.</li><li><code>push</code> runs are keyed per-SHA so a release-tag run is never cancelled by a follow-up merge.</li></ul>
+<h2>Job graph</h2>
+<pre><code>changes ─┬─► build ─┬─► lint
+         │          ├─► typecheck
+         │          ├─► test-unit
+         │          ├─► test-integration
+         │          ├─► test-adapters (matrix: workerd, deno, vercel-edge, netlify-edge, bun)
+         │          ├─► test-plugins   (matrix: per first-party plugin)
+         │          └─► check-agents-md
+         └─► docs-link-check (only when docs-only)
+                                                     └─► ci-pass
+</code></pre>
+<p>All jobs except <code>changes</code>, <code>docs-link-check</code>, and <code>ci-pass</code> <code>needs: [build]</code> and download the <code>dist</code> artifact rather than rebuilding.</p>
+<h2>Shared setup</h2>
+<p>A reusable composite action at <code>.github/actions/setup/action.yml</code> owns:</p>
+<ol><li><code>actions/checkout@&lt;sha&gt;</code> with <code>fetch-depth: 2</code> (enough for <code>changes</code> to diff against the base).</li><li><code>oven-sh/setup-bun@&lt;sha&gt;</code> reading the Bun version from <code>.bun-version</code>.</li><li><code>bun install --frozen-lockfile</code>, with the Bun install cache keyed on <code>bun.lockb</code>.</li></ol>
+<p>Every job starts with <code>uses: ./.github/actions/setup</code>. No job sets up Node. Adapter jobs additionally install their target runtime — see <code>test-adapters</code> below.</p>
+<h2>Jobs</h2>
+<h3><code>changes</code></h3>
+<p>Computes which downstream gates apply. Outputs:</p>
+<ul><li><code>docs-only</code> — <code>true</code> when every changed path is under <code>docs/</code>, <code>*.md</code> at repo root, or <code>.github/ISSUE_TEMPLATE/</code>.</li><li><code>adapters-touched</code> — <code>true</code> when <code>src/adapters/**</code>, <code>src/build/**</code>, <code>src/server/**</code>, or any adapter fixture changed.</li><li><code>plugins-touched</code> — <code>true</code> when <code>src/plugins/**</code> or <code>plugins/**</code> changed.</li></ul>
+<p>Implementation: a Bun script at <code>scripts/ci-changes.ts</code> that runs <code>git diff --name-only origin/${{ github.base_ref }}...HEAD</code> for PRs and <code>HEAD^...HEAD</code> for <code>push</code>. Pure Bun — no <code>actions/changed-files</code> or other Node tools.</p>
+<h3><code>build</code></h3>
+<ul><li><code>bun run build</code> — produces <code>dist/</code> per <a href="framework-archive-phase-1-04-build.html">04-build</a>.</li><li>Uploads <code>dist/</code> and <code>AGENTS.md</code> as artifact <code>build-output</code> (retention 1 day).</li><li>Gated on <code>changes.outputs.docs-only == 'false'</code>.</li></ul>
+<p>This is the only job that runs <code>Bun.build</code>. Every downstream job downloads <code>build-output</code>.</p>
+<h3><code>lint</code></h3>
+<p><code>bun run lint</code> — Biome (per <a href="framework-archive-13-conventions.html">13-conventions</a> tooling). Reads source, not <code>dist/</code>, but still gates on <code>build</code> to surface compile errors first.</p>
+<h3><code>typecheck</code></h3>
+<p><code>bun x tsc --noEmit</code> against the user-facing surface (<code>patties</code>, <code>patties/config</code>, <code>patties/ai</code>, <code>patties/client</code>, <code>patties/plugin</code>) using the published type-check tsconfig. The framework's <code>tsconfig.json</code> requires <code>"jsx": "react-jsx"</code>, <code>"jsxImportSource": "react"</code> — typecheck must use the same config so JSX resolution mirrors user projects.</p>
+<h3><code>test-unit</code></h3>
+<p><code>bun test tests/unit/</code> — pure-function tests for the router, config loader, middleware composer, AI context, etc. No HTTP, no filesystem fixtures beyond in-memory ones. Fast (&lt;30s expected).</p>
+<h3><code>test-integration</code></h3>
+<p><code>bun test tests/integration/</code> — boots <code>Bun.serve</code> against the fixture apps under <code>tests/fixtures/</code> (see <a href="framework-archive-phase-1-14-testing.html">14-testing</a>), exercises real routes, hydrates real islands. This is the canonical "does the framework actually work on Bun" gate.</p>
+<h3><code>test-adapters</code></h3>
+<p>Strategy matrix. One leg per adapter in <a href="framework-archive-phase-2-12-edge-adapters.html">12-edge-adapters</a>:</p>
+<div class="table-wrap"><table><thead><tr><th>Adapter</th><th>Runtime CLI</th><th>Source</th></tr></thead><tbody><tr><td><code>workerd</code></td><td><code>workerd serve</code></td><td><code>cloudflare/workerd</code> GitHub releases</td></tr><tr><td><code>deno</code></td><td><code>deno serve</code></td><td>official Deno install script</td></tr><tr><td><code>vercel-edge</code></td><td><code>workerd serve</code> with Vercel Edge shims</td><td>as above</td></tr><tr><td><code>netlify-edge</code></td><td><code>deno serve</code> with Netlify shims</td><td>as above</td></tr><tr><td><code>bun</code></td><td><code>bun run</code> against the edge-target build</td><td>already installed</td></tr></tbody></table></div>
+<p>Each leg:</p>
+<ol><li>Downloads the <code>build-output</code> artifact.</li><li>Installs its target runtime (downloaded directly from upstream releases, pinned by SHA in <code>scripts/install-runtime-&lt;name&gt;.ts</code>; no npm).</li><li>Builds the canonical fixture app at <code>tests/fixtures/edge-smoke/</code> against that adapter (<code>bun run build --adapter &lt;name&gt;</code>).</li><li>Boots the resulting Worker module via the runtime CLI on a local port.</li><li>Runs <code>bun test tests/adapters/&lt;name&gt;/</code> — a fixed route-smoke suite (SSR root, island hydration, API GET, API POST, middleware redirect, 404).</li></ol>
+<p>Gating: runs always on <code>push</code>; on <code>pull_request</code> runs always (this matrix is small and load-bearing for pillar 4 — it does not get skipped on PRs).</p>
+<h3><code>test-plugins</code></h3>
+<p>Strategy matrix over each first-party plugin under <code>plugins/</code> (see <a href="framework-archive-phase-4-09-plugins.html">09-plugins</a>). Each leg runs the plugin's <code>build</code> hook against <code>tests/fixtures/plugin-smoke/</code> and asserts the output shape declared in the plugin's contract test.</p>
+<p>Gated on <code>changes.outputs.plugins-touched == 'true' || github.event_name == 'push'</code>.</p>
+<h3><code>check-agents-md</code></h3>
+<p>Per <a href="framework-archive-phase-3-11-agents-md-generator.html">11-agents-md-generator</a>, regenerate <code>AGENTS.md</code> from the agents and tools defined in the fixture apps, then:</p>
+<pre data-lang="sh"><code>bun run generate:agents-md
+git diff --exit-code AGENTS.md
+</code></pre>
+<p>Fails if the committed <code>AGENTS.md</code> is stale. Same pattern Next.js uses for its precompiled-deps drift check.</p>
+<h3><code>docs-link-check</code></h3>
+<p>Runs only when <code>changes.outputs.docs-only == 'true'</code> OR <code>docs/**</code> is in the diff. A Bun script (<code>scripts/check-docs-links.ts</code>) walks every <code>.md</code> under <code>docs/</code> and <code>agent_specs/</code>, resolves relative links, and fails on broken targets. No network calls.</p>
+<h3><code>ci-pass</code></h3>
+<pre data-lang="yaml"><code>ci-pass:
+  needs:
+    - changes
+    - build
+    - lint
+    - typecheck
+    - test-unit
+    - test-integration
+    - test-adapters
+    - test-plugins
+    - check-agents-md
+    - docs-link-check
+  if: always()
+  runs-on: ubuntu-latest
+  steps:
+    - run: exit 1
+      if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+</code></pre>
+<p>This is the <strong>only</strong> check listed in branch protection. Adding a new job means adding it to <code>needs:</code> here — not editing the GitHub branch-protection settings.</p>
+<h2>Runner policy</h2>
+<ul><li>All jobs run on <code>ubuntu-latest</code> unless otherwise noted.</li><li>All third-party actions are pinned by full commit SHA, not by tag. CI will reject PRs that introduce a <code>@v&lt;n&gt;</code> reference (enforced by a lint rule in <code>scripts/check-workflow-pins.ts</code>, run as part of <code>lint</code>).</li><li>No job has <code>permissions: write-all</code>. Jobs declare <code>permissions:</code> explicitly; the default is <code>contents: read</code>.</li><li>No job uses <code>secrets: inherit</code> blindly. Secrets are passed explicitly per job; today the only secret-consuming job is the (future) release-publish workflow, which lives in a separate file.</li></ul>
+<h2>What CI is not responsible for</h2>
+<ul><li><strong>Releases.</strong> A separate <code>release.yml</code> (out of scope for this spec) handles <code>bun publish</code> on tag pushes.</li><li><strong>Dependency updates.</strong> Renovate or Dependabot config, not CI.</li><li><strong>Security scanning.</strong> A separate <code>codeql.yml</code> runs on a schedule, not per PR.</li><li><strong>Production synthetics.</strong> Patties has no hosted production surface; nothing to synthetically probe.</li></ul>
+<h2>Open questions</h2>
+<ul><li><strong>Adapter test depth.</strong> The 6-route smoke is the minimum. Whether we additionally re-run <code>test-integration</code> per adapter (expensive: 5× the integration walltime) or rely on the smoke + per-adapter contract tests is unresolved. Recommendation: smoke + contract until an integration-only regression slips, then revisit.</li><li><strong><code>main</code> vs <code>next</code> channel.</strong> Next.js gates on <code>canary</code>; we could mirror with a <code>next</code> branch and require PRs against <code>main</code>. Defer until the project has a release cadence to plan around.</li><li><strong>Bun version pinning.</strong> <code>.bun-version</code> is the source of truth. Open question whether to also matrix against <code>bun@latest</code> on <code>push</code> to catch upstream regressions early. Recommendation: yes, as a <code>continue-on-error: true</code> job that warns but does not block.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

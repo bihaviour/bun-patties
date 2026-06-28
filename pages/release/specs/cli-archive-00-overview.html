@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patties CLI — Overview · Patties specs</title>
+<meta name="description" content="patties is the single command-line entry point developers use to work with a Patties project. Three verbs cover the daily loop — dev, build, deploy — plus a …">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/00-overview.md</span></div>
+<h1>Patties CLI — Overview</h1>
+<p class="lede">patties is the single command-line entry point developers use to work with a Patties project. Three verbs cover the daily loop — dev, build, deploy — plus a …</p>
+</header>
+<h2>Mission</h2>
+<p><code>patties</code> is the single command-line entry point developers use to work with a Patties project. Three verbs cover the daily loop — <code>dev</code>, <code>build</code>, <code>deploy</code> — plus a dev-only <code>secret</code> for keychain-stored credentials. A separate scaffolder <code>create-patties</code> produces a new project. Nothing else ships in the CLI until a real workflow demands it.</p>
+<h2>Design pillars</h2>
+<ol><li><strong>One command, zero questions</strong> — <code>bun dev</code> (which calls <code>patties dev</code>) must work in a fresh project with no flags.</li><li><strong>Bun-native</strong> — invoked via <code>bun bin/patties.ts</code>. The CLI itself uses <code>Bun.spawn</code>, <code>Bun.file</code>, <code>Bun.argv</code>.</li><li><strong>Fast feedback</strong> — startup under 200ms. No top-level network calls.</li><li><strong>Honest output</strong> — surface errors with file + line, suggest the next action.</li></ol>
+<h2>Commands</h2>
+<div class="table-wrap"><table><thead><tr><th>Command</th><th>Spec</th></tr></thead><tbody><tr><td><code>patties dev</code></td><td><a href="cli-archive-02-dev-command.html">02-dev-command</a></td></tr><tr><td><code>patties build</code></td><td><a href="cli-archive-03-build-command.html">03-build-command</a></td></tr><tr><td><code>patties deploy</code></td><td><a href="cli-archive-04-deploy-command.html">04-deploy-command</a></td></tr><tr><td><code>patties secret</code></td><td><a href="cli-archive-08-secret-command.html">08-secret-command</a></td></tr><tr><td><code>bunx create-patties &lt;name&gt;</code></td><td><a href="cli-archive-05-create-patties.html">05-create-patties</a> → <a href="cli-archive-09-create-patties-dx.html">09-create-patties-dx</a> → redesigned by <a href="cli-draft-18-create-patties-redesign.html">18-create-patties-redesign</a></td></tr><tr><td><code>/patties</code> skill · <code>/patties-init</code> flow</td><td><a href="cli-draft-19-patties-agent-skill.html">19-patties-agent-skill</a></td></tr></tbody></table></div>
+<h2>Supporting specs</h2>
+<ul><li><a href="cli-archive-01-entry.html">01-entry</a> — <code>bin/patties.ts</code> dispatch.</li><li><a href="cli-archive-06-config-loading.html">06-config-loading</a> — how every command finds and loads <code>patties.config.ts</code>.</li><li><a href="cli-archive-07-logging-errors.html">07-logging-errors</a> — output conventions, diagnostics, exit codes.</li></ul>
+<h2>Phase alignment</h2>
+<ul><li>Phase 0: entry, <code>dev</code>, scaffolder seed.</li><li>Phase 1: <code>build</code>, <code>secret</code>.</li><li>Phase 2: <code>deploy</code>.</li><li>Phase 3+: no new commands; existing commands generate <code>AGENTS.md</code> automatically.</li><li>Dev-DX (post-launch): 09 — overhauls <code>create-patties</code> (template, README, prompts, agent overlays, name handling).</li><li>Dev-DX (post-launch): 18 — redesigns the <code>create-patties</code> prompt flow (agent → type → UI/monorepo → deploy target) and hands off to the agent for feature scaffolding; 19 — the <code>/patties</code> skill (components + agent-only pattern modules) and the <code>/patties-init</code> plan-mode onboarding flow.</li></ul>
+<h2>Non-goals</h2>
+<ul><li>An interactive REPL.</li><li>A plugin-extensible command surface (plugins extend the framework, not the CLI). Revisit via RFC if user demand appears.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

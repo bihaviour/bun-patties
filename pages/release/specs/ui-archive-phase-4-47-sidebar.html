@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sidebar · Patties specs</title>
+<meta name="description" content="App-shell sidebar with collapsible/icon mode, mobile sheet fallback, and persistence. Mirrors shadcn Sidebar (the multi-piece recipe).">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-4/47-sidebar.md</span></div>
+<h1>Sidebar</h1>
+<p class="lede">App-shell sidebar with collapsible/icon mode, mobile sheet fallback, and persistence. Mirrors shadcn Sidebar (the multi-piece recipe).</p>
+</header>
+<h2>Purpose</h2>
+<p>App-shell sidebar with collapsible/icon mode, mobile sheet fallback, and persistence. Mirrors shadcn <code>Sidebar</code> (the multi-piece recipe).</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. State (<code>expanded</code> / <code>collapsed</code>), persistence (<code>cookie</code> or <code>localStorage</code>), mobile media query, and the <code>SidebarTrigger</code> button all need JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-slot@^1.1</code></li><li><code>@radix-ui/react-tooltip@^1.1</code> (for collapsed icon tooltips)</li><li><code>lucide-react@^0.400</code></li></ul>
+<h2>Public API</h2>
+<p>The full set of exports from shadcn's sidebar primitive: <code>SidebarProvider</code>, <code>Sidebar</code>, <code>SidebarTrigger</code>, <code>SidebarRail</code>, <code>SidebarInset</code>, <code>SidebarInput</code>, <code>SidebarHeader</code>, <code>SidebarFooter</code>, <code>SidebarSeparator</code>, <code>SidebarContent</code>, <code>SidebarGroup</code>, <code>SidebarGroupLabel</code>, <code>SidebarGroupAction</code>, <code>SidebarGroupContent</code>, <code>SidebarMenu</code>, <code>SidebarMenuItem</code>, <code>SidebarMenuButton</code>, <code>SidebarMenuAction</code>, <code>SidebarMenuBadge</code>, <code>SidebarMenuSkeleton</code>, <code>SidebarMenuSub</code>, <code>SidebarMenuSubItem</code>, <code>SidebarMenuSubButton</code>, plus the <code>useSidebar</code> hook.</p>
+<pre data-lang="ts"><code>export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>The sidebar's collapsed/expanded state is stored in a cookie (<code>patties_sidebar_state=…</code>) so the server can render the correct initial state with <strong>no flash</strong> on hydration. The CLI stamps a tiny Patties middleware example that reads this cookie.</li><li>Removes <code>forwardRef</code>.</li><li>Replaces shadcn's <code>next/link</code>/<code>react-router</code> couplings with plain <code>&lt;a&gt;</code>; users can override via <code>asChild</code>.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Server renders the correct collapsed/expanded shell based on the cookie — no flash.</li><li><code>SidebarTrigger</code> toggles state and writes the cookie.</li><li>On mobile (<code>&lt; md</code>), the sidebar collapses into a Sheet.</li><li><code>Cmd/Ctrl+B</code> hotkey toggles the sidebar (configurable via prop).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

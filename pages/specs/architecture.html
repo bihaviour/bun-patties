@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture · Patties</title>
+<meta name="description" content="The three-layer architecture of a thin modular monolith on Bun — a standards boundary, a Bun.serve core, and module folders, wired by one build-time discovery macro.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Design spec</span></div>
+<h1>Architecture</h1>
+<p class="lede">Three layers, almost all of which patties already has. The boundary speaks standard <code>Request</code>/<code>Response</code>; the core is a <code>Bun.serve</code> route table plus the <code>compose()</code> middleware; the application is a set of module folders. The only new machinery is a build-time macro that discovers modules, merges their routes, and verifies the public-API boundary.</p>
+</header>
+
+<div class="callout note">
+<p class="callout-title">This page stays high-level</p>
+<p>The module convention, the public-API boundary check, the data-ownership model, and the dependency-graph checker are documented in detail under <a href="features.html">Features</a>. Here we cover only the layer model, build-time discovery, and the deploy artifact.</p>
+</div>
+
+<section>
+<h2>Layered architecture</h2>
+<p>No DI container layer, no adapter layer. The core is the things patties already ships; modules sit on top as plain folders.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph EDGE["Boundary — web standards"]
+      direction LR
+      REQ["Request"]
+      RES["Response"]
+    end
+    subgraph CORE["patties core (existing)"]
+      direction TB
+      SRV["Bun.serve · merged route table"]
+      MW["compose() middleware<br/>+ thin PattiesContext"]
+      SRV --> MW
+    end
+    subgraph DOM["Application modules (folders)"]
+      direction LR
+      A["billing/<br/>index.ts · routes.ts"]
+      B["orders/<br/>index.ts · routes.ts"]
+      C["catalog/<br/>index.ts · routes.ts"]
+    end
+    REQ --> SRV
+    MW --> RES
+    MW --> DOM
+    A -. public API .-> B
+    classDef core fill:#1d4ed8,color:#fff,stroke:#1e3a8a,stroke-width:2px;
+    class CORE core;
+</pre>
+<div class="cap">A module exposes a public <code>index.ts</code> and a <code>routes.ts</code>. Cross-module edges (dashed) go through the public <code>index.ts</code> only — that is the one invariant the build enforces.</div>
+</div>
+</section>
+
+<section>
+<h2>Build-time discovery &amp; boundary check</h2>
+<p>One macro, a sibling of patties' existing route/island/agent macros. It runs during <code>Bun.build</code>, finds modules, merges their route maps into a single literal, and checks that no module deep-imports another's internals. The runtime never repeats this work.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    G["Bun.Glob<br/>app/*/index.ts<br/>app/*/routes.ts"]
+    SCAN["read each module's<br/>routes export + imports"]
+    CHK{"only public-API<br/>imports?"}
+    ERR["Build error<br/>deep import into<br/>another module's internals<br/>+ file:line"]
+    MERGE["merge route maps →<br/>one { path: { METHOD } } literal"]
+    BUNDLE["Bun.build →<br/>frozen server bundle"]
+    G --> SCAN --> CHK
+    CHK -->|no| ERR
+    CHK -->|yes| MERGE --> BUNDLE
+    classDef bad fill:#fee2e2,stroke:#ef4444,color:#7f1d1d;
+    class ERR bad;
+</pre>
+<div class="cap">Same contract as patties' existing <code>*.macro.ts</code> files: the macro's return value is inlined as a literal, so the production bundle contains the merged route table and does no runtime scan (honoring the repo's build-time-discovery rule).</div>
+</div>
+</section>
+
+<section>
+<h2>Build &amp; deploy artifact</h2>
+<p>One artifact: a frozen merged-route bundle. The production server is <code>Bun.serve({ routes })</code> — no filesystem scan, no container construction.</p>
+<dl class="fields">
+<dt>Discovery</dt><dd><strong>Bun.Glob</strong> in a build macro — finds <code>app/*/routes.ts</code> and merges. Runtime scans nothing.</dd>
+<dt>Bundler</dt><dd><strong>Bun.build</strong> only. No Webpack/Rollup/esbuild/Vite/tsup.</dd>
+<dt>Dev loop</dt><dd><strong>bun --hot</strong> re-runs discovery on change — same as patties' route HMR today. Frozen in prod.</dd>
+<dt>HTTP / WS</dt><dd><strong>Bun.serve</strong> — native route table + <code>upgrade</code> for WebSockets.</dd>
+<dt>Request flow</dt><dd>The existing <strong><code>compose()</code></strong> middleware + thin <code>PattiesContext</code>. Nothing new.</dd>
+<dt>Targets</dt><dd><code>bun</code> and <code>edge</code> (WinterCG <code>export default { fetch }</code>) — patties' existing adapters.</dd>
+</dl>
+</section>
+
+<section>
+<h2>Key architectural rules</h2>
+<div class="feature-grid">
+<div class="feature"><h3>① Build-time discovery</h3><p>Module + route discovery happens in a macro. The production bundle inlines the merged table and re-scans nothing.</p></div>
+<div class="feature"><h3>② Public-API boundary</h3><p>The one new invariant: cross-module imports go through <code>index.ts</code>. Deep imports are build errors.</p></div>
+<div class="feature"><h3>③ Standards at the boundary</h3><p><code>Request</code> in, <code>Response</code> out. The <code>ctx</code> stays thin — no request abstraction.</p></div>
+<div class="feature"><h3>④ Bun-native primitives</h3><p><code>Bun.serve</code>, <code>Bun.Glob</code>, <code>Bun.build</code>, <code>bun --hot</code>. Node-era replacements are not introduced.</p></div>
+</div>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="../docs/index.html">User docs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script type="module" src="../assets/mermaid-init.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

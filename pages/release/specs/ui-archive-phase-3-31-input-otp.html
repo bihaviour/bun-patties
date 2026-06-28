@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Input OTP · Patties specs</title>
+<meta name="description" content="One-time-passcode segmented input. Mirrors shadcn InputOTP. Built on input-otp.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/31-input-otp.md</span></div>
+<h1>Input OTP</h1>
+<p class="lede">One-time-passcode segmented input. Mirrors shadcn InputOTP. Built on input-otp.</p>
+</header>
+<h2>Purpose</h2>
+<p>One-time-passcode segmented input. Mirrors shadcn <code>InputOTP</code>. Built on <code>input-otp</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Caret tracking, paste handling, and per-slot focus management require client JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>input-otp@^1.4</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function InputOTP(props: React.ComponentProps&lt;typeof OTPInput&gt; &amp; { containerClassName?: string }): JSX.Element
+export function InputOTPGroup(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function InputOTPSlot(props: { index: number; className?: string } &amp; React.ComponentProps&lt;"div"&gt;): JSX.Element
+export function InputOTPSeparator(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li>A hidden <code>&lt;input&gt;</code> (provided by <code>input-otp</code>) carries the value into native form submission.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Typing fills slots left-to-right.</li><li>Pasting a code distributes characters across slots.</li><li>Backspace moves focus to the previous slot.</li><li>Form submit includes the assembled OTP string.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

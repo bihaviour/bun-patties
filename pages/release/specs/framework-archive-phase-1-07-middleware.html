@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Middleware · Patties specs</title>
+<meta name="description" content="Allow users to wire one global middleware in front of every route. This is also the answer to &quot;where do I do auth / logging / headers?&quot; — replacing Next-styl…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-1/07-middleware.md</span></div>
+<h1>Middleware</h1>
+<p class="lede">Allow users to wire one global middleware in front of every route. This is also the answer to "where do I do auth / logging / headers?" — replacing Next-styl…</p>
+</header>
+<h2>Purpose</h2>
+<p>Allow users to wire one global middleware in front of every route. This is also the answer to "where do I do auth / logging / headers?" — replacing Next-style <code>getServerSideProps</code>. The framework owns a small linear composer (~50 lines) and a <code>ctx</code> shape; there is no HTTP framework underneath.</p>
+<h2>Types</h2>
+<pre data-lang="ts"><code>export interface PattiesContext {
+  params: Record&lt;string, string&gt;            // populated by Bun.serve's native matcher
+  cookies: Bun.CookieMap                    // from req.cookies (see rfc-bun-cookies)
+  env: EnvLookup                            // adapter-aware env reader; see 08-config
+  aiContext?: AiContext                     // populated when agents/tools are present; see 10
+  csrf?: { token(): string; verify(t: string | null): boolean }   // populated when CSRF is enabled
+  vars: Record&lt;string, unknown&gt;             // free-form bag for middleware/plugins to attach to
+  url: URL                                  // parsed once, cached
+  json(body: unknown, init?: ResponseInit): Response
+  html(body: string | ReadableStream, init?: ResponseInit): Response
+  redirect(to: string, status?: 301 | 302 | 303 | 307 | 308): Response
+}
+
+export type Handler = (req: Request, ctx: PattiesContext) =&gt; Response | Promise&lt;Response&gt;
+
+export type Middleware = (
+  req: Request,
+  ctx: PattiesContext,
+  next: () =&gt; Promise&lt;Response&gt;,
+) =&gt; Promise&lt;Response&gt;
+
+export function defineMiddleware(m: Middleware): Middleware       // identity, for typing
+export function compose(middlewares: Middleware[], handler: Handler): Handler
+</code></pre>
+<p><code>compose</code> is the framework's full middleware abstraction — no <code>app.use</code>, no Hono <code>every</code>/<code>some</code>, no <code>MiddlewareHandler</code>. Users assemble their own chains inside <code>app/middleware.ts</code> if they want multiple middlewares.</p>
+<h2>User contract</h2>
+<pre data-lang="ts"><code>// app/middleware.ts
+import { defineMiddleware } from "patties/middleware"
+
+export default defineMiddleware(async (req, ctx, next) =&gt; {
+  const start = performance.now()
+  const res = await next()
+  console.log(req.method, ctx.url.pathname, res.status, `${(performance.now() - start) | 0}ms`)
+  return res
+})
+</code></pre>
+<p>Composing multiple middlewares in a single export:</p>
+<pre data-lang="ts"><code>import { defineMiddleware, compose } from "patties/middleware"
+
+const logger: Middleware = async (req, ctx, next) =&gt; { /* ... */ }
+const auth:   Middleware = async (req, ctx, next) =&gt; { /* ... */ }
+
+export default defineMiddleware(async (req, ctx, next) =&gt;
+  compose([logger, auth], () =&gt; next())(req, ctx)
+)
+</code></pre>
+<h2>Framework behavior</h2>
+<ol><li>During <code>createRouter</code>, attempt to import <code>app/middleware.ts</code>.</li><li>If present and the default export is a function, treat it as the global middleware.</li><li>If absent, skip silently (no middleware).</li><li>If the export is not a function, throw a clear error at boot.</li><li>Every handler (page, API, plugin-mounted) is registered as <code>compose([userMiddleware, ...pluginMiddlewares], handler)</code> inside the <code>routes:</code> object passed to <code>Bun.serve</code>. The fallback (404) handler is wrapped identically.</li></ol>
+<p>User middleware sits at the outermost edge of every request — it sees plugin-mounted routes, filesystem routes, and the 404 fallback alike. See <a href="framework-archive-phase-0-02-router.html">02-router</a> for the full wiring order.</p>
+<h2><code>ctx.cookies</code></h2>
+<p>Populated from <code>request.cookies</code> (provided natively by <code>Bun.serve</code>). Mutations are flushed to <code>Set-Cookie</code> headers by the framework's response finalizer — middleware/handlers never call <code>cookies.toSetCookieHeaders()</code> directly. See [[rfc-bun-cookies]].</p>
+<h2><code>ctx.csrf</code> (Phase 1 minimal, Phase 2 auto-injection)</h2>
+<p>When CSRF is enabled in <code>patties.config.ts</code>, <code>ctx.csrf</code> exposes:</p>
+<ul><li><code>token()</code> — generates a token via <code>Bun.CSRF.generate(secret)</code>, sets the <code>_csrf</code> cookie if absent, returns the token for embedding in forms.</li><li><code>verify(submitted)</code> — checks <code>Bun.CSRF.verify(submitted, secret)</code>.</li></ul>
+<p>Phase 1: users render <code>&lt;input type="hidden" name="_csrf" value={ctx.csrf!.token()}&gt;</code> themselves. Phase 2 (depends on [[rfc-bun-htmlrewriter]]): the renderer auto-injects the input into every POST <code>&lt;form&gt;</code> unless tagged <code>data-no-csrf</code>.</p>
+<p>On non-Bun targets, the adapter substitutes a WebCrypto HMAC implementation of the same scheme. See [[rfc-bun-csrf]].</p>
+<h2>Composition</h2>
+<p>Users compose multiple middlewares themselves inside one default export using the <code>compose</code> helper. The framework does not invent a stack abstraction beyond <code>compose</code>.</p>
+<h2>Non-goals</h2>
+<ul><li>A per-route middleware filesystem syntax. Deferred to a future RFC.</li><li>A <code>getServerSideProps</code> equivalent.</li><li>Re-implementing Hono's <code>every</code>/<code>some</code>/<code>createMiddleware</code> — <code>compose</code> is the whole API.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>A fixture with a logging middleware sees one log line per request to any route (page, API, plugin, 404).</li><li>Removing <code>app/middleware.ts</code> and restarting causes the server to boot with no middleware and no warning.</li><li>Exporting <code>default = 42</code> causes boot to fail with an error naming the file.</li><li><code>ctx.cookies.set("sid", id)</code> results in a <code>Set-Cookie: sid=...</code> header on the response without any explicit serialization call by the user.</li><li>A request to a non-existent path passes through the user middleware before reaching the 404 fallback.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

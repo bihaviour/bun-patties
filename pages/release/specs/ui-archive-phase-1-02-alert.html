@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alert · Patties specs</title>
+<meta name="description" content="A static callout — info / warning / destructive. Mirrors shadcn Alert. No interactivity, no dismiss button by default.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/02-alert.md</span></div>
+<h1>Alert</h1>
+<p class="lede">A static callout — info / warning / destructive. Mirrors shadcn Alert. No interactivity, no dismiss button by default.</p>
+</header>
+<h2>Purpose</h2>
+<p>A static callout — info / warning / destructive. Mirrors shadcn <code>Alert</code>. No interactivity, no dismiss button by default.</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. Pure presentational; ships zero client JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>class-variance-authority@^0.7</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export type AlertVariant = "default" | "destructive"
+
+export function Alert(props: {
+  variant?: AlertVariant
+  className?: string
+  children?: React.ReactNode
+}): JSX.Element
+
+export function AlertTitle(props: { className?: string; children?: React.ReactNode }): JSX.Element
+export function AlertDescription(props: { className?: string; children?: React.ReactNode }): JSX.Element
+
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Drops <code>forwardRef</code>.</li><li>Uses <code>role="alert"</code> on the root.</li><li>A <code>dismissible</code> variant exists upstream; in Patties it is provided by 03-alert-dialog instead, since "dismissible" implies state.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Renders <code>role="alert"</code> with correct ARIA semantics under SSR.</li><li><code>variant="destructive"</code> applies destructive tokens (<code>--destructive</code>, <code>--destructive-foreground</code>).</li><li>Bundle audit: page using only <code>Alert</code> ships zero JS.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Server-Timing — dev-only response duration header · Patties specs</title>
+<meta name="description" content="This spec encodes [[rfc-bun-nanoseconds]]. It extends the response">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/20-server-timing.md</span></div>
+<h1>Server-Timing — dev-only response duration header</h1>
+<p class="lede">This spec encodes [[rfc-bun-nanoseconds]]. It extends the response</p>
+</header>
+<p>This spec encodes [[rfc-bun-nanoseconds]]. It extends the response finalizer introduced in [[framework/archive/19-request-id|spec 19]] so that every response in dev carries <code>Server-Timing: total;dur=&lt;ms&gt;</code> alongside <code>X-Request-Id</code>. Production responses are unchanged.</p>
+<h2>Goal</h2>
+<p>Give the framework a wall-clock duration that shows up in browser dev-tools without configuration: open the Network panel, look at any response, see how long the server took. No middleware to install, no manual instrumentation, no setup in <code>patties.config.ts</code>.</p>
+<h2>Surface</h2>
+<p>No new user-facing API. The framework adds one outgoing header in dev:</p>
+<pre><code>Server-Timing: total;dur=&lt;ms&gt;
+</code></pre>
+<p>Where <code>&lt;ms&gt;</code> is the wall-clock duration from the moment the outer composer enters request handling to the moment the response finalizer is about to flush the response, rendered to one decimal place.</p>
+<h2>Framework behaviour</h2>
+<h3>Timing capture</h3>
+<p>In the Bun adapter (<code>src/adapters/bun/</code>):</p>
+<pre data-lang="ts"><code>const ns0 = Bun.nanoseconds()
+// ...middleware + handler run...
+const elapsedNs = Bun.nanoseconds() - ns0
+const ms = Number(elapsedNs) / 1e6
+</code></pre>
+<p>In the edge adapter (<code>src/adapters/edge/</code>):</p>
+<pre data-lang="ts"><code>const t0 = performance.now()
+// ...middleware + handler run...
+const ms = performance.now() - t0
+</code></pre>
+<p>Both produce a double-precision millisecond value; same precision class for the header.</p>
+<h3>Emission</h3>
+<p>The same response finalizer that flushes <code>X-Request-Id</code> and <code>Set-Cookie</code> checks <code>NODE_ENV</code> and adds the header:</p>
+<pre data-lang="ts"><code>if (Bun.env.NODE_ENV !== "production") {
+  if (!res.headers.has("Server-Timing")) {
+    res.headers.set("Server-Timing", `total;dur=${ms.toFixed(1)}`)
+  }
+}
+</code></pre>
+<p>The detection rides on the same <code>NODE_ENV</code> check the dev error overlay uses. No new config knob.</p>
+<h3>Header coexistence with spec 19</h3>
+<p>The Server-Timing write happens <strong>after</strong> the X-Request-Id write. Both are pure-additive on disjoint header names; neither blocks the other.</p>
+<p>A handler that has already set <code>Server-Timing</code> itself wins — the finalizer never overwrites an existing <code>Server-Timing</code> header. Same rule pattern as the X-Request-Id contract.</p>
+<blockquote><p><strong>Implementation note (shipped 91848f2).</strong> Timing and emission live in the shared <code>finalizeResponse</code> (<code>src/middleware/cookies.ts</code>), invoked from the router (<code>src/router/index.ts</code>) for both per-route handlers and the 404 fallback. Capture rides a <code>now()</code> helper that feature-detects the runtime — <code>Number(Bun.nanoseconds()) / 1e6</code> on Bun, else <code>performance.now()</code> on edge — and <code>isProduction()</code> reads <code>NODE_ENV</code> from <code>Bun.env</code> or <code>process.env</code>. The per-adapter sketch above is collapsed into this one path; the edge shape is covered by <code>tests/adapters/edge.test.ts</code>.</p>
+</blockquote>
+<h2>User contract</h2>
+<p>In dev, every response has a <code>Server-Timing: total;dur=...</code> header. In prod, nothing changes — no header, no overhead.</p>
+<p>A handler that wants to add its own entries can do so by setting its own <code>Server-Timing</code> header on the returned <code>Response</code>; the finalizer sees the existing header and skips its own write.</p>
+<h2>Non-goals</h2>
+<ul><li><strong>Named per-middleware entries.</strong> Out of scope. Adding <code>auth;dur=...</code> / <code>db;dur=...</code> would require ctx-threading and a <code>ctx.timing</code> API; if real demand surfaces, open a follow-up RFC.</li><li><strong>Production timing.</strong> Out of scope. Apps that need prod timing should wire their own observability middleware that reads <code>Bun.nanoseconds()</code> / <code>performance.now()</code> directly.</li><li><strong>Sub-millisecond precision.</strong> <code>.toFixed(1)</code> is the contract; clients that read more decimals will be disappointed.</li><li><strong>A dedicated <code>serverTiming</code> config knob.</strong> The dev/prod gate is the only switch. If users want to opt out entirely in dev, they can set their own <code>Server-Timing</code> header to an empty value in middleware.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>In dev, a request to any route returns a response with a <code>Server-Timing: total;dur=&lt;X.Y&gt;</code> header where <code>&lt;X.Y&gt;</code> is a positive number rendered to one decimal place.</li><li>In prod (<code>NODE_ENV=production</code>), the same request returns a response with no <code>Server-Timing</code> header.</li><li>A handler that sets its own <code>Server-Timing</code> header sees the framework leave it unchanged in both dev and prod.</li><li>On the edge adapter, dev mode still produces a <code>Server-Timing</code> header using <code>performance.now()</code>; the header shape is identical.</li><li>The header coexists with <code>X-Request-Id</code> (spec 19); both appear on the same response with no interference.</li></ul>
+<h2>Test plan</h2>
+<ul><li>Unit: outer composer in dev → assert <code>Server-Timing</code> header present and matches <code>^total;dur=\d+\.\d$</code>.</li><li>Unit: same with <code>NODE_ENV=production</code> → assert header absent.</li><li>Unit: handler returning a response with its own <code>Server-Timing</code> header → assert finalizer preserves it verbatim.</li><li>Adapter parity: edge adapter test asserts same shape via <code>performance.now()</code>.</li><li>Integration: a request also carries <code>X-Request-Id</code> per spec 19 — assert both headers appear on the same response.</li></ul>
+<h2>Out of this spec</h2>
+<p>The dev error overlay (<code>src/render/dev-error-overlay.ts</code>) and the CLI log formatting (<code>cli/archive/07-logging-errors</code>) are unaffected.</p>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

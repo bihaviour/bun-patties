@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties add --path — per-invocation stamp destination · Patties specs</title>
+<meta name="description" content="Accept. The only hard-coded convention shadcn users hit immediately. --path">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">rfcs/accepted/rfc-patties-ui-add-path.md</span></div>
+<h1>patties add --path — per-invocation stamp destination</h1>
+<p class="lede">Accept. The only hard-coded convention shadcn users hit immediately. --path</p>
+</header>
+<h2>Review verdict (2026-05-28)</h2>
+<p><strong>Accept.</strong> The only hard-coded convention shadcn users hit immediately. <code>--path</code> overrides the component + helper destination for a single invocation, backed by <code>config.ui.componentsDir</code> ([[rfc-patties-ui-config-block]]) for the durable case.</p>
+<p>Scope pins:</p>
+<ul><li>Affects component + <code>_internal/</code> destinations only; <strong><code>tokensFile</code> is unaffected</strong> (one stylesheet per project).</li><li>Resolves relative to <code>cwd</code>; rejects absolute / <code>..</code>-escaping paths (<code>EXIT.USAGE</code>).</li><li>Precedence: <code>--path</code> &gt; <code>config.ui.componentsDir</code> &gt; convention default.</li><li>Composes with <code>--dry-run</code> / <code>--view</code> / <code>--force</code> / <code>--all</code>.</li></ul>
+<p>Encoded into <code>cli/14-add-path</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p>A <code>--path &lt;dir&gt;</code> flag that redirects where <code>patties add</code> stamps component source and helpers, for one invocation.</p>
+<h2>Motivation</h2>
+<p>Destination is hard-coded to <code>app/components/ui/</code>. Users with a different layout (<code>src/ui</code>, a monorepo package) have no escape hatch. shadcn offers <code>--path</code>.</p>
+<h2>Proposal</h2>
+<p><code>parseArgs</code> gains <code>--path &lt;value&gt;</code>; the resolved dir replaces <code>componentsDir</code> in the path set; helpers follow to <code>&lt;path&gt;/_internal/</code>. Missing value → <code>EXIT.USAGE</code>.</p>
+<h2>Trade-offs</h2>
+<ul><li>Per-invocation only; durable redirection is <code>config.ui.componentsDir</code>. Keeping both avoids surprising "why did my last add land elsewhere" state.</li></ul>
+<h2>Open questions</h2>
+<ul><li>None remaining; <code>tokensFile</code> deliberately excluded from <code>--path</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

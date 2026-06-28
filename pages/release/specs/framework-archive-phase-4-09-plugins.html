@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plugins · Patties specs</title>
+<meta name="description" content="Allow third parties to extend Patties without forking. The contract is small on purpose: plugins receive a small route-registration API and a set of hooks; t…">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">framework/archive/phase-4/09-plugins.md</span></div>
+<h1>Plugins</h1>
+<p class="lede">Allow third parties to extend Patties without forking. The contract is small on purpose: plugins receive a small route-registration API and a set of hooks; t…</p>
+</header>
+<h2>Purpose</h2>
+<p>Allow third parties to extend Patties without forking. The contract is small on purpose: plugins receive a small route-registration API and a set of hooks; they cannot redefine the runtime.</p>
+<h2>Public surface</h2>
+<pre data-lang="ts"><code>export interface PluginServer {
+  /** Register a route into the framework's compiled routes map. Wrapped by user middleware. */
+  route(pattern: string, methods: Record&lt;string, Handler&gt;): void
+  /** Add a middleware that runs after user middleware, before plugin/filesystem handlers. */
+  use(middleware: Middleware): void
+}
+
+export interface Plugin {
+  name: string
+  /** Semver range of framework versions this plugin supports. Verified via Bun.semver at registration. */
+  compat?: string                          // e.g. "^1.0.0"
+  setup(server: PluginServer, ctx: PluginContext): void | Promise&lt;void&gt;
+  hooks?: {
+    onBuildStart?(opts: BuildOptions): void | Promise&lt;void&gt;
+    onBuildEnd?(result: BuildResult): void | Promise&lt;void&gt;
+    onDevStart?(server: DevServer): void | Promise&lt;void&gt;
+    onAgentsMdGenerate?(doc: AgentsMdDocument): AgentsMdDocument | Promise&lt;AgentsMdDocument&gt;
+    /** Receives the inventory of `app/jobs/*` for deploy plugins to translate into vendor cron triggers. See rfc-bun-cron. */
+    onJobsCollect?(jobs: JobSummary[]): void | Promise&lt;void&gt;
+  }
+}
+
+export function definePlugin(p: Plugin): Plugin
+</code></pre>
+<p><code>PluginContext</code> exposes the resolved config, the project root, and a logger. Note: plugins do not receive a Hono app — there is no Hono. Route registration goes through <code>server.route()</code>, which folds entries into the same <code>routes:</code> map <a href="framework-archive-phase-0-01-server.html">01-server</a> passes to <code>Bun.serve</code>.</p>
+<h3>Compat checks</h3>
+<p>At plugin registration the framework calls <code>Bun.semver.satisfies(frameworkVersion, plugin.compat)</code> when <code>compat</code> is set. A mismatch fails boot with both versions and the plugin name. Plugins without <code>compat</code> are allowed but log a one-line warning at boot — pinning is encouraged.</p>
+<h2>Behavior</h2>
+<ol><li>The framework iterates <code>config.plugins</code> in declared order.</li><li>For each plugin, call <code>setup(server, ctx)</code> <strong>after user middleware is wired and before filesystem routes are registered</strong>. This is the fixed wiring order from <a href="framework-archive-phase-0-02-router.html">02-router</a>: <code>user middleware → plugins → routes</code>. Consequences:<ul><li>Plugin-mounted routes are wrapped by user middleware (auth, logging, etc.) just like filesystem routes.</li><li>A plugin that registers <code>server.route("/__health", { GET: ... })</code> will be hit by user middleware. Plugins wanting to opt out should mount under a reserved path the user's middleware excludes.</li></ul></li><li>Hooks fire at the documented points. Errors abort the operation with the plugin name in the trace.</li></ol>
+<h2>Official plugins (roadmap)</h2>
+<p>Capability plugins (vendor-agnostic, sit above storage / auth / email APIs). Where Bun ships a built-in, the official plugin uses it by default to avoid peer-dep weight on the edge bundle:</p>
+<ul><li><code>@patties/auth</code> — password hashing via <strong><code>Bun.password</code></strong> (argon2id by default; bcrypt opt-in). No <code>bcryptjs</code> / <code>argon2</code> peer dep.</li><li><code>@patties/database</code> — default driver is <strong><code>bun:sqlite</code></strong> for local/SQLite, <strong><code>Bun.sql</code></strong> for Postgres. Drivers for other engines are opt-in subpackages.</li><li><code>@patties/cache</code> — sessions and cache via <strong><code>Bun.RedisClient</code></strong>. No <code>ioredis</code> peer dep.</li><li><code>@patties/storage</code> — object storage via <strong><code>Bun.S3Client</code></strong> (works with AWS S3, Cloudflare R2, MinIO, Backblaze B2 — anything S3-compatible). No <code>@aws-sdk/client-s3</code> peer dep.</li><li><code>@patties/analytics</code></li><li><code>@patties/email</code></li><li><code>@patties/shadcn</code> — Tailwind + shadcn/ui preset for the React island stack.</li></ul>
+<p>Choosing Bun built-ins isn't dogma — it's bundle size. Each peer-dep avoided is bytes shaved off cold start on the <code>edge</code> target.</p>
+<p>Deploy plugins (one per edge host — own their own vendor config, the framework core stays neutral):</p>
+<ul><li><code>@patties/deploy-cloudflare</code> — emits <code>wrangler.toml</code>, runs <code>wrangler deploy</code>.</li><li><code>@patties/deploy-vercel</code> — emits <code>vercel.json</code> for Vercel Edge Functions.</li><li><code>@patties/deploy-deno</code> — emits config for Deno Deploy.</li><li><code>@patties/deploy-netlify</code> — emits <code>netlify.toml</code> for Netlify Edge.</li><li><code>@patties/deploy-bun</code> — packages a Bun-target build for a self-hosted VPS.</li></ul>
+<p>A deploy plugin's job is to consume the portable Worker module from <a href="framework-archive-phase-2-12-edge-adapters.html">12-edge-adapters</a> and produce vendor-specific artifacts + a <code>patties deploy</code> action. Anyone can write a new deploy plugin without touching the framework.</p>
+<p>Deploy plugins shell out via <strong><code>Bun.$</code></strong> (Bun Shell) — typed, cross-platform, no <code>node:child_process</code>. Example: <code>await Bun.$\</code>bunx wrangler deploy ${file}\<code>.cwd(outDir)</code>.</p>
+<h2>Non-goals</h2>
+<ul><li>Loader/transformer plugins (<code>Bun.build</code> plugins handle that domain — re-exposed if needed via RFC).</li><li>Plugin-to-plugin dependency resolution.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>A plugin that calls <code>server.route("/__health", { GET: () =&gt; new Response("ok") })</code> makes that route reachable.</li><li>Throwing in <code>setup</code> aborts boot with a message naming the plugin.</li><li>Plugins run in declared order (verifiable by ordered log lines).</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

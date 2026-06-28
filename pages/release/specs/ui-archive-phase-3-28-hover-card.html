@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hover Card · Patties specs</title>
+<meta name="description" content="Lazy popover on hover/focus — for previews. Mirrors shadcn HoverCard. Built on @radix-ui/react-hover-card.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/28-hover-card.md</span></div>
+<h1>Hover Card</h1>
+<p class="lede">Lazy popover on hover/focus — for previews. Mirrors shadcn HoverCard. Built on @radix-ui/react-hover-card.</p>
+</header>
+<h2>Purpose</h2>
+<p>Lazy popover on hover/focus — for previews. Mirrors shadcn <code>HoverCard</code>. Built on <code>@radix-ui/react-hover-card</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Hover timing and portal mounting need JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-hover-card@^1.1</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export const HoverCard: typeof Radix.Root
+export const HoverCardTrigger: typeof Radix.Trigger
+export function HoverCardContent(props: Radix.HoverCardContentProps &amp; { className?: string }): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li><code>openDelay</code> defaults to <code>200ms</code> and is configurable per-component, not globally.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Hovering or focusing the trigger reveals content after <code>openDelay</code>.</li><li>Touch devices fall back to no-op (Radix default) — no flashing on tap.</li><li>SSR renders only the trigger.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

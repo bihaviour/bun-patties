@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.YAML / Bun.TOML / Bun.JSON5 (and JSONL) — non-TS config formats · Patties specs</title>
+<meta name="description" content="Confirmed deferred, with the pickup trigger retargeted to the plugin system:">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Deferred</span> <span class="badge badge-id">rfcs/deferred/rfc-bun-config-formats.md</span></div>
+<h1>Bun.YAML / Bun.TOML / Bun.JSON5 (and JSONL) — non-TS config formats</h1>
+<p class="lede">Confirmed deferred, with the pickup trigger retargeted to the plugin system:</p>
+</header>
+<h2>Trigger retargeted (2026-05-31)</h2>
+<p>Confirmed deferred, with the pickup trigger <strong>retargeted to the plugin system</strong>: revisit alt-config-formats when the plugin/deploy-adapter surface ([[framework/phase-4/09-plugins]]) lands and a plugin wants to read its own vendor config (<code>wrangler.toml</code>, <code>fly.toml</code>) through the patties config loader. Until a plugin pulls on it, TS-first stays the sole canonical format. The TS-first-as-docs-default constraint below still holds; alt-formats remain opt-in additive when they arrive.</p>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Reject for v1; keep as future-work RFC.</strong> Spec 08-config consciously chose TS-first for editor IntelliSense and type-safety. Adding YAML/TOML/JSON5 support without a real demand signal would erode that virtue and invite churn over "which format is canonical." The cost of adoption is low, but so is the demand signal — without a real user, the choice of which format to support first is arbitrary.</p>
+<p><code>Bun.JSONL</code> (newline-delimited JSON) doesn't fit the config use case at all — it's a streaming-records format. Drops out of scope on any revisit.</p>
+<p>Revisit when:</p>
+<ul><li>A user requests YAML/TOML config with a concrete use case (most likely scenario: a deploy adapter wants <code>wrangler.toml</code> / <code>fly.toml</code> alongside <code>patties.config.ts</code> and the loader is what stops it), OR</li><li>A deploy plugin proposes overlapping with the config loader for vendor-config-format ergonomics.</li></ul>
+<p><strong>Re-evaluation trigger:</strong> The TS-first contract should be preserved on revisit — alt-formats should be opt-in additive, with TS remaining the docs default. If revisited, scope likely shrinks to TOML only (clearest deploy-adapter overlap); JSONL drops entirely, and JSON5 is borderline (too close to JSON to justify a separate format).</p>
+<p>No spec changes. File preserved as <code>status: deferred</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p>Bun ships native parsers for YAML, TOML, JSON5, and JSONL. Extending <code>08-config</code> to accept <code>patties.config.{yaml,toml,json5}</code> would be a one-branch addition to the config loader.</p>
+<h2>Motivation</h2>
+<p>Some deploy targets naturally express config in TOML/YAML (<code>wrangler.toml</code>, <code>fly.toml</code>, GitHub Actions). Patties is opinionated TS-first; this RFC would widen the contract. It remains hypothetical without a deploy adapter or user pulling on it.</p>
+<h2>Proposal (sketch — not yet refined)</h2>
+<ul><li>Extend <code>08-config</code>'s loader to accept <code>patties.config.{yaml,toml,json5}</code> in addition to TS/JSON.</li><li>Drop JSONL entirely (wrong format shape for config).</li><li>Possibly drop JSON5 (too close to JSON to justify).</li><li>Error when multiple <code>patties.config.*</code> files exist in the same project (no precedence — be explicit).</li></ul>
+<h2>Trade-offs</h2>
+<ul><li><strong>Pro:</strong> drops up to three potential deps (<code>js-yaml</code>, <code>@iarna/toml</code>, <code>json5</code>) when patties grows config-format needs.</li><li><strong>Con:</strong> erodes the "TS-first config gives users editor IntelliSense" virtue. New users discovering the framework via docs would hit "wait, which format is canonical?"</li><li><strong>Con:</strong> precedence bikeshed when multiple <code>patties.config.*</code> exist — error is the right answer but adds an error case.</li></ul>
+<h2>Open questions</h2>
+<ul><li>Which formats actually ship — drop JSONL (always), possibly drop JSON5?</li><li>Source precedence when multiple <code>patties.config.*</code> files exist (probably error, but worth pinning).</li><li>Does adopting this break the TS-first IntelliSense virtue?</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-005 — No new request lifecycle; reuse compose() · Patties</title>
+<meta name="description" content="Module handlers run in the existing compose() middleware chain; no new lifecycle phases.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">ADR</span> <span class="pill green">accepted</span></div>
+<h1>ADR-005 — No new request lifecycle; reuse <code>compose()</code></h1>
+<p class="lede">Module handlers run in the existing <code>compose()</code> middleware chain; no new lifecycle phases.</p>
+</header>
+<section>
+<h2>Context</h2>
+<p>Nest's guards/pipes/interceptors/filters are four ordered extension points around a handler. patties already ships a <code>compose()</code> middleware model that does the same job with one concept.</p>
+</section>
+<section>
+<h2>Decision</h2>
+<p>Module handlers run inside the existing middleware chain. Cross-cutting concerns are middleware; local concerns are plain calls in the handler. The framework introduces no phases of its own.</p>
+</section>
+<section>
+<h2>Consequences</h2>
+<p>One mental model, already documented and tested. Nothing to resolve per route at build beyond what patties already does. Cost: developers wanting Nest-style named slots must express them as middleware ordering (which is what they are).</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="decisions.html">All decisions</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

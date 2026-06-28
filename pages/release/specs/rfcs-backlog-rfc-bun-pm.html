@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bun pm — catalogs / workspaces for monorepos · Patties specs</title>
+<meta name="description" content="Moved deferred → backlog — the named trigger fired. The 2026-05-27 deferral">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Backlog</span> <span class="badge badge-id">rfcs/backlog/rfc-bun-pm.md</span></div>
+<h1>bun pm — catalogs / workspaces for monorepos</h1>
+<p class="lede">Moved deferred → backlog — the named trigger fired. The 2026-05-27 deferral</p>
+</header>
+<h2>Promoted to backlog (2026-05-31)</h2>
+<p><strong>Moved deferred → backlog — the named trigger fired.</strong> The 2026-05-27 deferral rested entirely on "no monorepo spec exists." That is now stale: [[cli/18-create-patties-redesign]] (reviewed 2026-05-31) added a <code>--monorepo</code> flag scaffolding a Bun workspace (<code>apps/*</code> + <code>packages/*</code>) on <code>bun --filter</code> + catalogs, and [[framework/26-monorepo-react-resolution]] + the just-encoded [[framework/27-task-runner-cache]] build on it. The trigger the RFC named — "the scaffold grows a <code>--monorepo</code> flag" — has happened.</p>
+<p>Workspaces/catalogs are now <em>used</em> by spec 18 at scaffold time, so that slice is effectively in flight. The genuinely-unencoded backlog work is the rest of the <code>bun pm</code> surface: <code>bun pm pack</code> / <code>bun pm version</code> and catalog <em>management</em> ergonomics (not just the initial stamp). Parked here until the monorepo story needs lifecycle management beyond scaffolding. Original deferral verdict below.</p>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Reject for v1; keep as future-work RFC.</strong> No monorepo spec exists in patties. Templates are single-package by design (spec 05). Real demand for multi-package patties projects hasn't materialized, and the pnpm + Turborepo combination is mature enough that users who need it today can use those directly without framework involvement.</p>
+<p>Revisit when:</p>
+<ul><li>The scaffold spec ([[cli/draft/09-create-patties-dx]]) grows a <code>--monorepo</code> flag, OR</li><li>A real patties monorepo emerges (multiple apps in one repo, shared <code>patties.config.ts</code> snippets, shared design-system package).</li></ul>
+<p><strong>Re-evaluation trigger:</strong> A user opening an issue asking "how do I do a monorepo?" is the natural signal. Until then, no hypothetical-future design.</p>
+<p>No spec changes. File preserved as <code>status: deferred</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p><code>bun pm pack</code> / <code>bun pm version</code> / workspace + catalog management. Bun's built-in monorepo tooling, comparable to pnpm + Turborepo.</p>
+<h2>Motivation</h2>
+<p>Bun ships workspaces and catalogs as a CLI surface. A patties monorepo story would naturally lean on these rather than pulling in pnpm + Turborepo. Hypothetical until a real monorepo materializes.</p>
+<h2>Trade-offs</h2>
+<ul><li><strong>Speccing without a user means designing the wrong API.</strong> Multi-app patties projects could take many shapes (multi-app with shared config, app + shared UI package, app + shared agent-platform, etc.). Without a real use case, we'd pick the wrong default.</li></ul>
+<h2>Open questions</h2>
+<ul><li><strong>Does the scaffold know about workspaces, or do users wire them manually?</strong></li><li><strong>How do shared <code>patties/config</code> files get loaded across packages?</strong></li><li><strong>Build orchestration</strong> — does patties need Turborepo-style caching, or is <code>bun run --filter</code> enough?</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

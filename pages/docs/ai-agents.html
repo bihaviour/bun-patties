@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI &amp; agents · Patties</title>
+<meta name="description" content="Agents, tools, jobs, scanning, and runtime registration.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>AI &amp; agents</h1>
+<p class="lede">Patties includes optional AI primitives for projects that need agents, tools, jobs, and generated <code>AGENTS.md</code> metadata.</p>
+</header>
+<section>
+<h2>Definitions</h2>
+<p>Patties exposes:</p>
+<ul>
+<li>agent and tool config types</li>
+<li>job config types</li>
+<li><code>defineAgent()</code></li>
+<li><code>defineTool()</code></li>
+<li><code>defineJob()</code></li>
+<li><code>generateAgentsMd</code></li>
+<li>AI runtime helpers under <code>patties/ai</code></li>
+</ul>
+</section>
+<section>
+<h2>App layout</h2>
+<p>The current repository fixtures show the intended layout:</p>
+<ul>
+<li><code>app/agents/</code> for agent definitions</li>
+<li><code>app/tools/</code> for callable tools</li>
+<li><code>app/jobs/</code> for scheduled jobs</li>
+</ul>
+</section>
+<section>
+<h2>Core types</h2>
+<ul>
+<li><code>AgentConfig</code> defines the model, tools, triggers, and token settings</li>
+<li><code>ToolConfig</code> defines description, Zod input schema, and handler</li>
+<li><code>JobConfig</code> defines the cron schedule, timezone, and handler</li>
+<li><code>AiContext</code> provides request identity, optional user state, variables, and an Anthropic-like client</li>
+</ul>
+</section>
+<section>
+<h2>Discovery</h2>
+<p>Build-time scanning collects modules from <code>agents</code>, <code>tools</code>, and <code>jobs</code> directories. Missing directories are allowed, and test files are ignored.</p>
+<p>During <code>patties build</code> and <code>patties dev</code>, Patties attempts to regenerate the root <code>AGENTS.md</code> file from the app definition so downstream tools can inspect routes, agents, tools, jobs, and middleware.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

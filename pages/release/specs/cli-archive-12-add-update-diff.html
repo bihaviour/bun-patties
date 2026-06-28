@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties add --diff / patties update · Patties specs</title>
+<meta name="description" content="The copy-in model's single biggest weakness is upstream drift: once a">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">cli/archive/12-add-update-diff.md</span></div>
+<h1>patties add --diff / patties update</h1>
+<p class="lede">The copy-in model's single biggest weakness is upstream drift: once a</p>
+</header>
+<h2>Purpose</h2>
+<p>The copy-in model's single biggest weakness is <strong>upstream drift</strong>: once a component is stamped into the user's repo they own it, but they lose the ability to see how the catalog source moved on. shadcn answers this with <code>diff</code> / <code>add --diff</code>. patties has no update/diff path (matrix §1 <code>diff</code>, §2 <code>--diff</code> — both <strong>gap</strong>); the cli-add spec deferred it to "phase-5". With the full 60-component catalog now shipped, the matrix ranks this the <strong>highest-leverage remaining gap</strong> ("Gaps worth an RFC" #1). This spec promotes it.</p>
+<h2>Usage</h2>
+<pre><code>patties add --diff &lt;component&gt;      # show diff: stamped file ← catalog template
+patties add --diff                  # diff every stamped component against the catalog
+patties update &lt;component&gt;          # re-stamp, overwriting, after showing the diff
+patties update --all                # update every stamped component
+patties update --dry-run            # show what would change, write nothing
+</code></pre>
+<p><code>--diff</code> is read-only. <code>update</code> is the apply side; it reuses the stamper with <code>force: true</code> but gated behind a shown diff.</p>
+<h2>What "upstream" means here</h2>
+<p>patties has no remote registry (see [[cli/15-registry-distribution]]); the source of truth is the installed <code>patties-ui</code> package resolved via <code>Bun.resolveSync("patties-ui/registry", cwd)</code> (<code>load-catalog.ts:20</code>). So "upstream" = the template that ships with the <strong>currently installed</strong> <code>patties-ui</code> version. Updating <code>patties-ui</code> (<code>bun update patties-ui</code>) then running <code>patties update</code> is the drift-reconciliation loop, analogous to shadcn pulling newer registry source.</p>
+<h2>Behavior — <code>--diff</code></h2>
+<ol><li>Load the catalog (<code>loadCatalog</code>). For each selected component, resolve its <code>files[]</code> (<code>from</code> in <code>templatesDir</code>, <code>to</code> in the resolved <code>componentsDir</code>).</li><li>For each file pair: using <code>Bun</code>'s text APIs; color via the existing ANSI helpers, plain when stdout is not a TTY.<ul><li>destination missing → report <code>not stamped</code> (skip; <code>--diff</code> never stamps).</li><li>identical → report <code>up to date</code>.</li><li>differ → print a unified diff (catalog as "incoming", local as "current"),</li></ul></li><li>Also diff <code>_internal/</code> helpers and <code>tokens.css</code> fragments the component declares (<code>internalHelpers</code>, <code>tokens</code>) so users see helper/token drift, not just the component file.</li><li>Exit <code>EXIT.OK</code> always (diff is informational); a <code>--check</code> modifier exits non-zero when any drift exists, for CI ("fail if components are stale").</li></ol>
+<h2>Behavior — <code>update</code></h2>
+<ol><li>Run the same diff and print it.</li><li>Re-stamp the differing files with <code>force: true</code> (reusing <code>applyStamp</code>), re-merge tokens, stamp any newly-required helpers, and patch any newly-required peer deps.</li><li>Files the user has locally edited are still overwritten — that is the point of <code>update</code>, and matches <code>--force</code> semantics. The shown diff is the safeguard; users commit before updating. A future <code>--3way</code> is out of scope.</li><li><code>--dry-run</code> prints the plan and writes nothing (parity with <code>add --dry-run</code>, <code>add.ts:107</code>).</li></ol>
+<h2>Production guard</h2>
+<p>Both inherit the <code>patties add</code> guard: <code>NODE_ENV=production</code> → <code>EXIT.USAGE</code> (<code>add.ts:34</code>).</p>
+<h2>Acceptance criteria</h2>
+<ul><li>After <code>patties add button</code>, editing the local <code>button.tsx</code>, <code>patties add --diff button</code> prints a unified diff and exits <code>EXIT.OK</code>.</li><li><code>patties add --diff button</code> on an unmodified, current component prints <code>up to date</code> and produces no diff body.</li><li><code>patties add --diff</code> (no name) diffs all stamped components and ignores ones not yet stamped.</li><li><code>patties add --diff --check</code> exits non-zero iff at least one stamped component differs from the catalog — usable as a CI drift gate.</li><li><code>patties update button</code> overwrites <code>button.tsx</code> with catalog source and merges any new tokens/helpers; re-running is a no-op (<code>up to date</code>).</li><li><code>patties update --dry-run</code> writes nothing.</li><li>Diffs are colorized on a TTY and plain when piped.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

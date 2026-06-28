@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.resolveSync — module resolution outside the build context · Patties specs</title>
+<meta name="description" content="Bun.resolveSync(specifier, parent) resolves a module specifier to an absolute path using Bun's resolver. Useful outside of Bun.build's native resolution.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Backlog</span> <span class="badge badge-id">rfcs/backlog/rfc-bun-resolve-sync.md</span></div>
+<h1>Bun.resolveSync — module resolution outside the build context</h1>
+<p class="lede">Bun.resolveSync(specifier, parent) resolves a module specifier to an absolute path using Bun's resolver. Useful outside of Bun.build's native resolution.</p>
+</header>
+<h2>Summary</h2>
+<p><code>Bun.resolveSync(specifier, parent)</code> resolves a module specifier to an absolute path using Bun's resolver. Useful outside of <code>Bun.build</code>'s native resolution.</p>
+<h2>Why backlog</h2>
+<p>The plugin spec uses <code>Bun.build</code>'s plugin slot, which has its own resolver. We don't currently have a use case where userland code needs to do its own module resolution.</p>
+<h2>Trigger to promote to draft</h2>
+<ul><li>A plugin diagnostic feature ("which package satisfies this peer dep?"), OR</li><li>A scaffold step that inspects a target dependency before installing.</li></ul>
+<h2>Bun-unique classification</h2>
+<p><strong>Bun-faster</strong> — <code>import.meta.resolve</code> covers the same ground on Node 22+; Bun's is faster and has been stable longer. Capability is not unique.</p>
+<h2>Open questions when promoted</h2>
+<ul><li>Async <code>Bun.resolve</code> vs sync — pick one or expose both?</li><li>Conditional exports — do we need to expose the <code>conditions</code> argument to plugins?</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

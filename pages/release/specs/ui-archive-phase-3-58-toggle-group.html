@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Toggle Group · Patties specs</title>
+<meta name="description" content="A group of toggles in single- or multi-select mode. Mirrors shadcn ToggleGroup. Built on @radix-ui/react-toggle-group.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/58-toggle-group.md</span></div>
+<h1>Toggle Group</h1>
+<p class="lede">A group of toggles in single- or multi-select mode. Mirrors shadcn ToggleGroup. Built on @radix-ui/react-toggle-group.</p>
+</header>
+<h2>Purpose</h2>
+<p>A group of toggles in single- or multi-select mode. Mirrors shadcn <code>ToggleGroup</code>. Built on <code>@radix-ui/react-toggle-group</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Selection state and roving tab-index need JS.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-toggle-group@^1.1</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function ToggleGroup(props: Radix.ToggleGroupSingleProps | Radix.ToggleGroupMultipleProps &amp; { variant?: ToggleVariant; size?: ToggleSize; className?: string }): JSX.Element
+export function ToggleGroupItem(props: Radix.ToggleGroupItemProps &amp; { variant?: ToggleVariant; size?: ToggleSize; className?: string }): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li>Children inherit <code>variant</code>/<code>size</code> via React Context — items can override.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Single mode: only one item pressed at a time.</li><li>Multi mode: independent toggles.</li><li>Arrow keys move focus between items per WAI-ARIA pattern.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

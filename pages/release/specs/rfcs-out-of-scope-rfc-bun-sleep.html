@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bun.sleep / Bun.sleepSync — delay helpers · Patties specs</title>
+<meta name="description" content="Moved deferred → out-of-scope. There is no realistic future in which">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Out of scope</span> <span class="badge badge-id">rfcs/out-of-scope/rfc-bun-sleep.md</span></div>
+<h1>Bun.sleep / Bun.sleepSync — delay helpers</h1>
+<p class="lede">Moved deferred → out-of-scope. There is no realistic future in which</p>
+</header>
+<h2>Out-of-scope (2026-05-31)</h2>
+<p><strong>Moved deferred → out-of-scope.</strong> There is no realistic future in which patties owns a named sleep helper: <code>new Promise(r =&gt; setTimeout(r, ms))</code> is the universal one-liner and <code>node:timers/promises</code> covers the rest. The only trigger the deferral named (a first-party <code>test-helpers</code>/<code>dev-utils</code> surface) does not justify wrapping <code>setTimeout</code>. Kept as a discovered-and-dismissed record so the audit doesn't re-surface it. Original deferral verdict preserved below.</p>
+<h2>Review verdict (2026-05-27)</h2>
+<p><strong>Reject for v1; keep as future-work RFC.</strong> This is trivial userland — <code>new Promise(r =&gt; setTimeout(r, ms))</code> is one line, <code>Bun.sleep(ms)</code> saves three characters. No framework slot needs this, and reaching for it would just add a Bun-coupling where none is necessary.</p>
+<p>Revisit when:</p>
+<ul><li>A first-party <code>patties/test-helpers</code> or <code>patties/dev-utils</code> surface is being designed that wants named primitives, OR</li><li>A test fixture pattern emerges where <code>Bun.sleep</code> is meaningfully clearer than the inline alternative.</li></ul>
+<p><strong>Re-evaluation trigger:</strong> This RFC is borderline-out-of-scope — if no test/dev-helpers surface ever opens, it likely moves to out-of-scope on next refresh rather than being revisited.</p>
+<p>No spec changes. File preserved as <code>status: deferred</code>.</p>
+<hr>
+<h2>Summary</h2>
+<p><code>Bun.sleep(ms)</code> returns a promise that resolves after <code>ms</code>. <code>Bun.sleepSync(ms)</code> blocks. Convenience helpers around <code>setTimeout</code>.</p>
+<h2>Motivation</h2>
+<p>Trivial userland; included for completeness in the audit. The framework has no slot for a named sleep helper today.</p>
+<h2>Trade-offs</h2>
+<ul><li><strong>Bun-coupling for trivial gain.</strong> Adopting in framework code ties patties slightly closer to Bun without meaningful capability gain — the inline <code>setTimeout</code>-promise wrapper works everywhere.</li></ul>
+<h2>Open questions</h2>
+<ul><li><strong><code>sleepSync</code> rarely makes sense in async-first code</strong> — would we ever ship it?</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>patties dev · Patties</title>
+<meta name="description" content="Development server behavior and flags.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>patties dev</h1>
+<p class="lede"><code>patties dev</code> starts the development server, wiring up Bun's hot-reload workflow before your app boots.</p>
+</header>
+<section>
+<h2>Behavior</h2>
+<ul>
+<li>Uses <code>bun --hot</code> by default</li>
+<li>Uses <code>bun --watch</code> when <code>--cold</code> is passed</li>
+<li>Loads config and dev-time secrets before boot</li>
+<li>Validates required environment variables</li>
+<li>Regenerates <code>AGENTS.md</code> in the background</li>
+<li>Starts a stub server if <code>app/server.ts</code> is missing</li>
+</ul>
+</section>
+<section>
+<h2>Flags</h2>
+<ul>
+<li><code>--cold</code></li>
+<li><code>--no-open</code></li>
+<li><code>--port &lt;number&gt;</code></li>
+<li><code>--host &lt;hostname&gt;</code></li>
+<li><code>--app &lt;path&gt;</code></li>
+</ul>
+</section>
+<section>
+<h2>App entry fallback</h2>
+<p>When present, Patties prefers one of:</p>
+<ul>
+<li><code>app/server.ts</code></li>
+<li><code>app/server.tsx</code></li>
+<li><code>app/index.ts</code></li>
+</ul>
+<p>If none exist, it starts a stub dev server with a simple message so the project still boots during early setup.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

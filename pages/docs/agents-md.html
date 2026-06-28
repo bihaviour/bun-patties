@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AGENTS.md generation · Patties</title>
+<meta name="description" content="Machine-readable docs generated from the app structure.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>AGENTS.md generation</h1>
+<p class="lede">Patties can generate a root-level <code>AGENTS.md</code> file that summarizes the app for tooling and AI workflows.</p>
+</header>
+<section>
+<h2>What it captures</h2>
+<p>The generated file can include:</p>
+<ul>
+<li>route map</li>
+<li>island summary</li>
+<li>agent list</li>
+<li>tool schemas</li>
+<li>job schedules</li>
+<li>middleware summary</li>
+<li>environment variable summary</li>
+</ul>
+</section>
+<section>
+<h2>When it runs</h2>
+<ul>
+<li>after successful <code>patties build</code></li>
+<li>during <code>patties dev</code> as a background generation step</li>
+</ul>
+</section>
+<section>
+<h2>Plugin participation</h2>
+<p>Plugins can modify the generated document with the <code>onAgentsMdGenerate</code> hook.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

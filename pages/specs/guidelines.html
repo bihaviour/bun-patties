@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Using Patties · Patties</title>
+<meta name="description" content="A practical end-to-end walkthrough of scaffolding, building, and stamping UI in a Bun-native Patties app — create-patties, the patties CLI, and the copy-in Patties UI catalog.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-draft">Design spec</span></div>
+<h1>Using Patties</h1>
+<p class="lede">A practical walkthrough of the three pieces you touch day to day: scaffold a project with <code>create-patties</code>, build it with the <code>patties</code> framework and CLI, and stamp UI from the copy-in <strong>Patties UI</strong> catalog. Everything below is Bun-native — <code>Bun.serve</code>, <code>Bun.Glob</code>, <code>Bun.build</code>, <code>bun --hot</code>.</p>
+</header>
+
+<div class="callout note">
+<p class="callout-title">Prerequisite</p>
+<p>Bun <code>&gt;= 1.3</code>. patties uses Bun as the runtime, not Node — reach for <code>bun</code> / <code>bunx</code> rather than <code>node</code> / <code>npx</code> throughout.</p>
+</div>
+
+<section>
+<h2>Scaffold with create-patties</h2>
+<p><code>create-patties</code> is the official scaffolder. It generates a minimal app and, optionally, layers an agent-platform overlay on top.</p>
+<pre data-lang="bash"><code>bunx create-patties@latest my-app</code></pre>
+<p>Creates <code>my-app/</code> from the base template, runs <code>bun install</code>, and initializes a git repo with an initial commit.</p>
+<p>Common options:</p>
+<pre data-lang="bash"><code>bunx create-patties@latest my-app \
+  --template claude|codex|none \
+  --target   bun|edge \
+  --deploy   cloudflare|vercel|deno|netlify|bun|none \
+  --no-install \
+  --no-git</code></pre>
+<div class="feature-grid">
+<div class="feature">
+<h3>What the flags do</h3>
+<ul>
+<li><code>--template</code> — agent overlay: <code>claude</code> adds <code>CLAUDE.md</code>, <code>codex</code> adds <code>AGENTS.md</code>, <code>none</code> skips it. Default <code>claude</code>.</li>
+<li><code>--target</code> — runtime target written into <code>patties.config.ts</code> (<code>bun</code> or <code>edge</code>). Default <code>bun</code>.</li>
+<li><code>--deploy</code> — records the intended deploy target. Default <code>none</code>.</li>
+<li><code>--no-install</code> / <code>--no-git</code> — skip <code>bun install</code> / <code>git init</code>.</li>
+</ul>
+</div>
+<div class="feature">
+<h3>What you get</h3>
+<ul>
+<li><code>app/routes/</code> — filesystem routes</li>
+<li><code>app/islands/</code> — interactive client components</li>
+<li><code>app/server.ts</code> — the server entry</li>
+<li><code>patties.config.ts</code> — framework config</li>
+<li><code>tsconfig.json</code>, <code>.gitignore</code></li>
+</ul>
+</div>
+</div>
+</section>
+
+<section>
+<h2>Build with the framework</h2>
+<p>A patties app is a folder convention plus a small runtime. You write modules into the convention; the framework discovers and wires them at <strong>build time</strong>.</p>
+<div class="feature-grid">
+<div class="feature">
+<h3>① Write a route</h3>
+<p>Add a module under <code>app/routes/</code>. Handlers take a standard <code>Request</code> and return a standard <code>Response</code>; patties adds a thin <code>ctx</code> (params, cookies, env, vars, <code>json()</code> / <code>html()</code> / <code>redirect()</code>).</p>
+</div>
+<div class="feature">
+<h3>② Render UI</h3>
+<p>Pages render with React on the server via <code>renderToReadableStream</code>. Put interactive components in <code>app/islands/</code> so only those hydrate on the client.</p>
+</div>
+<div class="feature">
+<h3>③ Compose middleware</h3>
+<p>Request flow is the <code>compose()</code> middleware in <code>app/middleware.ts</code> — no guards / pipes / interceptors.</p>
+</div>
+<div class="feature">
+<h3>④ Build &amp; deploy</h3>
+<p>The build inlines the route table into the production bundle (no filesystem scanning at runtime), targeting <code>bun</code> or <code>edge</code> via adapters.</p>
+</div>
+</div>
+<div class="callout note">
+<p class="callout-title">Discover at build, serve frozen</p>
+<p>Route and island discovery happens during <code>build</code>; the production server runs <code>Bun.serve({ routes })</code> and scans nothing. Dev mode is the exception — it re-scans on change to drive HMR.</p>
+</div>
+</section>
+
+<section>
+<h2>The CLI</h2>
+<p>Once installed, <code>patties &lt;command&gt;</code> drives the project lifecycle.</p>
+<pre data-lang="bash"><code>patties dev      # start the dev server (bun --hot by default)
+patties build    # produce a production bundle for the configured target
+patties deploy   # build, then dispatch to an installed deploy plugin
+patties secret   # manage dev-time secrets in the OS keychain
+patties upgrade  # update the project's patties dependency</code></pre>
+<p>Global flags apply consistently across commands:</p>
+<pre data-lang="bash"><code>patties &lt;command&gt; --cwd &lt;path&gt; --config &lt;path&gt; --verbose
+                  --version  --help</code></pre>
+</section>
+
+<section>
+<h2>Add UI with the Patties UI catalog</h2>
+<p>Patties UI is a shadcn-compatible, <strong>copy-in</strong> catalog. Components are never imported from a versioned package — <code>patties add</code> stamps the source into your project, so you own and can edit it. The catalog commands require <code>patties-ui</code> as a dev dependency.</p>
+<pre data-lang="bash"><code>bun add -D patties-ui          # required once
+
+patties ui init                # tokens, the cn helper, Tailwind wiring
+patties add button card dialog # stamp one or more components
+patties add --all              # stamp every completed component
+patties add --list             # list components with phase / island / status
+patties view button            # print source before stamping (read-only)
+patties update --all           # re-stamp after showing the diff</code></pre>
+<div class="feature-grid">
+<div class="feature">
+<h3>Where files land</h3>
+<ul>
+<li>components → <code>app/components/ui/</code></li>
+<li>helpers → <code>_internal/</code></li>
+<li>tokens → <code>app/styles/tokens.css</code></li>
+<li>override per-run with <code>--path &lt;dir&gt;</code>, or via the optional <code>ui</code> config block</li>
+</ul>
+</div>
+<div class="feature">
+<h3>Useful add flags</h3>
+<ul>
+<li><code>--dry-run</code> — print the file/dep diff without writing</li>
+<li><code>--diff</code> / <code>--check</code> — show (and CI-gate) drift from the catalog</li>
+<li><code>--theme &lt;name&gt;</code> — merge a preset's tokens (<code>neutral</code>|<code>slate</code>|<code>stone</code>|<code>zinc</code>)</li>
+<li><code>--force</code> — overwrite existing files</li>
+</ul>
+</div>
+</div>
+<p>Sources beyond the built-in catalog — all schema-validated, previewed, written verbatim, and never executed:</p>
+<pre data-lang="bash"><code>patties add ./path/to/component.tsx              # a local file or built payload
+patties add @namespace/component                 # a namespaced registry (config.ui.registries)
+patties add https://registry.example/button.json # an https payload (http rejected w/o --allow-insecure)</code></pre>
+<p>Migrate and publish:</p>
+<pre data-lang="bash"><code>patties migrate radix [&lt;glob&gt;]   # codemod radix imports to the unified import
+patties migrate rtl   [&lt;glob&gt;]   # codemod to RTL logical properties
+patties ui build --out &lt;dir&gt;     # emit a fetchable registry.json + per-component payloads</code></pre>
+<div class="callout note">
+<p class="callout-title"><code>patties add</code> is CI-safe and Bun-native</p>
+<p>It refuses to run under <code>NODE_ENV=production</code> and <strong>never</strong> runs an install — it edits <code>package.json</code> and tells you to run <code>bun install</code>. Migrations refuse a dirty git tree without <code>--force</code>. Components are SSR-first and React 19 style (no <code>forwardRef</code>; refs are plain props), themed with Tailwind v4 + CSS variables, dark mode via <code>.dark</code> on <code>&lt;html&gt;</code>.</p>
+</div>
+</section>
+
+<section>
+<h2>The daily flow</h2>
+<p>From an empty folder to a running app in four steps.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    A["bunx create-patties\nmy-app"] --> B["patties ui init\n+ patties add ..."]
+    B --> C["write routes\n+ islands"]
+    C --> D["patties dev\n(bun --hot, HMR)"]
+    D --> E["patties build\n→ bun | edge"]
+    E --> F["patties deploy"]
+    classDef hot fill:#1d4ed8,color:#fff,stroke:#1e3a8a,stroke-width:2px;
+    class D hot;
+</pre>
+<div class="cap">Discovery happens once at <code>build</code>; <code>dev</code> re-scans on change for HMR. The deployed artifact serves a frozen route table.</div>
+</div>
+</section>
+
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties design specifications · a design exploration · <a href="../docs/index.html">User docs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/specs-section.js"></script>
+<script type="module" src="../assets/mermaid-init.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

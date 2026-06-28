@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scaffold tool probes — bun (fail) + git (warn) via Bun.which · Patties specs</title>
+<meta name="description" content="This spec encodes [[rfc-bun-which]]. It extends the create-patties">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Accepted</span> <span class="badge badge-id">cli/archive/10-scaffold-probes.md</span></div>
+<h1>Scaffold tool probes — bun (fail) + git (warn) via Bun.which</h1>
+<p class="lede">This spec encodes [[rfc-bun-which]]. It extends the create-patties</p>
+</header>
+<p>This spec encodes [[rfc-bun-which]]. It extends the <code>create-patties</code> scaffolder ([[cli/archive/05-create-patties]]) with two probe gates: fail on missing <code>bun</code>, warn on missing <code>git</code>.</p>
+<p>It is additive to the DX overhaul in [[cli/draft/09-create-patties-dx|spec 09]] — the probes run before the template-copy step regardless of which DX flow is active (legacy flag-driven path or the spec-09 interactive path).</p>
+<h2>Goal</h2>
+<p>Stop the scaffolder from running pipeline steps that need binaries the user doesn't have. Give a clear, single-line message instead of letting <code>bun install</code> or <code>git init</code> fail mid-pipeline and leave half a project on disk.</p>
+<h2>Surface</h2>
+<p>No new CLI flags. Two probes run silently when their tool is present and emit a single line each when absent.</p>
+<h2>Probe gates</h2>
+<p>The probe step runs <strong>after</strong> argument parsing and directory validation, <strong>before</strong> the template copy step from [[cli/archive/05-create-patties]]'s Behavior list.</p>
+<pre data-lang="ts"><code>// packages/create-patties/src/probes.ts
+export function probeTools(): void {
+  if (!Bun.which("bun")) {
+    console.error(
+      "create-patties: `bun` not found in PATH. " +
+      "Install Bun from https://bun.sh and re-run.",
+    )
+    process.exit(1)
+  }
+  // git is probed lazily by hasGit() at the git-init step.
+}
+
+export function hasGit(): boolean {
+  return Bun.which("git") !== null
+}
+</code></pre>
+<h3>Bun probe (fail)</h3>
+<p>Bun is required to run the resulting project (<code>bun dev</code>, <code>bun build</code>). If <code>Bun.which("bun")</code> returns <code>null</code>, the scaffolder exits with code 1 and the message above. We do <strong>not</strong> try to install Bun on the user's behalf.</p>
+<p>Edge case: when invoked via <code>bunx create-patties</code>, <code>Bun.which("bun")</code> always returns a path. The probe matters when <code>create-patties</code> is invoked from a shell whose PATH has been clobbered, or when shipped as a standalone binary in the future.</p>
+<h3>Git probe (warn)</h3>
+<p>Git is used for the optional <code>git init &amp;&amp; git commit</code> step. If <code>Bun.which("git")</code> returns <code>null</code>:</p>
+<ul><li>Skip the git-init step entirely.</li><li>Print a single warn line <strong>after</strong> the scaffold otherwise succeeds: ``<code> create-patties: </code>git<code> not found — skipping </code>git init<code>. </code>``</li></ul>
+<p>The existing <code>--no-git</code> flag continues to skip the git step regardless of probe outcome.</p>
+<h2>Behavior changes vs [[cli/archive/05-create-patties]]</h2>
+<p>The Behavior numbered list gains one new step (<code>3a</code>) and amends one existing step (was step <code>9</code>):</p>
+<ul><li><strong>3a. NEW — <code>probeTools()</code> runs.</strong> Exits 1 if <code>bun</code> is missing. Runs before any filesystem writes to the target directory.</li><li><strong>9. Git step (amended).</strong> Unless <code>--no-git</code> is set, <em>and</em> <code>hasGit()</code> returns true, run <code>git init &amp;&amp; git add -A &amp;&amp; git commit</code> as today. If <code>hasGit()</code> returned false, emit the warn line and skip the git step.</li></ul>
+<p>No other Behavior steps change.</p>
+<h2>Non-goals</h2>
+<ul><li><strong>Probing <code>claude</code>, <code>docker</code>, <code>node</code>, or any other tool.</strong> Out of scope. When a <code>patties doctor</code> command spec opens, those probes belong there. This spec consciously stops at the two probes that gate scaffold-time pipeline steps.</li><li><strong>Auto-installing missing tools.</strong> We never try to install bun, git, or anything else on the user's machine.</li><li><strong>Network probes.</strong> No connectivity checks.</li><li><strong>Bun version-floor enforcement.</strong> Bun's presence is what matters here. Version-floor is a separate concern; open a follow-up RFC if we ever ship a feature that requires a minimum Bun version.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li><code>bunx create-patties foo</code> on a machine with both <code>bun</code> and <code>git</code> completes successfully with no probe messages visible.</li><li><code>bunx create-patties foo</code> on a machine with <code>bun</code> but no <code>git</code> completes the scaffold and emits exactly one warn line about git; the target directory contains no <code>.git/</code>.</li><li><code>bunx create-patties foo</code> invoked in an environment where <code>Bun.which("bun")</code> returns <code>null</code> exits with code 1 and the error message, having created no files in the target directory.</li><li><code>--no-git</code> continues to skip git init even when git is present.</li></ul>
+<h2>Test plan</h2>
+<ul><li>Unit: stub <code>Bun.which</code> to return <code>null</code> for <code>"bun"</code> → assert <code>probeTools()</code> calls <code>process.exit(1)</code> after printing the error.</li><li>Unit: stub <code>Bun.which</code> to return <code>null</code> for <code>"git"</code> only → assert <code>hasGit()</code> returns <code>false</code> and the scaffold prints the warn line.</li><li>Integration: full scaffold in a sandbox where <code>git</code> is removed from PATH → assert no <code>.git/</code> directory in the result and the warn line appears in stdout.</li><li>Integration: same, with <code>bun</code> removed from PATH → assert exit 1 and no target directory created.</li></ul>
+<h2>Out of this spec</h2>
+<p>A future <code>patties doctor</code> command spec is the right home for richer probes (claude, docker, lockfile freshness, biome config). This spec consciously stops short of inventing that surface.</p>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

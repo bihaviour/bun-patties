@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tabs · Patties specs</title>
+<meta name="description" content="Tabbed panels. Mirrors shadcn Tabs. Built on @radix-ui/react-tabs.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-3/54-tabs.md</span></div>
+<h1>Tabs</h1>
+<p class="lede">Tabbed panels. Mirrors shadcn Tabs. Built on @radix-ui/react-tabs.</p>
+</header>
+<h2>Purpose</h2>
+<p>Tabbed panels. Mirrors shadcn <code>Tabs</code>. Built on <code>@radix-ui/react-tabs</code>.</p>
+<h2>Island model</h2>
+<p><code>island: true</code>. Active tab and focus management require JS. SSR renders the <code>defaultValue</code> tab's panel so no-JS users see content.</p>
+<h2>Peer dependencies</h2>
+<ul><li><code>@radix-ui/react-tabs@^1.1</code></li></ul>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export const Tabs: typeof Radix.Root
+export function TabsList(props: Radix.TabsListProps &amp; { className?: string }): JSX.Element
+export function TabsTrigger(props: Radix.TabsTriggerProps &amp; { className?: string }): JSX.Element
+export function TabsContent(props: Radix.TabsContentProps &amp; { className?: string }): JSX.Element
+
+export const island = true
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>Removes <code>forwardRef</code>.</li><li>A URL-driven variant is documented (sync tab to query param via island effect) but not exported by default.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>SSR shows the <code>defaultValue</code> panel.</li><li>Arrow keys move focus between triggers; <code>Enter</code>/<code>Space</code> activate.</li><li>Switching tab updates the visible panel.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

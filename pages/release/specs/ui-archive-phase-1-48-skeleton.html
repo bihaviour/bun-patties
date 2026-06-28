@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skeleton · Patties specs</title>
+<meta name="description" content="Loading placeholder shape. Mirrors shadcn Skeleton.">
+<link rel="stylesheet" href="../../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-approved">Archived</span> <span class="badge badge-id">ui/archive/phase-1/48-skeleton.md</span></div>
+<h1>Skeleton</h1>
+<p class="lede">Loading placeholder shape. Mirrors shadcn Skeleton.</p>
+</header>
+<h2>Purpose</h2>
+<p>Loading placeholder shape. Mirrors shadcn <code>Skeleton</code>.</p>
+<h2>Island model</h2>
+<p><code>island: false</code>. CSS-only shimmer animation.</p>
+<h2>Peer dependencies</h2>
+<p>None.</p>
+<h2>Public API</h2>
+<pre data-lang="ts"><code>export function Skeleton(props: React.ComponentProps&lt;"div"&gt;): JSX.Element
+export const island = false
+</code></pre>
+<h2>Patties adjustments</h2>
+<ul><li>The shimmer uses <code>@keyframes</code> defined in <code>tokens.css</code> so no JS animation library is needed.</li><li><code>prefers-reduced-motion</code> disables the animation.</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>Snapshot matches a <code>&lt;div&gt;</code> with the skeleton classes.</li><li>Bundle audit: zero JS.</li><li>Reduced-motion: animation is <code>none</code>.</li></ul>
+
+<nav class="doc-footer" id="page-nav"></nav>
+</article>
+</main>
+</div>
+<script src="../../assets/specs-src-section.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>
