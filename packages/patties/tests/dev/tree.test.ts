@@ -44,6 +44,8 @@ afterEach(() => {
 test("snapshotAppTree lists sources and skips build output and node_modules", () => {
 	mkdirSync(join(appDir, ".patties/client"), { recursive: true });
 	writeFileSync(join(appDir, ".patties/client/entry.js"), "");
+	mkdirSync(join(appDir, "patties-gen"), { recursive: true });
+	writeFileSync(join(appDir, "patties-gen/client-entry.ts"), "");
 	mkdirSync(join(appDir, "node_modules/x"), { recursive: true });
 	writeFileSync(join(appDir, "node_modules/x/index.js"), "");
 	writeFileSync(join(appDir, "routes/notes.md"), "");
@@ -84,9 +86,11 @@ test("an atomic save (temp file renamed over the original) does not fire", async
 	expect(changes).toBe(0);
 });
 
-test("writes under .patties (dev build output) do not fire", async () => {
+test("dev build output (.patties, patties-gen) does not fire", async () => {
 	mkdirSync(join(appDir, ".patties/client"), { recursive: true });
 	writeFileSync(join(appDir, ".patties/client/entry-abc.js"), "");
+	mkdirSync(join(appDir, "patties-gen"), { recursive: true });
+	writeFileSync(join(appDir, "patties-gen/server-entry.ts"), "");
 	await settle();
 	expect(changes).toBe(0);
 });

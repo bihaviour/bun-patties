@@ -140,7 +140,11 @@ describe("patties dev picks up route edits and additions without a restart", () 
 	test("editing an already-served page re-renders it", async () => {
 		writeFileSync(join(routes, "index.tsx"), page("EDITED-RENDER"));
 		await until(async () => (await get("/")).body.includes("EDITED-RENDER"));
-		expect(output).toContain("reloaded");
+		// Served via `bun --hot`, not a process restart: the dev build's own
+		// output (patties-gen/, .patties/) must not count as an added file.
+		// The log line can trail the first fresh response, so poll for it.
+		await until(async () => output.includes("reloaded"));
+		expect(output).not.toContain("restarting");
 	}, 20_000);
 
 	test("a newly added route is served", async () => {

@@ -12,6 +12,19 @@ import { type FSWatcher, watch } from "node:fs";
 
 const SOURCE_GLOB = "**/*.{ts,tsx,js,jsx,mts,mjs,cts,cjs}";
 const DEBOUNCE_MS = 75;
+// Written by every dev build (src/build/index.ts); tracking it would restart
+// the server right after its own first build.
+const GENERATED_DIR = "patties-gen";
+
+function ignored(rel: string): boolean {
+	return (
+		rel.startsWith(".") ||
+		rel === GENERATED_DIR ||
+		rel.startsWith(`${GENERATED_DIR}/`) ||
+		rel.startsWith("node_modules/") ||
+		rel.includes("/node_modules/")
+	);
+}
 
 export interface AppTreeWatcher {
 	close(): void;
@@ -23,10 +36,7 @@ export function snapshotAppTree(appDir: string): Set<string> {
 	try {
 		// `dot: false` (the default) keeps the `.patties` build output out.
 		for (const rel of glob.scanSync({ cwd: appDir, onlyFiles: true })) {
-			if (rel.startsWith("node_modules/") || rel.includes("/node_modules/")) {
-				continue;
-			}
-			files.add(rel);
+			if (!ignored(rel)) files.add(rel);
 		}
 	} catch {
 		// Missing app dir: an empty tree; a later `mkdir app` shows up as a change.
@@ -58,8 +68,7 @@ export function watchAppTree(
 	let watcher: FSWatcher | null = null;
 	try {
 		watcher = watch(appDir, { recursive: true }, (_event, filename) => {
-			const rel = filename ? String(filename) : "";
-			if (rel.startsWith(".") || rel.includes("node_modules")) return;
+			if (filename && ignored(String(filename))) return;
 			if (timer) clearTimeout(timer);
 			timer = setTimeout(check, DEBOUNCE_MS);
 		});
