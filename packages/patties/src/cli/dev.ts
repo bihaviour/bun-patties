@@ -6,6 +6,8 @@ import { writeManifestToFile } from "../agents-md/write.ts";
 import { MissingEnv, validateRequiredEnv } from "../config/env.ts";
 import { loadConfig } from "../config/load.ts";
 import { loadSecrets } from "../config/secrets.ts";
+import { hotState } from "../dev/hot.ts";
+import { watchAppTree } from "../dev/tree.ts";
 import { createDevServer } from "../dev/watcher.ts";
 import { assertPluginCompat, type Plugin } from "../plugin/index.ts";
 import { startServer } from "../server/index.ts";
@@ -22,12 +24,16 @@ export interface DevArgs {
 	noOpen: boolean;
 }
 
-const REEXEC_FLAG = "PATTIES_DEV_HOT";
+export const REEXEC_FLAG = "PATTIES_DEV_HOT";
 
+// Resolves to `null` once the dev server is up: the server owns the process
+// from then on. The caller must not exit, and must not block on a promise that
+// never settles either — `bun --hot` only reloads an entry whose top-level
+// evaluation has finished.
 export async function runDev(
 	argv: string[],
 	ctx: CliContext = { cwd: process.cwd(), verbose: false },
-): Promise<number> {
+): Promise<number | null> {
 	const args = parseArgs(argv, ctx.cwd);
 
 	if (process.env[REEXEC_FLAG] !== "1") {
@@ -92,6 +98,7 @@ async function resolveDev(
 }
 
 async function reexecUnderBun(args: DevArgs, ctx: CliContext): Promise<number> {
+	const { appDir } = await resolveDev(args, ctx);
 	const entry = resolveReexecEntry(ctx.cwd);
 	const mode = args.cold ? "--watch" : "--hot";
 	const passthrough: string[] = [];
@@ -111,16 +118,29 @@ async function reexecUnderBun(args: DevArgs, ctx: CliContext): Promise<number> {
 	// hooks during SSR ("Invalid hook call"). Paired with `resolveReexecEntry`'s
 	// upward search, this also anchors resolution to the hoisted workspace-root
 	// copy in a Bun-workspace monorepo, where `react`/`patties` live at the root.
-	const proc = Bun.spawn(
-		["bun", "--preserve-symlinks", mode, entry, ...passthrough],
-		{
+	const spawn = () =>
+		Bun.spawn(["bun", "--preserve-symlinks", mode, entry, ...passthrough], {
 			stdio: ["inherit", "inherit", "inherit"],
 			env: { ...process.env, [REEXEC_FLAG]: "1" },
-		},
-	);
+		});
+	let proc = spawn();
+	let restartPending = false;
+	// A new or deleted file is invisible to `bun --hot` (it isn't in the module
+	// graph yet), so the route/island tables would stay stale. Restart the child;
+	// connected browsers see a new server id on reconnect and reload.
+	const tree = watchAppTree(appDir, () => {
+		if (restartPending) return;
+		restartPending = true;
+		log.dim("  ↻ app files added or removed — restarting dev server");
+		try {
+			proc.kill("SIGTERM");
+		} catch {}
+	});
 	// Forward termination signals to the child so it doesn't get orphaned
 	// (reparented to init) and keep holding the listen port.
 	const forward = (sig: NodeJS.Signals) => {
+		tree.close();
+		restartPending = false;
 		try {
 			proc.kill(sig);
 		} catch {}
@@ -132,9 +152,14 @@ async function reexecUnderBun(args: DevArgs, ctx: CliContext): Promise<number> {
 	process.on("SIGTERM", onTerm);
 	process.on("SIGHUP", onHup);
 	try {
-		const code = await proc.exited;
-		return code ?? 0;
+		while (true) {
+			const code = await proc.exited;
+			if (!restartPending) return code ?? 0;
+			restartPending = false;
+			proc = spawn();
+		}
 	} finally {
+		tree.close();
 		process.off("SIGINT", onInt);
 		process.off("SIGTERM", onTerm);
 		process.off("SIGHUP", onHup);
@@ -224,19 +249,28 @@ function readPkgVersion(pkgJsonPath: string): string {
 	}
 }
 
-async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
+async function bootstrap(
+	args: DevArgs,
+	ctx: CliContext,
+): Promise<number | null> {
 	const { config } = await loadConfig({
 		cwd: ctx.cwd,
 		configPath: ctx.configPath,
 	});
 	const resolved = await resolveDev(args, ctx);
+	// `bun --hot` re-runs this whole bootstrap (and the user's `start`) on every
+	// edit; `Bun.serve` hot-swaps its handlers in place on the second call.
+	const reloaded = ++hotState().generation > 1;
 
 	// `import.meta.dir` is where framework files resolve `react` from — the same
 	// upward walk the renderer uses — so it's the right "framework" anchor.
-	const react = assertSingleReact(ctx.cwd, resolved.appDir, import.meta.dir);
-	if (!react.ok) {
-		log.error(react.message);
-		return EXIT.ERROR;
+	// The check walks `node_modules`, so it runs once per process, not per edit.
+	if (!reloaded) {
+		const react = assertSingleReact(ctx.cwd, resolved.appDir, import.meta.dir);
+		if (!react.ok) {
+			log.error(react.message);
+			return EXIT.ERROR;
+		}
 	}
 
 	await loadSecrets(config, { cwd: ctx.cwd });
@@ -287,7 +321,7 @@ async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
 			),
 		);
 
-	installSigintHandler();
+	if (!reloaded) installSigintHandler();
 
 	const entry = findUserEntry(resolved.appDir);
 	if (entry) {
@@ -307,8 +341,13 @@ async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
 				host: resolved.host,
 				appDir: resolved.appDir,
 			});
-			printReady(resolved);
-			return await new Promise<number>(() => {});
+			if (reloaded) {
+				log.dim("  ↻ reloaded");
+				devServer.notifyChange(resolved.appDir);
+			} else {
+				printReady(resolved);
+			}
+			return null;
 		}
 		log.warn(`${entry} has no default export; starting a stub dev server.`);
 	} else {
@@ -332,8 +371,8 @@ async function bootstrap(args: DevArgs, ctx: CliContext): Promise<number> {
 		},
 		fallback: () => new Response("not found", { status: 404 }),
 	});
-	printReady(resolved);
-	return await new Promise<number>(() => {});
+	if (!reloaded) printReady(resolved);
+	return null;
 }
 
 function printReady(resolved: ResolvedDev): void {
