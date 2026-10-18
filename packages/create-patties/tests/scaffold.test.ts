@@ -2,6 +2,7 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { run } from "../src/index.ts";
+import { PATTIES_UI_VERSION, PATTIES_VERSION } from "../src/versions.ts";
 
 // Matrix tests for the spec-18 redesign (project type, Patties UI, monorepo,
 // container) and spec-19 agent overlays. Runs offline with --no-install.
@@ -226,7 +227,88 @@ test("--yes matches the default profile (claude, fullstack, ui, no monorepo, bun
 	expect(config).toContain('target: "bun"');
 });
 
+test("--ui shadcn: upstream components on a hydrated page, @/ alias, no islands", async () => {
+	const { dir, code } = await scaffold("app", ["--ui", "shadcn", "--yes"]);
+	expect(code).toBe(0);
+	expect(existsSync(`${dir}/app/components/ui/dialog.tsx`)).toBeTrue();
+	expect(existsSync(`${dir}/app/components/ui/button.tsx`)).toBeTrue();
+	expect(existsSync(`${dir}/app/islands`)).toBeFalse();
+	expect(await Bun.file(`${dir}/app/lib/utils.ts`).text()).toBe(
+		'export { cn } from "cn";\n',
+	);
+	const page = await Bun.file(`${dir}/app/routes/index.tsx`).text();
+	expect(page).toContain("export const hydrate = true;");
+	expect(page).toContain('from "@/components/ui/dialog"');
+	expect(page).not.toContain("<Island");
+
+	const tsconfig = (await Bun.file(`${dir}/tsconfig.json`).json()) as {
+		compilerOptions: { paths: Record<string, string[]> };
+	};
+	expect(tsconfig.compilerOptions.paths["@/*"]).toEqual(["./app/*"]);
+
+	const pkg = (await Bun.file(`${dir}/package.json`).json()) as {
+		dependencies: Record<string, string>;
+	};
+	expect(pkg.dependencies["radix-ui"]).toBeString();
+	expect(pkg.dependencies.cn).toBeString();
+	expect(pkg.dependencies["@radix-ui/react-label"]).toBeUndefined();
+});
+
+test("--ui=bogus is rejected", async () => {
+	const { code } = await scaffold("app", ["--ui=bogus", "--yes"]);
+	expect(code).toBe(2);
+});
+
+test("scaffolded versions are pinned, never `latest`", async () => {
+	const { dir, code } = await scaffold("app", ["--ui", "--yes"]);
+	expect(code).toBe(0);
+	const pkg = (await Bun.file(`${dir}/package.json`).json()) as {
+		dependencies: Record<string, string>;
+		devDependencies: Record<string, string>;
+	};
+	expect(pkg.dependencies.patties).toBe(`^${PATTIES_VERSION}`);
+	expect(pkg.devDependencies["patties-ui"]).toBe(`^${PATTIES_UI_VERSION}`);
+	const ranges = [
+		...Object.values(pkg.dependencies),
+		...Object.values(pkg.devDependencies),
+	];
+	expect(ranges).not.toContain("latest");
+});
+
 // --- drift guards -----------------------------------------------------------
+
+test("src/versions.ts matches the workspace package versions", async () => {
+	const pkgRoot = resolve(import.meta.dir, "..");
+	const proc = await Bun.$`bun run scripts/sync-versions.ts --check`
+		.cwd(pkgRoot)
+		.quiet()
+		.nothrow();
+	expect(proc.exitCode).toBe(0);
+});
+
+test("vendored ui-shadcn components equal what `patties add @shadcn/<name>` stamps", async () => {
+	const vendored = resolve(
+		import.meta.dir,
+		"../templates/ui-shadcn/components",
+	);
+	const fixtures = resolve(
+		import.meta.dir,
+		"../../patties/tests/cli/__fixtures__/shadcn",
+	);
+	for (const name of ["button", "dialog"]) {
+		const item = (await Bun.file(`${fixtures}/${name}.json`).json()) as {
+			files: Array<{ content: string }>;
+		};
+		// The one rewrite the adapter applies: @/registry/<style>/ui → @/components/ui.
+		const expected = (item.files[0]?.content ?? "").replace(
+			/(["'])@\/registry\/[^/"']+\/ui\//g,
+			"$1@/components/ui/",
+		);
+		expect(await Bun.file(`${vendored}/${name}.tsx`).text()).toBe(expected);
+	}
+});
+
+// --- drift guards (patties-ui) ----------------------------------------------
 
 test("vendored ui-starter matches patties-ui/templates byte-for-byte", async () => {
 	const vendored = resolve(import.meta.dir, "../templates/ui-starter");

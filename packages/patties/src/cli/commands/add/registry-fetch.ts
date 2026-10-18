@@ -82,10 +82,12 @@ function assertProtocol(url: URL, opts: FetchOptions): void {
 	throw new RegistryError(`unsupported registry protocol: ${url.protocol}`);
 }
 
-export async function fetchPayload(
+// Fetch and JSON-decode a registry document (patties payload or a shadcn
+// registry item). Protocol policy is enforced here for every remote read.
+export async function fetchJson(
 	target: string,
 	opts: FetchOptions,
-): Promise<ComponentPayload> {
+): Promise<unknown> {
 	const url = new URL(target);
 	assertProtocol(url, opts);
 	const doFetch = opts.fetchImpl ?? fetch;
@@ -100,25 +102,21 @@ export async function fetchPayload(
 	if (!res.ok) {
 		throw new RegistryError(`fetch ${url.href} returned HTTP ${res.status}`);
 	}
-	let raw: unknown;
 	try {
-		raw = await res.json();
+		return await res.json();
 	} catch {
 		throw new RegistryError(`response from ${url.href} is not valid JSON`);
 	}
-	return parsePayload(raw);
 }
 
-export async function readPayloadFile(path: string): Promise<ComponentPayload> {
+export async function readJsonFile(path: string): Promise<unknown> {
 	const file = Bun.file(path);
 	if (!(await file.exists())) {
 		throw new RegistryError(`registry payload not found: ${path}`);
 	}
-	let raw: unknown;
 	try {
-		raw = await file.json();
+		return await file.json();
 	} catch {
 		throw new RegistryError(`registry payload is not valid JSON: ${path}`);
 	}
-	return parsePayload(raw);
 }

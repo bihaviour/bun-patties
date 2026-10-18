@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Using upstream shadcn/ui · Patties</title>
+<meta name="description" content="Stamp the canonical shadcn/ui registry verbatim and run it on whole-tree hydrated pages.">
+<link rel="stylesheet" href="../assets/app.css">
+<script>try{var t=localStorage.getItem('bd-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+<div class="layout">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content" id="main">
+<article>
+<header class="page-header">
+<div class="spec-meta"><span class="badge badge-status status-review">Guide</span></div>
+<h1>Using upstream shadcn/ui</h1>
+<p class="lede">Keep shadcn/ui's real components and <code>npx shadcn</code>-style ergonomics inside Patties: stamp the canonical registry verbatim, and let the page hydrate as one React tree.</p>
+</header>
+<section>
+<h2>Quick start</h2>
+<p>New project:</p>
+<pre><code>bunx create-patties@latest my-app --ui shadcn</code></pre>
+<p>Existing project (needs <code>patties-ui</code> installed as a dev dependency):</p>
+<pre><code>bunx patties ui init --shadcn   # @/* alias + app/lib/utils.ts + tokens
+bunx patties add @shadcn/dialog # stamps dialog.tsx and its button.tsx dependency
+bun install                     # patties add edits package.json, never installs</code></pre>
+<p>Then opt the page that uses the components into whole-tree hydration:</p>
+<pre><code>// app/routes/settings.tsx
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+
+export const hydrate = true;
+
+export default function Settings() {
+  const [open, setOpen] = React.useState(false);
+  return (
+    &lt;Dialog open={open} onOpenChange={setOpen}&gt;
+      &lt;DialogTrigger&gt;Edit&lt;/DialogTrigger&gt;
+      &lt;DialogContent&gt;…&lt;/DialogContent&gt;
+    &lt;/Dialog&gt;
+  );
+}</code></pre>
+</section>
+<section>
+<h2>Why hydration matters</h2>
+<p>Islands hydrate one component at a time and pass props as JSON, so function props (<code>onOpenChange</code>) and context shared by composed parts (<code>DialogTrigger</code> + <code>DialogContent</code>) cannot cross the boundary. A page exporting <code>hydrate = true</code> hydrates its whole subtree with one <code>hydrateRoot</code>, so upstream components run exactly as written and <code>"use client"</code> is a harmless no-op.</p>
+<table>
+<thead><tr><th>Page kind</th><th>Client JS</th><th>Hydration</th><th>shadcn/ui usage</th></tr></thead>
+<tbody>
+<tr><td>Default</td><td>none</td><td>none</td><td>static markup only</td></tr>
+<tr><td>Island page</td><td>island chunks</td><td>one root per island, JSON props</td><td>interactive parts must be wrapped in an island</td></tr>
+<tr><td><code>hydrate = true</code></td><td>the page's chunk</td><td>one root over <code>#root</code></td><td>verbatim — function props and context work</td></tr>
+</tbody>
+</table>
+<p>On a hydrated page, <code>&lt;Island&gt;</code> wrappers are redundant; <code>patties doctor</code> warns when it finds both.</p>
+</section>
+<section>
+<h2>What <code>patties add @shadcn/&lt;name&gt;</code> does</h2>
+<ul>
+<li>Fetches the registry item from <code>https://ui.shadcn.com/r/styles/new-york-v4</code> (override with <code>ui.registries["@shadcn"]</code> in <code>patties.config.ts</code> to use a mirror or a pinned copy). Any shadcn item URL or local <code>.json</code> works too.</li>
+<li>Writes file contents verbatim. The only rewrite is the one the shadcn CLI makes: <code>@/registry/&lt;style&gt;/ui/x</code> becomes <code>@/components/ui/x</code> (likewise <code>lib</code>, <code>hooks</code>, <code>components</code>).</li>
+<li>Puts <code>registry:ui</code> files in <code>app/components/ui/</code>, hooks in <code>app/hooks/</code>, libs in <code>app/lib/</code>.</li>
+<li>Resolves <code>registryDependencies</code> (and sibling imports upstream forgot to declare) first, each stamped once.</li>
+<li>Adds npm dependencies — including imported ones upstream left undeclared — to <code>package.json</code>, pinned to <code>^&lt;current&gt;</code>. It never runs an install.</li>
+<li>Merges <code>cssVars</code> into <code>app/styles/tokens.css</code> as a <code>shadcn-&lt;name&gt;</code> block.</li>
+<li>Keeps the <code>add</code> guarantees: HTTPS only (unless <code>--allow-insecure</code>), source preview and confirmation (or <code>--yes</code>), schema validation, nothing executed.</li>
+</ul>
+</section>
+<section>
+<h2>The <code>@/</code> alias</h2>
+<p>Upstream source imports through <code>@/</code>. <code>patties ui init --shadcn</code> adds <code>"paths": { "@/*": ["./app/*"] }</code> to <code>tsconfig.json</code>; Bun honours it at runtime and in <code>Bun.build</code>. Keep <code>ui.componentsDir</code> at its default <code>app/components/ui</code> so <code>@/components/ui/…</code> resolves.</p>
+</section>
+<section>
+<h2>Bundle cost</h2>
+<p>A hydrated page ships its whole component tree, which is the price of the carve-out. React and shared components are code-split across pages, and <code>patties build</code> prints each hydrated route's client bytes (entry chunk plus everything it imports) so the cost stays visible. Pages that don't need interactivity should stay zero-JS or island-based.</p>
+</section>
+<section>
+<h2>Determinism</h2>
+<p>The client re-renders with the props the server used (route params plus <code>loader()</code> data from the bootstrap payload). Avoid <code>Math.random()</code> or <code>Date.now()</code> during render; use <code>useId</code> for ids, which shadcn/ui already does.</p>
+</section>
+<nav class="page-nav" id="page-nav"></nav>
+</article>
+<footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>
+</main>
+<aside class="toc"><div class="toc-inner"><p class="toc-title">On this page</p><nav id="toc"></nav></div></aside>
+</div>
+<script src="../assets/docs-section.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

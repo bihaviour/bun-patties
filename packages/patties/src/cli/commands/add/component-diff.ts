@@ -4,7 +4,7 @@ import { formatUnifiedDiff } from "./diff.ts";
 import { INTERNAL_FILES } from "./internal.ts";
 import type { Catalog } from "./load-catalog.ts";
 import { extractBlock } from "./tokens.ts";
-import type { UiPaths } from "./ui-paths.ts";
+import { fileDest, type UiPaths } from "./ui-paths.ts";
 
 export type DiffStatus = "not-stamped" | "up-to-date" | "drift";
 
@@ -47,7 +47,7 @@ export async function diffComponentItems(
 		items.push(
 			await diffPair(
 				f.to,
-				join(uiPaths.componentsDir, f.to),
+				fileDest(uiPaths, f),
 				join(templatesDir, f.from),
 				color,
 			),
@@ -108,7 +108,7 @@ export async function listStampedComponents(
 	for (const c of catalog.components) {
 		const first = c.files[0];
 		if (!first) continue;
-		if (await Bun.file(join(uiPaths.componentsDir, first.to)).exists()) {
+		if (await Bun.file(fileDest(uiPaths, first)).exists()) {
 			out.push(c);
 		}
 	}

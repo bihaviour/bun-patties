@@ -7,12 +7,15 @@ import { loadCatalog } from "../add/load-catalog.ts";
 import { applyDeps, planDeps } from "../add/peer-deps.ts";
 import { mergeTokens, themeExists } from "../add/tokens.ts";
 import { resolveUiPaths, UiPathError, type UiPaths } from "../add/ui-paths.ts";
+import { applyShadcnInit } from "./shadcn.ts";
 
 export interface UiInitArgs {
 	dryRun: boolean;
 	force: boolean;
 	theme?: string;
 	themeMissing?: boolean;
+	// Also wire the `@/` alias + `@/lib/utils` that upstream shadcn source uses.
+	shadcn?: boolean;
 }
 
 const PROD_MSG =
@@ -63,7 +66,11 @@ export async function runUiInit(
 
 	let uiPaths: UiPaths;
 	try {
-		uiPaths = resolveUiPaths({ cwd: ctx.cwd, ui: loaded.config.ui });
+		uiPaths = resolveUiPaths({
+			cwd: ctx.cwd,
+			ui: loaded.config.ui,
+			appDir: loaded.config.appDir,
+		});
 	} catch (err) {
 		if (err instanceof UiPathError) {
 			log.error(err.message);
@@ -87,6 +94,12 @@ export async function runUiInit(
 			dryRun: args.dryRun,
 			force: args.force,
 		});
+		if (args.shadcn) {
+			await applyShadcnInit(uiPaths, {
+				dryRun: args.dryRun,
+				force: args.force,
+			});
+		}
 		if (!args.dryRun) {
 			const depPlan = await planDeps(BASE_DEPS, ctx.cwd);
 			await applyDeps(depPlan, ctx.cwd);

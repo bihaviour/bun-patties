@@ -16,6 +16,7 @@ window.SECTION = {
       { file: "routing.html",            title: "Routing" },
       { file: "server.html",             title: "Server" },
       { file: "rendering-islands.html",  title: "Rendering & islands" },
+      { file: "shadcn.html",             title: "Using upstream shadcn/ui" },
       { file: "middleware-context.html", title: "Middleware & context" },
       { file: "configuration.html",      title: "Configuration & environment" },
       { file: "build-pipeline.html",     title: "Build pipeline" },

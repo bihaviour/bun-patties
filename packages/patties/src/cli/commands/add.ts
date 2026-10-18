@@ -121,6 +121,7 @@ export async function runAdd(argv: string[], ctx: CliContext): Promise<number> {
 			cwd: ctx.cwd,
 			ui: loaded.config.ui,
 			pathOverride: args.path,
+			appDir: loaded.config.appDir,
 		});
 	} catch (err) {
 		if (err instanceof UiPathError) {
@@ -413,7 +414,10 @@ Sources:
   <name>         Resolve from the built-in patties-ui catalog (default).
   <local-path>   A local component file or a built registry payload (.json).
   @ns/<name>     A namespaced registry from config.ui.registries.
-  <url>          An https URL to a built component payload (.json).
+  @shadcn/<name> Upstream shadcn/ui, stamped verbatim (built in; override the
+                 base via config.ui.registries["@shadcn"]). Use it on pages
+                 that export \`hydrate = true\`; run \`patties ui init --shadcn\` once.
+  <url>          An https URL to a built payload or shadcn registry item.
 
 Flags:
   --all          Stamp every catalog component whose status is completed.

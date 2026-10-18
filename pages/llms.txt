@@ -18,7 +18,8 @@
 - [Framework overview](docs/framework-overview.html): the runtime in depth
 - [Routing](docs/routing.html): filesystem routes → Bun route patterns
 - [Server](docs/server.html): the Bun.serve request lifecycle
-- [Rendering and islands](docs/rendering-islands.html): React 19 SSR + islands
+- [Rendering and islands](docs/rendering-islands.html): React 19 SSR + islands, whole-tree hydration, loaders, client navigation
+- [Using upstream shadcn/ui](docs/shadcn.html): `patties add @shadcn/<name>` on hydrated pages
 - [Middleware and context](docs/middleware-context.html): compose() + PattiesContext
 - [Configuration and environment](docs/configuration.html): patties.config.ts + env
 - [Build pipeline](docs/build-pipeline.html): discovery, entries, manifest

@@ -56,6 +56,10 @@
 <p>Build-time scanning collects modules from <code>agents</code>, <code>tools</code>, and <code>jobs</code> directories. Missing directories are allowed, and test files are ignored.</p>
 <p>During <code>patties build</code> and <code>patties dev</code>, Patties attempts to regenerate the root <code>AGENTS.md</code> file from the app definition so downstream tools can inspect routes, agents, tools, jobs, and middleware.</p>
 </section>
+<section>
+<h2>Bundle footprint</h2>
+<p>The AI primitives are opt-in at build time. The generated server entry imports <code>patties/ai</code> only when the app has agents, tools, or jobs, and the Anthropic SDK is loaded lazily when an agent first runs. An app without them carries neither the SDK nor the agent registry in its <code>bun</code>/<code>edge</code> bundle or its <code>--compile</code> binary (which is built from the same entry). <code>@anthropic-ai/sdk</code> stays an optional peer dependency; a regression test asserts the exclusion.</p>
+</section>
 <nav class="page-nav" id="page-nav"></nav>
 </article>
 <footer class="doc-footer">Patties documentation · Licensed under MIT. · <a href="../specs/index.html">Design specs</a></footer>

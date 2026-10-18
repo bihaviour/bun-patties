@@ -57,7 +57,11 @@ export async function runUpdate(
 
 	let uiPaths: UiPaths;
 	try {
-		uiPaths = resolveUiPaths({ cwd: ctx.cwd, ui: loaded.config.ui });
+		uiPaths = resolveUiPaths({
+			cwd: ctx.cwd,
+			ui: loaded.config.ui,
+			appDir: loaded.config.appDir,
+		});
 	} catch (err) {
 		if (err instanceof UiPathError) {
 			log.error(err.message);

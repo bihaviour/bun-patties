@@ -2,6 +2,19 @@ import type { ComponentType } from "react";
 import * as React from "react";
 import { hydrateRoot } from "react-dom/client";
 
+export { Link, type LinkProps } from "./link.tsx";
+export {
+	bootPage,
+	getCurrentRoute,
+	type HydratePageOptions,
+	hydratePage,
+	type NavigateOptions,
+	navigate,
+	type PageExports,
+	prefetch,
+	resetPageRuntime,
+} from "./page.ts";
+
 export interface PattiesClient {
 	register(
 		name: string,

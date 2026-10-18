@@ -92,6 +92,14 @@ export const PattiesConfigSchema = z.object({
 				.default("CLAUDE.md"),
 		})
 		.default({ path: "CLAUDE.md" }),
+	// Whole-tree page hydration default. "off" keeps SSR-first / island-only
+	// behavior; "pages" hydrates every route unless it exports `hydrate = false`.
+	render: z
+		.object({
+			hydrate: z.enum(["off", "pages"]).default("off"),
+		})
+		.strict()
+		.default({ hydrate: "off" }),
 	// Optional, no default: absent must behave exactly as today (conventions only).
 	ui: UiConfigSchema.optional(),
 	// Per-task input/output declarations consumed by `patties run` (the cache

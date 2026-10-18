@@ -31,6 +31,7 @@ function parseInitArgs(argv: string[]): UiInitArgs {
 		if (a === undefined) continue;
 		if (a === "--dry-run") out.dryRun = true;
 		else if (a === "--force") out.force = true;
+		else if (a === "--shadcn") out.shadcn = true;
 		else if (a === "--theme") {
 			const v = argv[++i];
 			if (v === undefined) out.themeMissing = true;
@@ -73,11 +74,13 @@ function printHelp(): void {
 	process.stdout.write(`patties ui — UI catalog setup
 
 Usage:
-  patties ui init [--dry-run] [--force] [--theme <name>]
+  patties ui init [--dry-run] [--force] [--theme <name>] [--shadcn]
   patties ui build --out <dir> [--registry <path>] [--templates <dir>]
 
 Subcommands:
   init    Lay down tokens, the cn helper, and Tailwind wiring before stamping.
+          --shadcn also adds the @/* tsconfig alias and @/lib/utils that
+          upstream shadcn/ui source imports (for \`patties add @shadcn/<name>\`).
   build   Compile a fetchable registry.json + per-component JSON (for authors).
 `);
 }

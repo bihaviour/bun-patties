@@ -37,6 +37,14 @@ The synthetic client entry produced by [04-build](./04-build.md) imports every i
 - Islands must be self-contained — no shared module-level state across islands. Cross-island coordination is a Phase 4 RFC.
 - Props must be JSON-serializable. If a component needs a function prop, expose a route handler instead. Non-JSON types (Date, Map, Set, BigInt) require an explicit (de)serializer at the island boundary.
 
+## Whole-tree alternative
+
+A page can opt out of islands entirely with `export const hydrate = true`: one
+`hydrateRoot` over `#root`, function props and shared context allowed, server
+data via `loader()`. See [28-whole-tree-hydration](../28-whole-tree-hydration.md)
+and, for soft navigation between such pages,
+[29-client-navigation](../29-client-navigation.md). Islands remain the default.
+
 ## Bundle-size note
 
 React + `react-dom/client` is ~45KB gzipped. `Bun.build` code-splitting hoists the React runtime into a single shared chunk so multiple islands on one page do not duplicate it. Pages with zero islands ship zero client JS (the synthetic entry short-circuits before importing React).

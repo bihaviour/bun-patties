@@ -11,6 +11,13 @@ import {
 	type EmbeddedEntry,
 	generateEmbeddedManifest,
 } from "./embedded.ts";
+import {
+	generatePageEntry,
+	type HydrateDefault,
+	type HydratedPage,
+	scanHydratedPages,
+	stripServerExportsPlugin,
+} from "./page-entry.ts";
 import { type IslandEntry, scanIslands } from "./scan-islands.ts";
 import { generateServerEntry } from "./server-entry.ts";
 
@@ -19,6 +26,8 @@ export type { BuiltAsset };
 export interface ClientManifest {
 	entry: string | null;
 	islands: Record<string, string>;
+	// Whole-tree hydrated routes: bunPattern → page entry chunk URL.
+	pages: Record<string, string>;
 }
 
 export interface BuildCounts {
@@ -27,10 +36,14 @@ export interface BuildCounts {
 	agents: number;
 	tools: number;
 	jobs: number;
+	hydratedPages: number;
 }
 
 export interface BuildResult {
 	clientManifest: ClientManifest;
+	// Hydrated route → bytes of its entry chunk plus every chunk it statically
+	// imports (what a cold visit downloads). Empty when no route hydrates.
+	clientBytes: Record<string, number>;
 	serverEntry: string;
 	assets: BuiltAsset[];
 	counts: BuildCounts;
@@ -49,6 +62,9 @@ export interface BuildOptions {
 	// executable".
 	compile?: boolean;
 	plugins?: Plugin[];
+	// `render.hydrate` from config: "pages" hydrates every route unless it
+	// exports `hydrate = false`. Default "off".
+	hydrate?: HydrateDefault;
 }
 
 const PUBLIC_PREFIX = "/_patties/client/";
@@ -106,23 +122,57 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 		}
 	}
 
-	const manifest: ClientManifest = { entry: null, islands: {} };
+	const manifest: ClientManifest = { entry: null, islands: {}, pages: {} };
 	const frameworkRoot = resolveFrameworkRoot();
+	const hydratedPages = await scanHydratedPages(
+		entries,
+		options.hydrate ?? "off",
+	);
+	let clientBytes: Record<string, number> = {};
 
-	if (islands.length > 0) {
-		const clientEntryPath = `${genDir}/client-entry.ts`;
-		await Bun.write(
-			clientEntryPath,
-			generateClientEntry(islands, { frameworkRoot }),
-		);
+	const clientEntryPath = `${genDir}/client-entry.ts`;
+	await Bun.write(
+		clientEntryPath,
+		generateClientEntry(islands, { frameworkRoot }),
+	);
+	const pageEntryPaths = new Map<string, HydratedPage>();
+	for (const page of hydratedPages) {
+		const path = `${genDir}/${page.id}.ts`;
+		await Bun.write(path, generatePageEntry(page, { frameworkRoot }));
+		pageEntryPaths.set(path, page);
+	}
 
+	const entrypoints = [
+		...(islands.length > 0 ? [clientEntryPath] : []),
+		...pageEntryPaths.keys(),
+	];
+
+	// Zero-island, zero-hydrated-page project: write nothing to client/.
+	if (entrypoints.length > 0) {
+		// Under `bun test`, the process's first Bun.build that resolves several
+		// absolute route paths can spuriously report "Could not resolve".
+		// Resolving them once through the runtime resolver primes the shared cache.
+		for (const file of [
+			...islands.map((i) => i.filePath),
+			...hydratedPages.map((p) => p.entry.filePath),
+		]) {
+			Bun.resolveSync(file, appDir);
+		}
+		// One build for islands + every page so React and shared components
+		// land in common chunks instead of one copy per entry.
 		const clientResult = await Bun.build({
-			entrypoints: [clientEntryPath],
+			entrypoints,
 			target: "browser",
 			splitting: true,
 			minify: mode === "production",
 			outdir: clientOutDir,
 			naming: "[name]-[hash].[ext]",
+			// React picks its dev or prod build from NODE_ENV; without this the
+			// browser bundle ships React's development build in production.
+			define: { "process.env.NODE_ENV": JSON.stringify(mode) },
+			plugins: [
+				stripServerExportsPlugin(hydratedPages.map((p) => p.entry.filePath)),
+			],
 		});
 
 		if (!clientResult.success) {
@@ -135,16 +185,11 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 		populateClientManifest(
 			manifest,
 			clientResult.outputs,
-			clientEntryPath,
 			islands,
+			hydratedPages,
 			clientOutDir,
 		);
-	} else {
-		// Zero-island project: write nothing to client/, leave manifest empty.
-		await Bun.write(
-			`${genDir}/client-entry.ts`,
-			generateClientEntry([], { frameworkRoot }),
-		);
+		clientBytes = await measurePageBytes(manifest.pages, clientOutDir);
 	}
 
 	// Manifest must hit disk before the server entry is generated — the server
@@ -238,6 +283,7 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 
 	const result: BuildResult = {
 		clientManifest: manifest,
+		clientBytes,
 		serverEntry: emitted.serverEntry,
 		assets: emitted.assets,
 		counts: {
@@ -246,6 +292,7 @@ export async function build(options: BuildOptions): Promise<BuildResult> {
 			agents: agentMods.length,
 			tools: toolMods.length,
 			jobs: jobMods.length,
+			hydratedPages: hydratedPages.length,
 		},
 		artifacts: emitted.extraFiles ?? [],
 	};
@@ -272,12 +319,21 @@ function wrapHookError(name: string, hook: string, err: unknown): Error {
 function populateClientManifest(
 	manifest: ClientManifest,
 	outputs: Array<{ path: string; kind: string }>,
-	clientEntryPath: string,
 	islands: IslandEntry[],
+	pages: HydratedPage[],
 	clientOutDir: string,
 ): void {
+	const pageById = new Map(pages.map((p) => [p.id, p]));
 	for (const out of outputs) {
-		if (out.kind === "entry-point") {
+		if (out.kind !== "entry-point") continue;
+		const stem = outputStem(out.path);
+		const page = pageById.get(stem);
+		if (page) {
+			manifest.pages[page.entry.bunPattern] = toPublicUrl(
+				out.path,
+				clientOutDir,
+			);
+		} else if (stem === "client-entry") {
 			manifest.entry = toPublicUrl(out.path, clientOutDir);
 		}
 	}
@@ -293,9 +349,7 @@ function populateClientManifest(
 
 	for (const out of outputs) {
 		if (out.kind === "entry-point") continue;
-		const fname = out.path.split("/").pop() ?? "";
-		const stem = fname.replace(/-[A-Za-z0-9]+\.(js|mjs)$/, "");
-		const island = remainingIslands.get(stem);
+		const island = remainingIslands.get(outputStem(out.path));
 		if (island) {
 			manifest.islands[island.name] = toPublicUrl(out.path, clientOutDir);
 		}
@@ -310,9 +364,51 @@ function populateClientManifest(
 			manifest.islands[i.name] = manifest.entry;
 		}
 	}
+}
 
-	// Reference unused vars to satisfy strict noUnusedParameters.
-	void clientEntryPath;
+function outputStem(path: string): string {
+	const fname = path.split("/").pop() ?? "";
+	return fname.replace(/-[A-Za-z0-9]+\.(js|mjs)$/, "");
+}
+
+const STATIC_IMPORT_RE =
+	/(?:import|export)\s*(?:[^"'`;]*?from\s*)?["'](\.\/[^"']+)["']/g;
+
+// Sum each hydrated route's entry chunk and its static import closure. Chunks
+// shared with other routes (React) count toward every route that needs them.
+async function measurePageBytes(
+	pages: Record<string, string>,
+	clientOutDir: string,
+): Promise<Record<string, number>> {
+	const sizes = new Map<string, { bytes: number; deps: string[] }>();
+	const read = async (rel: string) => {
+		const hit = sizes.get(rel);
+		if (hit) return hit;
+		const file = Bun.file(`${clientOutDir}/${rel}`);
+		const text = (await file.exists()) ? await file.text() : "";
+		const deps = [...text.matchAll(STATIC_IMPORT_RE)]
+			.map((m) => (m[1] ?? "").slice(2))
+			.filter(Boolean);
+		const info = { bytes: new TextEncoder().encode(text).length, deps };
+		sizes.set(rel, info);
+		return info;
+	};
+	const out: Record<string, number> = {};
+	for (const [route, url] of Object.entries(pages)) {
+		const seen = new Set<string>();
+		const queue = [url.slice(PUBLIC_PREFIX.length)];
+		let total = 0;
+		while (queue.length > 0) {
+			const rel = queue.pop() as string;
+			if (seen.has(rel)) continue;
+			seen.add(rel);
+			const info = await read(rel);
+			total += info.bytes;
+			queue.push(...info.deps);
+		}
+		out[route] = total;
+	}
+	return out;
 }
 
 function toPublicUrl(absPath: string, clientOutDir: string): string {

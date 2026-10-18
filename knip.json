@@ -22,7 +22,8 @@
 				"scripts/*.ts",
 				"tests/adapters/smoke-harness.ts"
 			],
-			"project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
+			"project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
+			"ignoreDependencies": ["cn", "lucide-react", "radix-ui"]
 		},
 		"packages/create-patties": {
 			"ignore": ["templates/**"],

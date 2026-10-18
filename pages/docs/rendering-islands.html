@@ -27,6 +27,8 @@
 <li>a default React component</li>
 <li>optionally <code>meta</code></li>
 <li>optionally <code>head()</code></li>
+<li>optionally <code>loader(req, ctx)</code> — runs on the server before render; its result reaches the component as the <code>data</code> prop. Return a <code>Response</code> (e.g. a redirect) to skip rendering.</li>
+<li>optionally <code>hydrate</code> — a literal boolean opting the page into whole-tree hydration (below)</li>
 </ul>
 <p>If <code>meta</code> is missing and <code>head()</code> is also absent, Patties emits a default HTML head for the current pathname.</p>
 </section>
@@ -38,6 +40,29 @@
 <h2>Islands</h2>
 <p>Client islands are discovered from <code>app/islands/</code> during the build. Patties generates a client entry, bundles the island graph for the browser, and writes a manifest that maps islands to emitted chunks.</p>
 <p>Projects with zero islands are still valid. In that case Patties keeps the client manifest empty and skips the browser bundle output.</p>
+</section>
+<section>
+<h2>Whole-tree hydration</h2>
+<p>Islands are the default. A page can instead hydrate its entire React subtree as one root with <code>export const hydrate = true</code>, or every page can by default with <code>render: { hydrate: "pages" }</code> in <code>patties.config.ts</code> (opt out with <code>hydrate = false</code>). Inside such a page, function props and context shared across components work freely — only the page's own props cross the wire.</p>
+<pre><code>export const hydrate = true;
+
+export async function loader(req: Request, ctx: PattiesContext) {
+  return { user: await db.user(ctx.params.id), seen: new Date() };
+}
+// Optional: make non-JSON data survive the trip (server → client).
+export const serialize = (d) =&gt; ({ ...d, seen: d.seen.toISOString() });
+export const deserialize = (j) =&gt; ({ ...j, seen: new Date(j.seen) });
+
+export default function User({ id, data }) { /* … */ }</code></pre>
+<p>The server serializes <code>{ params, data }</code> into a <code>&lt;script type="application/json" id="__patties_bootstrap"&gt;</code> outside <code>#root</code>, and the page's own chunk hydrates with exactly those props. <code>loader</code> and <code>serialize</code> — and any imports only they use — are stripped from the browser bundle at build time. Pages without <code>hydrate</code> still ship zero JS. See <a href="shadcn.html">Using upstream shadcn/ui</a> for the main use case.</p>
+</section>
+<section>
+<h2>Client-side navigation</h2>
+<p>Between hydrated pages, use <code>Link</code> from <code>patties/client</code>:</p>
+<pre><code>import { Link } from "patties/client";
+
+&lt;Link href="/realms/acme/clients"&gt;Clients&lt;/Link&gt;</code></pre>
+<p>A click fetches the target's bootstrap payload (middleware and <code>loader()</code> run as usual, answered as JSON via the <code>x-patties-nav</code> request header), loads its page chunk, pushes history, updates the title, and re-renders the existing React root. Back/forward work the same way. Hover or focus prefetches. When the target isn't a hydrated page — or anything goes wrong — it falls back to a normal page load, and on zero-JS or island pages <code>Link</code> is a plain <code>&lt;a&gt;</code>. <code>navigate(href)</code> and <code>prefetch(href)</code> are exported for programmatic use.</p>
 </section>
 <section>
 <h2>Dev HMR injection</h2>

@@ -1,6 +1,12 @@
 import * as React from "react";
 import { renderToReadableStream } from "react-dom/server";
 import type { PattiesContext, RouteEntry } from "../types.ts";
+import {
+	type BootstrapPayload,
+	encodeBootstrap,
+	NAV_HEADER,
+	type NavPayload,
+} from "./bootstrap.ts";
 import { renderDevErrorPage } from "./dev-error.tsx";
 import { defaultHead, type MetaInput, renderMetaTags } from "./meta.tsx";
 import { Shell } from "./shell.tsx";
@@ -17,6 +23,26 @@ export interface ClientManifest {
 	// Legacy lookup (page-route bunPattern → script URL). Kept for callers that
 	// still drive the renderer without going through `build()`.
 	byEntry?: Record<string, string>;
+	// Whole-tree hydrated routes: page-route bunPattern → page entry chunk URL.
+	// Presence here is what marks a route as hydrated at request time.
+	pages?: Record<string, string>;
+}
+
+// The page-module surface the renderer reads. Everything is optional except
+// the default-exported component.
+export interface PageModule {
+	default?: unknown;
+	meta?: MetaInput;
+	head?: () => React.ReactNode;
+	// Opt into whole-tree hydration. Read statically at build time.
+	hydrate?: boolean;
+	// Runs on the server before render. Its result reaches the page as `data`.
+	// Returning a Response (e.g. a redirect) short-circuits the render.
+	loader?: (req: Request, ctx: PattiesContext) => unknown;
+	// Converts `loader()` output to JSON-safe data for the bootstrap payload.
+	serialize?: (data: unknown) => unknown;
+	// Client-side inverse of `serialize`.
+	deserialize?: (data: unknown) => unknown;
 }
 
 export interface RenderOptions {
@@ -43,20 +69,49 @@ export function createRenderer(options: RenderOptions = {}): Renderer {
 	const { manifest, dev = false, modules } = options;
 
 	return {
-		async renderPage(entry, _req, ctx) {
+		async renderPage(entry, req, ctx) {
 			try {
 				const mod = (modules?.[entry.filePath] ??
-					(await import(entry.filePath))) as {
-					default?: unknown;
-					meta?: MetaInput;
-					head?: () => React.ReactNode;
-				};
+					(await import(entry.filePath))) as PageModule;
 
 				const Page = mod.default;
 				if (typeof Page !== "function") {
 					throw new Error(
 						`Page module ${entry.filePath} has no default-exported component`,
 					);
+				}
+
+				const pageScript = manifest?.pages?.[entry.bunPattern];
+				const isNav = req.headers.get(NAV_HEADER) === "1";
+				if (isNav && !pageScript) {
+					return navResponse({ hydrated: false });
+				}
+
+				let data: unknown;
+				let hasData = false;
+				if (typeof mod.loader === "function") {
+					const result = await mod.loader(req, ctx);
+					if (result instanceof Response) return result;
+					data = result;
+					hasData = true;
+				}
+
+				let bootstrap: BootstrapPayload | undefined;
+				if (pageScript) {
+					bootstrap = { params: { ...ctx.params } };
+					if (hasData) {
+						bootstrap.data = mod.serialize ? mod.serialize(data) : data;
+					}
+				}
+
+				if (isNav && pageScript && bootstrap) {
+					return navResponse({
+						hydrated: true,
+						route: entry.bunPattern,
+						script: pageScript,
+						bootstrap,
+						title: mod.meta?.title,
+					});
 				}
 
 				const headNodes: React.ReactNode[] = [];
@@ -91,12 +146,24 @@ export function createRenderer(options: RenderOptions = {}): Renderer {
 					);
 				}
 
+				// A hydrated page's bundle replaces the island entry: the whole tree
+				// hydrates, so per-island roots would be redundant.
 				const clientScriptUrl =
-					manifest?.byEntry?.[entry.bunPattern] ?? manifest?.entry ?? undefined;
+					pageScript ??
+					manifest?.byEntry?.[entry.bunPattern] ??
+					manifest?.entry ??
+					undefined;
+
+				const props: Record<string, unknown> = { ...ctx.params };
+				if (hasData) props.data = data;
 
 				const tree = (
-					<Shell headNodes={headNodes} clientScriptUrl={clientScriptUrl}>
-						{React.createElement(Page as React.FC, { ...ctx.params })}
+					<Shell
+						headNodes={headNodes}
+						clientScriptUrl={clientScriptUrl}
+						bootstrap={bootstrap ? encodeBootstrap(bootstrap) : undefined}
+					>
+						{React.createElement(Page as React.FC, props)}
 					</Shell>
 				);
 
@@ -108,15 +175,28 @@ export function createRenderer(options: RenderOptions = {}): Renderer {
 
 				const combined = composeStream(reactStream, dev);
 
-				return new Response(combined, {
-					headers: { "Content-Type": "text/html; charset=utf-8" },
-				});
+				const headers: Record<string, string> = {
+					"Content-Type": "text/html; charset=utf-8",
+				};
+				// Same URL serves HTML or a nav payload depending on NAV_HEADER.
+				if (pageScript) headers.Vary = NAV_HEADER;
+				return new Response(combined, { headers });
 			} catch (err) {
 				if (dev) return renderDevErrorPage(err);
 				return new Response("Internal Server Error", { status: 500 });
 			}
 		},
 	};
+}
+
+function navResponse(payload: NavPayload): Response {
+	return new Response(JSON.stringify(payload), {
+		headers: {
+			"Content-Type": "application/json; charset=utf-8",
+			"Cache-Control": "no-store",
+			Vary: NAV_HEADER,
+		},
+	});
 }
 
 function composeStream(

@@ -64,6 +64,7 @@ export async function runBuild(
 			mode: args.mode,
 			compile,
 			plugins,
+			hydrate: config.render.hydrate,
 		});
 	} catch (err) {
 		failure = err as Error;
@@ -133,8 +134,16 @@ async function printSummary(
 		}
 	}
 	log.dim(
-		`  counts: routes=${result.counts.routes} islands=${result.counts.islands} agents=${result.counts.agents} tools=${result.counts.tools} jobs=${result.counts.jobs}`,
+		`  counts: routes=${result.counts.routes} islands=${result.counts.islands} hydrated=${result.counts.hydratedPages} agents=${result.counts.agents} tools=${result.counts.tools} jobs=${result.counts.jobs}`,
 	);
+	const hydrated = Object.entries(result.clientBytes);
+	if (hydrated.length > 0) {
+		// Raw bytes a cold visit downloads per hydrated route (entry + imports).
+		log.dim(`  hydrated pages (client JS):`);
+		for (const [route, bytes] of hydrated) {
+			log.dim(`    ${route}  ${formatBytes(bytes)}`);
+		}
+	}
 	if (result.artifacts.length > 0) {
 		log.dim(`  artifacts: ${result.artifacts.join(", ")}`);
 	}

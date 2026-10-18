@@ -7,10 +7,18 @@ import type { Catalog } from "./load-catalog.ts";
 import {
 	type ComponentPayload,
 	componentTarget,
-	fetchPayload,
+	fetchJson,
+	parsePayload,
 	RegistryError,
-	readPayloadFile,
+	readJsonFile,
 } from "./registry-fetch.ts";
+import {
+	DEFAULT_REGISTRIES,
+	isShadcnItem,
+	mapShadcnItem,
+	parseShadcnItem,
+	pinDeps,
+} from "./shadcn.ts";
 
 // One resolved component ready for the stamp pipeline. `templatesDir` is the dir
 // the existing stamper/internal/tokens/view code reads source from — the
@@ -101,50 +109,63 @@ function synthLocalEntry(absPath: string, original: string): ComponentEntry {
 	};
 }
 
-async function resolveLocal(
-	path: string,
-	cwd: string,
-): Promise<ResolvedSource> {
-	const abs = isAbsolute(path) ? path : resolve(cwd, path);
-	if (/\.json$/i.test(abs)) {
-		const payload = await readPayloadFile(abs);
-		const mat = await materialize(payload);
-		return {
-			entry: payload.entry,
-			templatesDir: mat.templatesDir,
-			fromCatalog: false,
-			cleanup: mat.cleanup,
-		};
-	}
-	if (!(await Bun.file(abs).exists())) {
-		throw new RegistryError(`file not found: ${path}`);
-	}
-	return {
-		entry: synthLocalEntry(abs, path),
-		templatesDir: dirname(abs),
-		fromCatalog: false,
-	};
-}
+const isUrl = (s: string) => /^https?:\/\//i.test(s);
 
-async function resolveNamespaced(
-	ns: string,
-	name: string,
+// Load one registry document (URL or local .json) into stampable sources. A
+// patties payload yields itself; a shadcn registry item is mapped, its deps
+// pinned, and its registryDependencies resolved first — depth-first, deduped
+// by target via `seen` so shared deps (e.g. `button`) stamp once.
+async function resolveRegistryTarget(
+	target: string,
 	opts: ResolveOptions,
-): Promise<ResolvedSource> {
-	const base = opts.registries[ns];
-	if (!base) {
-		throw new RegistryError(
-			`no registry configured for namespace ${ns}; add it to config.ui.registries`,
-		);
-	}
-	const payload = /^https?:\/\//i.test(base)
-		? await fetchPayload(componentTarget(base, name), {
+	seen: Set<string>,
+): Promise<ResolvedSource[]> {
+	seen.add(target);
+	const raw = isUrl(target)
+		? await fetchJson(target, {
 				allowInsecure: opts.allowInsecure,
 				fetchImpl: opts.fetchImpl,
 			})
-		: await readPayloadFile(
-				join(isAbsolute(base) ? base : resolve(opts.cwd, base), `${name}.json`),
-			);
+		: await readJsonFile(target);
+	if (!isShadcnItem(raw)) {
+		return [await materializeSource(parsePayload(raw))];
+	}
+	const mapped = mapShadcnItem(parseShadcnItem(raw, target), target);
+	mapped.payload.entry.peerDeps = await pinDeps(
+		mapped.payload.entry.peerDeps,
+		mapped.unpinned,
+		opts.fetchImpl,
+	);
+	// Re-validate the mapped entry against ComponentEntrySchema before stamping.
+	const payload = parsePayload(mapped.payload);
+	const out: ResolvedSource[] = [];
+	for (const dep of mapped.registryDeps) {
+		const depTarget = registryDepTarget(dep, target, opts);
+		if (seen.has(depTarget)) continue;
+		out.push(...(await resolveRegistryTarget(depTarget, opts, seen)));
+	}
+	out.push(await materializeSource(payload));
+	return out;
+}
+
+// A shadcn registryDependency is a URL, an `@ns/name` ref, or a bare name
+// that lives next to the item that named it.
+function registryDepTarget(
+	dep: string,
+	parent: string,
+	opts: ResolveOptions,
+): string {
+	if (isUrl(dep)) return dep;
+	const kind = classifySource(dep);
+	if (kind.kind === "namespaced")
+		return namespacedTarget(kind.ns, kind.name, opts);
+	const dir = isUrl(parent) ? new URL(".", parent).href : `${dirname(parent)}/`;
+	return isUrl(dir) ? componentTarget(dir, dep) : join(dir, `${dep}.json`);
+}
+
+async function materializeSource(
+	payload: ComponentPayload,
+): Promise<ResolvedSource> {
 	const mat = await materialize(payload);
 	return {
 		entry: payload.entry,
@@ -154,38 +175,69 @@ async function resolveNamespaced(
 	};
 }
 
+async function resolveLocal(
+	path: string,
+	opts: ResolveOptions,
+	seen: Set<string>,
+): Promise<ResolvedSource[]> {
+	const abs = isAbsolute(path) ? path : resolve(opts.cwd, path);
+	if (/\.json$/i.test(abs)) return resolveRegistryTarget(abs, opts, seen);
+	if (!(await Bun.file(abs).exists())) {
+		throw new RegistryError(`file not found: ${path}`);
+	}
+	return [
+		{
+			entry: synthLocalEntry(abs, path),
+			templatesDir: dirname(abs),
+			fromCatalog: false,
+		},
+	];
+}
+
+function namespacedTarget(
+	ns: string,
+	name: string,
+	opts: ResolveOptions,
+): string {
+	const base = opts.registries[ns] ?? DEFAULT_REGISTRIES[ns];
+	if (!base) {
+		throw new RegistryError(
+			`no registry configured for namespace ${ns}; add it to config.ui.registries`,
+		);
+	}
+	return isUrl(base)
+		? componentTarget(base, name)
+		: join(isAbsolute(base) ? base : resolve(opts.cwd, base), `${name}.json`);
+}
+
 async function resolveOne(
 	arg: string,
 	opts: ResolveOptions,
-): Promise<ResolvedSource> {
+	seen: Set<string>,
+): Promise<ResolvedSource[]> {
 	const kind = classifySource(arg);
 	switch (kind.kind) {
 		case "name": {
 			const entry = opts.catalog.components.find((c) => c.name === kind.name);
 			if (!entry) throw new RegistryError(`unknown component: ${kind.name}`);
-			return {
-				entry,
-				templatesDir: opts.catalog.templatesDir,
-				fromCatalog: true,
-			};
+			return [
+				{
+					entry,
+					templatesDir: opts.catalog.templatesDir,
+					fromCatalog: true,
+				},
+			];
 		}
 		case "namespaced":
-			return resolveNamespaced(kind.ns, kind.name, opts);
-		case "url": {
-			const payload = await fetchPayload(kind.url, {
-				allowInsecure: opts.allowInsecure,
-				fetchImpl: opts.fetchImpl,
-			});
-			const mat = await materialize(payload);
-			return {
-				entry: payload.entry,
-				templatesDir: mat.templatesDir,
-				fromCatalog: false,
-				cleanup: mat.cleanup,
-			};
-		}
+			return resolveRegistryTarget(
+				namespacedTarget(kind.ns, kind.name, opts),
+				opts,
+				seen,
+			);
+		case "url":
+			return resolveRegistryTarget(kind.url, opts, seen);
 		case "local":
-			return resolveLocal(kind.path, opts.cwd);
+			return resolveLocal(kind.path, opts, seen);
 	}
 }
 
@@ -197,9 +249,10 @@ export async function resolveSources(
 	opts: ResolveOptions,
 ): Promise<ResolvedSource[] | null> {
 	const out: ResolvedSource[] = [];
+	const seen = new Set<string>();
 	for (const arg of args) {
 		try {
-			out.push(await resolveOne(arg, opts));
+			out.push(...(await resolveOne(arg, opts, seen)));
 		} catch (err) {
 			log.error(err instanceof Error ? err.message : String(err));
 			await cleanupSources(out);
