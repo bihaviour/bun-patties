@@ -1,4 +1,5 @@
 import { networkInterfaces } from "node:os";
+import { hotState } from "../dev/hot.ts";
 import type { DevServer } from "../dev/watcher.ts";
 import { handleOpenInEditor } from "../internal/open-in-editor.ts";
 import { compilePatterns, dispatch } from "../router/match.ts";
@@ -119,7 +120,8 @@ export function startServer(opts: ServerOptions) {
 			server as unknown as { publish: (t: string, d: string) => number },
 		);
 	}
-	if (!opts.quiet) {
+	// A `bun --hot` reload re-runs the app's `start`; the URL hasn't changed.
+	if (!opts.quiet && !(opts.dev && hotState().generation > 1)) {
 		printBoundBanner(
 			opts,
 			server as unknown as { hostname: string; port: number },
