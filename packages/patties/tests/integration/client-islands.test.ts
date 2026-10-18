@@ -1,14 +1,19 @@
 import { afterAll, beforeEach, expect, mock, test } from "bun:test";
 import { join } from "node:path";
 import * as React from "react";
+import * as realReactDomClient from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "../../src/build/index.ts";
 import { Island } from "../../src/render/island.tsx";
 
 const FIXTURES = join(import.meta.dir, "..", "fixtures");
+// Snapshot before any test mocks it: mock.module patches namespaces in place.
+const REAL_REACT_DOM_CLIENT = { ...realReactDomClient };
 const createdDirs: string[] = [];
 
 afterAll(async () => {
+	// mock.module is process-wide: hand later test files the real module back.
+	mock.module("react-dom/client", () => REAL_REACT_DOM_CLIENT);
 	for (const d of createdDirs) await Bun.$`rm -rf ${d}`.quiet();
 	for (const f of ["build-app", "no-middleware-app", "multi-island-app"]) {
 		await Bun.$`rm -rf ${join(FIXTURES, f, "app", "patties-gen")}`.quiet();

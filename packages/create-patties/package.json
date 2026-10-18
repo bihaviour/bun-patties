@@ -22,7 +22,9 @@
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check .",
 		"generate:patties-skill": "bun run scripts/gen-patties-skill.ts",
-		"check:patties-skill": "bun run scripts/gen-patties-skill.ts --check"
+		"check:patties-skill": "bun run scripts/gen-patties-skill.ts --check",
+		"sync:versions": "bun run scripts/sync-versions.ts",
+		"check:versions": "bun run scripts/sync-versions.ts --check"
 	},
 	"engines": {
 		"bun": ">=1.3.0"

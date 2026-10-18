@@ -41,6 +41,23 @@
 </ul>
 </section>
 <section>
+<h2 id="embedding">Embedding in another server</h2>
+<p><code>createRouter()</code> returns <code>{ routes, fallback, entries }</code>: a <code>Bun.serve</code> route table, a fallback handler, and the compiled route list. A host app can keep its own routes and mount Patties next to them:</p>
+<pre><code>const patties = await createRouter({ appDir: "./app", renderer: createRenderer({ manifest }) });
+
+Bun.serve({
+  routes: { ...hostRoutes, ...patties.routes },
+  fetch: patties.fallback, // or your own 404
+});</code></pre>
+<p>Collision and precedence rules — these come from <code>Bun.serve</code>'s router and are covered by <code>tests/integration/embedding.test.ts</code>:</p>
+<ul>
+<li><strong>Different patterns:</strong> the more specific one wins, whichever table defines it — an exact path beats <code>:param</code>, which beats <code>*</code>. A host <code>/users/me</code> wins over a Patties <code>/users/:id</code> page, and a Patties <code>/api/ping</code> wins over a host <code>/api/*</code>.</li>
+<li><strong>Identical patterns:</strong> the table spread <em>last</em> replaces the whole entry, including every HTTP method. Method maps are not merged, so a host <code>POST /about</code> disappears when Patties also defines <code>/about</code>.</li>
+<li>Patties registers only the files under <code>app/routes/</code>; check <code>patties.entries</code> (each has <code>bunPattern</code>) at boot if you need to assert there are no overlaps.</li>
+<li>Unmatched requests go to whatever you pass as <code>fetch</code>.</li>
+</ul>
+</section>
+<section>
 <h2>Dev-only routes</h2>
 <p>When <code>dev: true</code>, Patties injects internal routes for:</p>
 <ul>

@@ -224,3 +224,19 @@ test("edge + compile is a build error", async () => {
 		}),
 	).rejects.toThrow(/only supported with target "bun"/);
 });
+
+test("apps without agents/tools/jobs bundle none of the AI runtime", async () => {
+	for (const target of ["bun", "edge"] as const) {
+		const outDir = await makeOut();
+		created.push(outDir);
+		const res = await build({
+			appDir: join(FIXTURES, "build-app/app"),
+			outDir,
+			target,
+			mode: "production",
+		});
+		const source = await Bun.file(res.serverEntry).text();
+		expect(source).not.toContain("@anthropic-ai/sdk");
+		expect(source).not.toContain("registerAgent");
+	}
+});

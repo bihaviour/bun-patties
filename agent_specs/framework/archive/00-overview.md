@@ -63,6 +63,8 @@ One package, one version, one changelog. No `@patties/*` scope at launch.
 | [15-claude-code-scaffold](./phase-0/15-claude-code-scaffold.md) | `CLAUDE.md`, `.claude/` (opt-in) | — (net new) |
 | [17-dev-island-bundler](../draft/17-dev-island-bundler.md) | `src/dev/bundler.ts` (planned) | — (net new; design decision) |
 | [18-dev-island-bundler-impl](../draft/18-dev-island-bundler-impl.md) | `src/dev/bundler.ts` (planned) | — (net new; implementation of 17) |
+| [28-whole-tree-hydration](./28-whole-tree-hydration.md) | `src/build/page-entry.ts`, `src/client/page.ts` | — (net new; opt-in alternative to 06) |
+| [29-client-navigation](./29-client-navigation.md) | `src/client/link.tsx`, `src/client/page.ts` | — (net new; builds on 28) |
 
 ## Phase alignment
 

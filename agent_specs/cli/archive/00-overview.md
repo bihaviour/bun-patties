@@ -30,6 +30,7 @@ source: patties-oss-guide.docx
 | `patties secret` | [08-secret-command](./08-secret-command.md) |
 | `bunx create-patties <name>` | [05-create-patties](./05-create-patties.md) → [09-create-patties-dx](./09-create-patties-dx.md) → redesigned by [18-create-patties-redesign](../draft/18-create-patties-redesign.md) |
 | `/patties` skill · `/patties-init` flow | [19-patties-agent-skill](../draft/19-patties-agent-skill.md) |
+| `patties add @shadcn/<name>` · `ui init --shadcn` · `create-patties --ui shadcn` | [21-shadcn-registry](./21-shadcn-registry.md) |
 
 ## Supporting specs
 

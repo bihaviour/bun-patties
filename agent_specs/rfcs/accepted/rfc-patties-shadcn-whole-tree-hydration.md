@@ -1,9 +1,12 @@
 ---
 rfc: patties-shadcn-whole-tree-hydration
 title: patties-shadcn — verbatim shadcn/ui via opt-in whole-tree page hydration
-status: proposed
-verdict: pending
+status: encoded
+encoded_in: ["framework/28-whole-tree-hydration", "framework/29-client-navigation", "cli/21-shadcn-registry"]
+encoded_on: 2026-10-18
+verdict: accept
 opened: 2026-06-29
+reviewed: 2026-10-18
 upstream_shadcn: "shadcn/ui canonical registry (ui.shadcn.com/r), `npx shadcn add`, `\"use client\"` boundary model"
 comparable_elsewhere: "TanStack Start client-first whole-tree hydration (hydrateRoot at the app root); Next.js App Router server-first `\"use client\"` opt-in"
 host_subsystem: "framework — new opt-in page-hydration render/build path; plus a `patties-shadcn` UI registry package"
@@ -294,37 +297,37 @@ apply.
 ## Implementation plan (phased — maps to the tracking issue)
 
 **Phase 0 — Spec & RFC acceptance**
-- [ ] Accept this RFC; amend `.claude/rules/ui-catalog.md` with the opt-in
+- [x] Accept this RFC; amend `.claude/rules/ui-catalog.md` with the opt-in
       whole-tree-hydration carve-out; cross-link `framework/06-client-islands`.
 
 **Phase 1 — Framework: whole-tree hydration (params-only bootstrap)**
-- [ ] `hydrate` page export + `render.hydrate` config (default `"off"`).
-- [ ] `client/index.ts`: add `hydratePage()` export; `patties/client` re-export.
-- [ ] `build/page-entry.ts`: per-route client entry generator.
-- [ ] `build/index.ts`: bundle hydrated routes, populate `manifest.byEntry`.
-- [ ] `render/index.tsx`: emit `__patties_bootstrap` (params) for hydrated routes.
-- [ ] Tests: a `useState` page hydrates with no mismatch; non-hydrated routes
+- [x] `hydrate` page export + `render.hydrate` config (default `"off"`).
+- [x] `client/index.ts`: add `hydratePage()` export; `patties/client` re-export.
+- [x] `build/page-entry.ts`: per-route client entry generator.
+- [x] `build/index.ts`: bundle hydrated routes, populate `manifest.byEntry`.
+- [x] `render/index.tsx`: emit `__patties_bootstrap` (params) for hydrated routes.
+- [x] Tests: a `useState` page hydrates with no mismatch; non-hydrated routes
       still ship zero JS; build-time-discovery test stays green (no runtime scan).
 
 **Phase 2 — Framework: loader data + serialization contract**
-- [ ] Optional page `loader()` whose result joins the bootstrap payload.
-- [ ] Default JSON (de)serialize with per-page `serialize`/`deserialize` hook.
-- [ ] Edge-target parity test; per-route client-bytes reporting in `patties build`.
+- [x] Optional page `loader()` whose result joins the bootstrap payload.
+- [x] Default JSON (de)serialize with per-page `serialize`/`deserialize` hook.
+- [x] Edge-target parity test; per-route client-bytes reporting in `patties build`.
 
 **Phase 3 — `patties-shadcn` registry adapter**
-- [ ] shadcn registry JSON → `ComponentEntrySchema` mapper (`@/` rewrite, peer
+- [x] shadcn registry JSON → `ComponentEntrySchema` mapper (`@/` rewrite, peer
       deps, `cssVars` merge, `island: "off"`, transitive `registryDependencies`).
-- [ ] Wire through `add` + `ui.registries`; `@shadcn` namespace default.
-- [ ] Verbatim/preview/HTTPS-only/no-install guarantees reused; schema-validated.
-- [ ] `patties-shadcn init` (alias + `app/lib/utils.ts` + token merge).
-- [ ] Tests: `add @shadcn/dialog` stamps verbatim; deps patched not installed;
+- [x] Wire through `add` + `ui.registries`; `@shadcn` namespace default.
+- [x] Verbatim/preview/HTTPS-only/no-install guarantees reused; schema-validated.
+- [x] `patties-shadcn init` (alias + `app/lib/utils.ts` + token merge).
+- [x] Tests: `add @shadcn/dialog` stamps verbatim; deps patched not installed;
       stamped dialog opens/closes inside a hydrated example page.
 
 **Phase 4 — Docs & DX**
-- [ ] Docs page: "Using upstream shadcn/ui in patties" (hydrate opt-in, alias,
+- [x] Docs page: "Using upstream shadcn/ui in patties" (hydrate opt-in, alias,
       coexistence matrix, bundle-cost note).
-- [ ] `create-patties --ui shadcn` starter variant (hydrated demo route).
-- [ ] `doctor` check: warn when a page mixes `<Island>` + `hydrate = true`.
+- [x] `create-patties --ui shadcn` starter variant (hydrated demo route).
+- [x] `doctor` check: warn when a page mixes `<Island>` + `hydrate = true`.
 
 ## Testing strategy
 
@@ -352,6 +355,24 @@ apply.
 - Naming: ship as `patties-shadcn` package, or fold entirely into
   `ui.registries` config with docs only? RFC assumes the package for discovery +
   default namespace, but the mapper is the only hard requirement.
+
+## Resolutions (2026-10-18)
+
+- **`loader` data contract:** JSON by default, with optional per-page
+  `serialize` (server) / `deserialize` (client) exports. `loader(req, ctx)`
+  mirrors handler signatures; returning a `Response` short-circuits the render.
+  No typed loader API — the page's own props type is the contract.
+- **Package vs. config:** no separate `patties-shadcn` package. The mapper ships
+  in `patties add`, `@shadcn` is a built-in namespace (overridable through
+  `ui.registries`), and `patties-shadcn init` became `patties ui init --shadcn`.
+- **Islands + whole-tree on one page:** whole-tree wins (only the page chunk
+  loads); `patties doctor` warns.
+- **Upstream drift seen at implementation time:** the new-york-v4 registry now
+  imports `cn` from shadcn's `cn` npm package and omits some imported deps
+  (`class-variance-authority`, `lucide-react`) and sibling items (`button`)
+  from its declarations. The mapper infers both from imports.
+- **Follow-up from #37:** client-side navigation between hydrated pages is
+  specified in framework/29 on top of the same bootstrap payload.
 
 ## Acceptance criteria
 

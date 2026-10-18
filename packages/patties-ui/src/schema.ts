@@ -37,10 +37,16 @@ export const SafeRelPath = z
 		},
 	);
 
+// Where `to` is anchored. Absent ⇒ "components" (the catalog default). "app"
+// is the app dir the `@/` import alias points at, used by adapted registries
+// (e.g. shadcn `registry:hook` → `app/hooks/`); "project" is the project root.
+export const FileRootSchema = z.enum(["components", "app", "project"]);
+
 export const ComponentFileSchema = z
 	.object({
 		from: SafeRelPath,
 		to: SafeRelPath,
+		root: FileRootSchema.optional(),
 	})
 	.strict();
 

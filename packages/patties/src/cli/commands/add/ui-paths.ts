@@ -1,4 +1,5 @@
 import { isAbsolute, resolve, sep } from "node:path";
+import type { ComponentFile } from "patties-ui/types";
 import type { UiConfig } from "../../../config/schema.ts";
 
 // Resolved, absolute destinations for the add pipeline. Replaces the three
@@ -7,6 +8,9 @@ export interface UiPaths {
 	componentsDir: string;
 	internalDir: string;
 	tokensFile: string;
+	// The `@/` alias root (config.appDir). Anchors `root: "app"` files.
+	appDir: string;
+	projectRoot: string;
 }
 
 const DEFAULT_COMPONENTS_DIR = "app/components/ui";
@@ -43,6 +47,7 @@ export function resolveUiPaths(args: {
 	cwd: string;
 	ui?: Partial<UiConfig>;
 	pathOverride?: string;
+	appDir?: string;
 }): UiPaths {
 	const { cwd, ui, pathOverride } = args;
 
@@ -64,5 +69,27 @@ export function resolveUiPaths(args: {
 	const tokensRel = ui?.tokensFile ?? DEFAULT_TOKENS_FILE;
 	const tokensFile = assertInsideProject(cwd, tokensRel);
 
-	return { componentsDir, internalDir, tokensFile };
+	// loadConfig already absolutizes config.appDir; a relative value comes from
+	// callers passing the convention.
+	const appRel = args.appDir ?? "app";
+	const appDir = isAbsolute(appRel) ? appRel : assertInsideProject(cwd, appRel);
+
+	return { componentsDir, internalDir, tokensFile, appDir, projectRoot: cwd };
+}
+
+// The directory a component file's `to` is relative to.
+export function fileRootDir(uiPaths: UiPaths, file: ComponentFile): string {
+	switch (file.root ?? "components") {
+		case "components":
+			return uiPaths.componentsDir;
+		case "app":
+			return uiPaths.appDir;
+		case "project":
+			return uiPaths.projectRoot;
+	}
+}
+
+// Absolute stamp destination for a component file.
+export function fileDest(uiPaths: UiPaths, file: ComponentFile): string {
+	return resolve(fileRootDir(uiPaths, file), file.to);
 }

@@ -11,8 +11,8 @@ below are specific to working inside this package.
 
 - `src/router/` — filesystem route scan + compile to Bun route patterns
 - `src/render/` — React SSR (`renderToReadableStream`) + dev error overlay + island marker emission
-- `src/client/` — browser hydration runtime; scans `[data-island]` markers
-- `src/build/` — route + island scan, client/server entry generation, `Bun.build` pipeline. `adapter.bun.compile` (production) runs `bun build --compile` against the generated server-entry SOURCE and embeds app/public + client chunks via `with { type: "file" }` / `Bun.embeddedFiles`; `--compile` with `--target edge` is a config-time error
+- `src/client/` — browser hydration runtime: scans `[data-island]` markers; `page.ts` boots whole-tree hydrated pages (`export const hydrate = true`) and drives client-side navigation (`Link` / `navigate`) from the `__patties_bootstrap` payload (framework specs 28/29)
+- `src/build/` — route + island scan, client/server entry generation, `Bun.build` pipeline. Hydrated pages get a generated per-route entry (`page-entry.ts`) bundled in the same split build as islands; `loader`/`serialize` are stripped from client bundles via `Bun.Transpiler` export elimination. `adapter.bun.compile` (production) runs `bun build --compile` against the generated server-entry SOURCE and embeds app/public + client chunks via `with { type: "file" }` / `Bun.embeddedFiles`; `--compile` with `--target edge` is a config-time error
 - `src/middleware/` — composition, `PattiesContext`. `request-id.ts` mints `ctx.requestId` (echoed as `X-Request-Id`, inbound junk ignored); the router finalizer folds in the cookie flush and dev-only `Server-Timing`
 - `src/dev/` — `bun --hot` / `bun --watch` integration, HMR WebSocket, `setupDevClient` (bundles islands in dev and serves `/_patties/client/*`)
 - `src/server/` — `startServer` / `createServer` around `Bun.serve`

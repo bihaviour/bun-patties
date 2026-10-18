@@ -17,7 +17,14 @@ import {
 	type Theme,
 } from "./prompts.ts";
 import { renderTemplatesInTree } from "./readme.ts";
-import { applyUiStarter, UI_DEPS, UI_DEV_DEPS } from "./ui.ts";
+import {
+	applyShadcnStarter,
+	applyUiStarter,
+	UI_DEPS,
+	UI_DEV_DEPS,
+	UI_SHADCN_DEPS,
+} from "./ui.ts";
+import { PATTIES_VERSION } from "./versions.ts";
 
 // Step logger — visible progress so the user can see what scaffolding does.
 // Honors NO_COLOR; degrades gracefully on non-TTY streams.
@@ -53,6 +60,9 @@ interface Args {
 	typeExplicit: boolean;
 	ui: boolean;
 	uiExplicit: boolean;
+	// "patties" stamps the patties-ui starter; "shadcn" vendors upstream
+	// shadcn/ui on a whole-tree hydrated demo page.
+	uiKind: UiKind;
 	monorepo: boolean;
 	monorepoExplicit: boolean;
 	target: Target;
@@ -70,6 +80,8 @@ const BASE_TEMPLATE = "default";
 const VALID_TEMPLATES: AgentTemplate[] = ["claude", "codex", "none"];
 const VALID_TYPES: ProjectType[] = ["frontend", "backend", "fullstack"];
 const VALID_THEMES: Theme[] = ["neutral", "slate", "stone", "zinc"];
+type UiKind = "patties" | "shadcn";
+const UI_KINDS: UiKind[] = ["patties", "shadcn"];
 
 export async function run(argv: string[]): Promise<number> {
 	const args = parseArgs(argv);
@@ -114,6 +126,12 @@ export async function run(argv: string[]): Promise<number> {
 	if (!VALID_TEMPLATES.includes(args.template)) {
 		stderr(
 			`✗ unknown --agent "${args.template}" (expected: ${VALID_TEMPLATES.join(", ")})`,
+		);
+		return 2;
+	}
+	if (!UI_KINDS.includes(args.uiKind)) {
+		stderr(
+			`✗ unknown --ui "${args.uiKind}" (expected: ${UI_KINDS.join(", ")})`,
 		);
 		return 2;
 	}
@@ -193,7 +211,15 @@ export async function run(argv: string[]): Promise<number> {
 		step(`set up Bun workspace ${c.dim(`(apps/${appName})`)}`);
 	}
 
-	if (args.ui) {
+	if (args.ui && args.uiKind === "shadcn") {
+		await applyShadcnStarter(
+			appRoot,
+			args.theme,
+			resolve(TEMPLATES_ROOT, "ui-starter"),
+			resolve(TEMPLATES_ROOT, "ui-shadcn"),
+		);
+		step(`added shadcn/ui starter ${c.dim("(hydrated demo page)")}`);
+	} else if (args.ui) {
 		await applyUiStarter(
 			appRoot,
 			args.theme,
@@ -256,6 +282,7 @@ function parseArgs(argv: string[]): Args {
 		typeExplicit: false,
 		ui: true,
 		uiExplicit: false,
+		uiKind: "patties",
 		monorepo: false,
 		monorepoExplicit: false,
 		target: "bun",
@@ -295,6 +322,16 @@ function parseArgs(argv: string[]): Args {
 		else if (a === "--ui") {
 			out.ui = true;
 			out.uiExplicit = true;
+			// Optional value: `--ui shadcn`. Anything else is left for the name.
+			const v = argv[i + 1];
+			if (v && UI_KINDS.includes(v as UiKind)) {
+				out.uiKind = v as UiKind;
+				i++;
+			}
+		} else if (a.startsWith("--ui=")) {
+			out.ui = true;
+			out.uiExplicit = true;
+			out.uiKind = a.slice(5) as UiKind;
 		} else if (a === "--no-ui") {
 			out.ui = false;
 			out.uiExplicit = true;
@@ -409,18 +446,23 @@ async function writeAppPackageJson(
 	args: Args,
 ): Promise<void> {
 	const dependencies: Record<string, string> = {
-		patties: "latest",
+		// Pinned to the release this scaffolder shipped with, so new apps don't
+		// float on every install.
+		patties: `^${PATTIES_VERSION}`,
 		react: "^19.0.0",
 		"react-dom": "^19.0.0",
 	};
 	const devDependencies: Record<string, string> = {
 		"@types/react": "^19.0.0",
 		"@types/react-dom": "^19.0.0",
-		"bun-types": "latest",
+		"bun-types": "^1.3.0",
 		typescript: "^5.5.0",
 	};
 	if (args.ui) {
-		Object.assign(dependencies, UI_DEPS);
+		Object.assign(
+			dependencies,
+			args.uiKind === "shadcn" ? UI_SHADCN_DEPS : UI_DEPS,
+		);
 		Object.assign(devDependencies, UI_DEV_DEPS);
 	}
 	const pkg = {
@@ -570,7 +612,11 @@ function printNextSteps(args: Args, appName: string): void {
 	out(
 		`  ${devCmd}            → http://localhost:3000  (start the dev server)\n`,
 	);
-	if (args.ui) {
+	if (args.ui && args.uiKind === "shadcn") {
+		out(
+			"\nshadcn/ui is set up on a hydrated page — add more with `bunx patties add @shadcn/<name>`.\n",
+		);
+	} else if (args.ui) {
 		out("\nPatties UI is set up — components live in app/components/ui/.\n");
 	}
 	if (args.template === "claude") {
@@ -608,7 +654,8 @@ Usage:
 Options:
   --agent      claude | codex | none                 (default claude)
   --type       frontend | backend | fullstack        (default fullstack)
-  --ui | --no-ui                                      (frontend/fullstack; default yes)
+  --ui [shadcn] | --no-ui                             (frontend/fullstack; default yes)
+                                                      --ui shadcn: upstream shadcn/ui on a hydrated page
   --monorepo | --no-monorepo                          (fullstack only; default no)
   --target     bun | edge | container                (container = fullstack only; default bun)
   --deploy     cloudflare | vercel | deno | netlify | none   (edge only)
@@ -621,6 +668,7 @@ Examples:
   bunx create-patties@latest my-app
   bunx create-patties@latest my-app --type backend
   bunx create-patties@latest my-app --type fullstack --monorepo --ui --theme slate
+  bunx create-patties@latest my-app --ui shadcn
   bunx create-patties@latest my-app --agent codex
   bunx create-patties@latest my-app --agent none
 `);

@@ -1,10 +1,14 @@
 import { build, type ClientManifest } from "../build/index.ts";
+import type { HydrateDefault } from "../build/page-entry.ts";
+import { loadConfig } from "../config/load.ts";
 import type { BunRoutes } from "../types.ts";
 
 export interface SetupDevClientOptions {
 	appDir: string;
 	/** Where to emit the dev client bundle. Defaults to `<appDir>/.patties`. */
 	outDir?: string;
+	/** Whole-tree hydration default. Defaults to `render.hydrate` from config. */
+	hydrate?: HydrateDefault;
 }
 
 export interface DevClient {
@@ -27,16 +31,20 @@ export async function setupDevClient(
 	const outDir = (options.outDir ?? `${appDir}/.patties`).replace(/\/+$/, "");
 	const clientOutDir = `${outDir}/client`;
 
-	const manifest: ClientManifest = { entry: null, islands: {} };
+	const manifest: ClientManifest = { entry: null, islands: {}, pages: {} };
+	const hydrate = options.hydrate ?? (await configuredHydrate());
 
 	const rebuild = async (): Promise<void> => {
-		const result = await build({ appDir, outDir, mode: "development" });
+		const result = await build({
+			appDir,
+			outDir,
+			mode: "development",
+			hydrate,
+		});
 		manifest.entry = result.clientManifest.entry;
-		// Replace keys so removed islands disappear from the manifest.
-		for (const k of Object.keys(manifest.islands)) delete manifest.islands[k];
-		for (const [k, v] of Object.entries(result.clientManifest.islands)) {
-			manifest.islands[k] = v;
-		}
+		// Replace keys so removed islands/pages disappear from the manifest.
+		replaceRecord(manifest.islands, result.clientManifest.islands);
+		replaceRecord(manifest.pages, result.clientManifest.pages);
 	};
 
 	await rebuild();
@@ -67,4 +75,23 @@ export async function setupDevClient(
 	};
 
 	return { manifest, routes, rebuild };
+}
+
+function replaceRecord(
+	target: Record<string, string>,
+	next: Record<string, string>,
+): void {
+	for (const k of Object.keys(target)) delete target[k];
+	Object.assign(target, next);
+}
+
+// `patties dev` runs from the project root, so the config there is the app's.
+// A missing or invalid config falls back to "off" — the dev client must boot.
+async function configuredHydrate(): Promise<HydrateDefault> {
+	try {
+		const { config } = await loadConfig(process.cwd());
+		return config.render.hydrate;
+	} catch {
+		return "off";
+	}
 }

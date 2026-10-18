@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { loadConfigOrUsage } from "../config/load.ts";
 import { checkConfig } from "./doctor/config-checks.ts";
 import { checkDeps, SEVERITY_ORDER, type Severity } from "./doctor/deps.ts";
+import { checkHydration } from "./doctor/hydrate.ts";
 import { checkMonorepo } from "./doctor/monorepo.ts";
 import { renderJson, renderText, summarize } from "./doctor/report.ts";
 import { checkToolchain } from "./doctor/toolchain.ts";
@@ -94,9 +95,11 @@ export async function runDoctor(
 	});
 	const appDir =
 		"config" in loaded ? loaded.config.appDir : join(ctx.cwd, "app");
+	const hydrateDefault =
+		"config" in loaded ? loaded.config.render.hydrate : "off";
 
 	const toolchain = checkToolchain(ctx.cwd);
-	const [deps, config, monorepo] = await Promise.all([
+	const [deps, config, monorepo, hydration] = await Promise.all([
 		checkDeps(ctx.cwd, {
 			offline: args.offline,
 			noAudit: args.noAudit,
@@ -105,9 +108,10 @@ export async function runDoctor(
 		}),
 		checkConfig(ctx.cwd, ctx.configPath),
 		checkMonorepo(ctx.cwd, appDir, import.meta.dir),
+		checkHydration(ctx.cwd, appDir, hydrateDefault),
 	]);
 
-	const checks = [...toolchain, ...deps, ...config, ...monorepo];
+	const checks = [...toolchain, ...deps, ...config, ...hydration, ...monorepo];
 	const report: DoctorReport = { checks, summary: summarize(checks) };
 
 	process.stdout.write(args.json ? renderJson(report) : renderText(report));
