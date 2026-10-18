@@ -39,7 +39,7 @@ bunx create-patties my-app --ui shadcn
 | `files[].content` | written verbatim; only `@/registry/<style>/{ui,lib,hooks,components}/…` → `@/{components/ui,lib,hooks,components}/…` |
 | `registry:ui` | `componentsDir/<file>` |
 | `registry:lib` / `hook` / `component` / `block` | `files[].root: "app"` → `app/lib`, `app/hooks`, `app/components` |
-| `files[].target` | `root: "project"`, `SafeRelPath`-validated |
+| `files[].target` | honored only inside `app/{components,hooks,lib}` (`root: "app"`); routes, config files, dotfiles and anything else are refused |
 | `dependencies` (+ bare imports not declared upstream) | `peerDeps`; unversioned ones pinned to `^<npm latest>` (offline keeps `latest`); `package.json` edited, never installed |
 | `registryDependencies` (+ `@/registry/…` imports) | resolved depth-first through the same resolver, deduped |
 | `cssVars.{theme,light,dark}` | a `shadcn-<name>` token group merged into `tokensFile` |
@@ -47,8 +47,10 @@ bunx create-patties my-app --ui shadcn
 
 Mapped entries are re-validated against `ComponentEntrySchema`; unknown item
 types (`registry:style`, `registry:theme`, …) fail loudly. The schema gained
-an optional `files[].root` (`components` | `app` | `project`); component-only
-items omit it so older patties-ui releases still validate them.
+an optional `files[].root` (`components` | `app`); component-only items omit it
+so older patties-ui releases still validate them. The stamper confines `app`
+files to `components/`, `hooks/`, `lib/` with no dot-segments, for every source
+(registry payloads are untrusted even after preview, since `--yes` skips it).
 
 ## Guarantees (unchanged from cli/15)
 

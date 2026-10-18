@@ -1,7 +1,12 @@
 import { dirname, resolve, sep } from "node:path";
 import type { ComponentEntry } from "patties-ui/types";
 import { log } from "../../log.ts";
-import { fileDest, fileRootDir, type UiPaths } from "./ui-paths.ts";
+import {
+	assertAppFileAllowed,
+	fileDest,
+	fileRootDir,
+	type UiPaths,
+} from "./ui-paths.ts";
 
 export interface StampPlan {
 	from: string;
@@ -19,6 +24,7 @@ export async function planStamp(
 	for (const f of entry.files) {
 		// Defense-in-depth: ComponentFileSchema already rejects unsafe from/to,
 		// but assert each join stays within its root before any read/write.
+		assertAppFileAllowed(f);
 		const from = resolve(templatesDir, f.from);
 		const compRoot = resolve(fileRootDir(uiPaths, f));
 		const to = fileDest(uiPaths, f);

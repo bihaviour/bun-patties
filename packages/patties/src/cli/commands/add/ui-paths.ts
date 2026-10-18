@@ -84,8 +84,26 @@ export function fileRootDir(uiPaths: UiPaths, file: ComponentFile): string {
 			return uiPaths.componentsDir;
 		case "app":
 			return uiPaths.appDir;
-		case "project":
-			return uiPaths.projectRoot;
+	}
+}
+
+// Subdirs of the app dir a registry file may land in (`root: "app"`).
+export const APP_FILE_DIRS = ["components", "hooks", "lib"] as const;
+
+// Throws unless an app-rooted file stays in APP_FILE_DIRS with no dot-segments,
+// so an untrusted payload can't drop routes, middleware, or `.env`-style files.
+export function assertAppFileAllowed(file: ComponentFile): void {
+	if ((file.root ?? "components") !== "app") return;
+	const segs = file.to.split("/");
+	const top = segs[0] ?? "";
+	if (
+		segs.length < 2 ||
+		!(APP_FILE_DIRS as readonly string[]).includes(top) ||
+		segs.some((s) => s.startsWith("."))
+	) {
+		throw new Error(
+			`refusing to stamp ${file.to} into the app dir: only ${APP_FILE_DIRS.map((d) => `${d}/`).join(", ")} are allowed`,
+		);
 	}
 }
 

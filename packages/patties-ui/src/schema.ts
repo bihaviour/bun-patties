@@ -39,8 +39,10 @@ export const SafeRelPath = z
 
 // Where `to` is anchored. Absent ⇒ "components" (the catalog default). "app"
 // is the app dir the `@/` import alias points at, used by adapted registries
-// (e.g. shadcn `registry:hook` → `app/hooks/`); "project" is the project root.
-export const FileRootSchema = z.enum(["components", "app", "project"]);
+// (e.g. shadcn `registry:hook` → `app/hooks/`). The stamper confines "app"
+// files to `components/`, `hooks/` and `lib/` — registry payloads are
+// untrusted, so they never get to place routes, config, or dotfiles.
+export const FileRootSchema = z.enum(["components", "app"]);
 
 export const ComponentFileSchema = z
 	.object({

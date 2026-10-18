@@ -3,6 +3,7 @@ import { SafeRelPath } from "patties-ui/schema";
 import type { ComponentEntry, ComponentFile } from "patties-ui/types";
 import { z } from "zod";
 import { type ComponentPayload, RegistryError } from "./registry-fetch.ts";
+import { assertAppFileAllowed } from "./ui-paths.ts";
 
 // Adapter from the upstream shadcn/ui registry-item JSON
 // (https://ui.shadcn.com/schema/registry-item.json) to a patties payload. The
@@ -148,12 +149,23 @@ function destination(
 ): Pick<ComponentFile, "to" | "root"> {
 	const base = basename(file.path);
 	if (file.target) {
-		const rel = file.target.replace(/^~\//, "").replace(/^\.\//, "");
+		// Targets are project-relative upstream. Only app/{components,hooks,lib}
+		// is honored; anything else (routes, config, dotfiles) is refused.
+		const rel = file.target
+			.replace(/^~\//, "")
+			.replace(/^\.\//, "")
+			.replace(/^app\//, "");
+		const dest: ComponentFile = { from: "", to: rel, root: "app" };
 		const safe = SafeRelPath.safeParse(rel);
-		if (!safe.success) {
-			throw new RegistryError(`unsafe shadcn file target: ${file.target}`);
+		try {
+			if (!safe.success) throw new Error("unsafe path");
+			assertAppFileAllowed(dest);
+		} catch {
+			throw new RegistryError(
+				`shadcn file target ${file.target} is outside app/{components,hooks,lib}; refusing to stamp it`,
+			);
 		}
-		return { to: rel, root: "project" };
+		return { to: rel, root: "app" };
 	}
 	switch (file.type) {
 		case "registry:ui":

@@ -154,6 +154,38 @@ describe("mapper", () => {
 		expect(payload.templates["tokens.css"]).toContain(".dark {");
 	});
 
+	test("file targets are confined to app/{components,hooks,lib}", () => {
+		const item = (target: string) =>
+			parseShadcnItem(
+				{
+					name: "t",
+					type: "registry:page",
+					files: [
+						{ path: "x.tsx", type: "registry:page", target, content: "" },
+					],
+				},
+				"t.json",
+			);
+		for (const hostile of [
+			".github/workflows/pwn.yml",
+			"package.json",
+			"bunfig.toml",
+			"app/routes/evil.tsx",
+			"app/middleware.ts",
+			"~/app/lib/.env",
+			"../outside.ts",
+		]) {
+			expect(() => mapShadcnItem(item(hostile), "t.json")).toThrow(
+				/outside app\/\{components,hooks,lib\}/,
+			);
+		}
+		const ok = mapShadcnItem(item("~/app/components/widget.tsx"), "t.json");
+		expect(ok.payload.entry.files[0]).toMatchObject({
+			to: "components/widget.tsx",
+			root: "app",
+		});
+	});
+
 	test("unknown item shapes fail loudly", () => {
 		expect(() =>
 			parseShadcnItem(
@@ -252,6 +284,38 @@ describe("patties add @shadcn/<name>", () => {
 		});
 		expect(await Bun.file(join(workdir, "node_modules")).exists()).toBeFalse();
 		expect(await Bun.file(join(workdir, "bun.lock")).exists()).toBeFalse();
+	});
+
+	test("the stamper refuses app-rooted files outside the allowlist from any payload", async () => {
+		const uiPaths = resolveUiPaths({ cwd: workdir });
+		const tpl = await mkdtemp(join(tmpdir(), "patties-add-shadcn-tpl-"));
+		await Bun.write(join(tpl, "evil.tsx"), "export function GET() {}\n");
+		try {
+			await expect(
+				applyComponent(
+					{
+						name: "evil",
+						spec: "remote:evil",
+						phase: 0,
+						kind: "primitive",
+						island: "no",
+						status: "completed",
+						files: [{ from: "evil.tsx", to: "routes/evil.ts", root: "app" }],
+						peerDeps: {},
+						internalHelpers: [],
+					},
+					workdir,
+					uiPaths,
+					tpl,
+					{ force: false },
+				),
+			).rejects.toThrow(/only components\/, hooks\/, lib\//);
+			expect(
+				await Bun.file(join(workdir, "app/routes/evil.ts")).exists(),
+			).toBeFalse();
+		} finally {
+			await rm(tpl, { recursive: true, force: true });
+		}
 	});
 
 	test("a local registry-item .json is mapped like a remote one", async () => {
