@@ -5,7 +5,7 @@ import { runDeploy } from "./commands/deploy.ts";
 import { runMigrate } from "./commands/migrate.ts";
 import { runSecret } from "./commands/secret.ts";
 import { runUpgrade } from "./commands/upgrade.ts";
-import { runDev } from "./dev.ts";
+import { REEXEC_FLAG, runDev } from "./dev.ts";
 import { runDoctor } from "./doctor.ts";
 import { EXIT, log, setVerbose } from "./log.ts";
 import { runRun } from "./run.ts";
@@ -24,7 +24,8 @@ export interface GlobalFlags extends CliContext {
 	rest: string[];
 }
 
-export async function main(argv: string[]): Promise<number> {
+// `null` means a long-running dev server now owns the process: don't exit.
+export async function main(argv: string[]): Promise<number | null> {
 	const globals = extractGlobals(argv);
 	setVerbose(globals.verbose);
 
@@ -47,7 +48,11 @@ export async function main(argv: string[]): Promise<number> {
 	};
 
 	// Prints from cache (instant) and refreshes in the background; never blocks.
-	await notifyUpdate(FRAMEWORK_VERSION, globals.noUpdateCheck);
+	// Skipped in the re-exec'd dev child: the parent already printed it, and
+	// `bun --hot` would repeat it on every edit.
+	if (process.env[REEXEC_FLAG] !== "1") {
+		await notifyUpdate(FRAMEWORK_VERSION, globals.noUpdateCheck);
+	}
 
 	switch (cmd) {
 		case "dev":

@@ -9,7 +9,9 @@
 //     `Set<ServerWebSocket>` ourselves and dead sockets are pruned on close.
 //   - `bun --hot` keeps `Bun.serve` (and these WebSockets) alive across
 //     module reloads, so reconnect logic on the client is only exercised
-//     under `--cold`.
+//     under `--cold` or when `patties dev` restarts for an added/removed file.
+
+import { hotState } from "./hot.ts";
 
 type AnyServer = {
 	publish: (topic: string, data: string) => number;
@@ -44,14 +46,17 @@ export interface DevOptions {
 
 const HMR_TOPIC = "hmr";
 const RELOAD_MSG = JSON.stringify({ type: "reload" });
-// Per-process id so reconnecting clients can tell "same server, transient
-// disconnect" (no reload) from "server restarted, reload". Survives `bun --hot`
-// module reloads (same process); changes on `--cold` / full restart.
-const SERVER_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-const HELLO_MSG = JSON.stringify({ type: "hello", serverId: SERVER_ID });
 
 export function createDevServer(options: DevOptions): DevServer {
 	let server: AnyServer | null = null;
+	// Per-process id so reconnecting clients can tell "same server, transient
+	// disconnect" (no reload) from "server restarted, reload". Kept on
+	// `globalThis` so it survives `bun --hot` module reloads (same process);
+	// changes on `--cold` / full restart.
+	const helloMsg = JSON.stringify({
+		type: "hello",
+		serverId: hotState().serverId,
+	});
 	const islandsDir = `${options.appDir.replace(/\/+$/, "")}/islands/`;
 
 	const publish = (msg: string): void => {
@@ -72,7 +77,7 @@ export function createDevServer(options: DevOptions): DevServer {
 	const websocket: WebSocketHandler = {
 		open(ws) {
 			ws.subscribe(HMR_TOPIC);
-			ws.send(HELLO_MSG);
+			ws.send(helloMsg);
 		},
 	};
 
